@@ -1143,18 +1143,18 @@ elif page == "⚙️ الإدارة والإعدادات":
             st.info("لا توجد تحديات لعرضها.")
         
         with st.expander("اضغط هنا لإضافة تحدي جديد"):
-            with st.form("add_new_challenge_details_form_2"):
+            with st.form("add_new_challenge_details_form"):
                 st.write("**تفاصيل الكتاب والتحدي**")
-                new_title = st.text_input("عنوان الكتاب الجديد", key="new_chal_title_2")
-                new_author = st.text_input("مؤلف الكتاب الجديد", key="new_chal_author_2")
-                new_year = st.number_input("سنة نشر الكتاب الجديد", value=datetime.now().year, step=1, key="new_chal_year_2")
+                new_title = st.text_input("عنوان الكتاب الجديد", key="new_chal_title")
+                new_author = st.text_input("مؤلف الكتاب الجديد", key="new_chal_author")
+                new_year = st.number_input("سنة نشر الكتاب الجديد", value=datetime.now().year, step=1, key="new_chal_year")
                 
                 last_end_date = pd.to_datetime(periods_df['end_date'].max()).date() if not periods_df.empty else date.today() - timedelta(days=1)
                 suggested_start = last_end_date + timedelta(days=1)
-                new_start = st.date_input("تاريخ بداية التحدي الجديد", value=suggested_start, key="new_chal_start_2")
-                new_end = st.date_input("تاريخ نهاية التحدي الجديد", value=suggested_start + timedelta(days=30), key="new_chal_end_2")
+                new_start = st.date_input("تاريخ بداية التحدي الجديد", value=suggested_start, key="new_chal_start")
+                new_end = st.date_input("تاريخ نهاية التحدي الجديد", value=suggested_start + timedelta(days=30), key="new_chal_end")
 
-                if st.form_submit_button("إضافة التحدي"):
+                if st.form_submit_button("متابعة لاختيار نظام النقاط"):
                     if new_start <= last_end_date:
                         st.error(f"⛔ التواريخ متداخلة: يرجى اختيار تاريخ بداية بعد {last_end_date}.")
                     elif not new_title or not new_author:
@@ -1162,15 +1162,77 @@ elif page == "⚙️ الإدارة والإعدادات":
                     elif new_start >= new_end:
                         st.error("🗓️ خطأ في التواريخ: تاريخ نهاية التحدي يجب أن يكون بعد تاريخ بدايته.")
                     else:
-                        book_info = {'title': new_title, 'author': new_author, 'year': new_year}
-                        challenge_info = {'start_date': str(new_start), 'end_date': str(new_end)}
-                        default_rules = db.load_user_global_rules(user_id)
-                        success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
+                        # حفظ البيانات مؤقتاً في الـ session state لعرضها في النافذة المنبثقة
+                        st.session_state.new_challenge_data = {
+                            'book_info': {'title': new_title, 'author': new_author, 'year': new_year},
+                            'challenge_info': {'start_date': str(new_start), 'end_date': str(new_end)}
+                        }
+                        st.session_state.show_rules_choice = True
+                        st.rerun()
+
+        # --- منطق النوافذ المنبثقة لاختيار وتخصيص القوانين ---
+        if 'show_rules_choice' in st.session_state and st.session_state.show_rules_choice:
+            @st.dialog("اختر نظام النقاط للتحدي")
+            def show_rules_choice_dialog():
+                st.write(f"اختر نظام النقاط الذي تريد تطبيقه على تحدي كتاب **'{st.session_state.new_challenge_data['book_info']['title']}'**.")
+                
+                if st.button("📈 استخدام النظام الافتراضي", use_container_width=True):
+                    default_rules = db.load_user_global_rules(user_id)
+                    success, message = db.add_book_and_challenge(
+                        user_id,
+                        st.session_state.new_challenge_data['book_info'],
+                        st.session_state.new_challenge_data['challenge_info'],
+                        default_rules
+                    )
+                    if success:
+                        st.success(f"✅ {message}")
+                    else:
+                        st.error(f"❌ {message}")
+                    
+                    del st.session_state.show_rules_choice
+                    del st.session_state.new_challenge_data
+                    st.rerun()
+
+                if st.button("🛠️ تخصيص القوانين لهذا التحدي", type="primary", use_container_width=True):
+                    st.session_state.show_custom_rules_form = True
+                    del st.session_state.show_rules_choice
+                    st.rerun()
+
+            show_rules_choice_dialog()
+
+        if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom_rules_form:
+            @st.dialog("تخصيص قوانين التحدي")
+            def show_custom_rules_dialog():
+                default_settings = db.load_user_global_rules(user_id)
+                with st.form("custom_rules_form"):
+                    st.info("أنت الآن تقوم بتعيين قوانين خاصة لهذا التحدي فقط.")
+                    c1, c2 = st.columns(2)
+                    rules = {}
+                    rules['minutes_per_point_common'] = c1.number_input("دقائق قراءة الكتاب المشترك لكل نقطة:", value=default_settings['minutes_per_point_common'], min_value=0)
+                    rules['minutes_per_point_other'] = c2.number_input("دقائق قراءة كتاب آخر لكل نقطة:", value=default_settings['minutes_per_point_other'], min_value=0)
+                    rules['quote_common_book_points'] = c1.number_input("نقاط اقتباس الكتاب المشترك:", value=default_settings['quote_common_book_points'], min_value=0)
+                    rules['quote_other_book_points'] = c2.number_input("نقاط اقتباس كتاب آخر:", value=default_settings['quote_other_book_points'], min_value=0)
+                    rules['finish_common_book_points'] = c1.number_input("نقاط إنهاء الكتاب المشترك:", value=default_settings['finish_common_book_points'], min_value=0)
+                    rules['finish_other_book_points'] = c2.number_input("نقاط إنهاء كتاب آخر:", value=default_settings['finish_other_book_points'], min_value=0)
+                    rules['attend_discussion_points'] = st.number_input("نقاط حضور جلسة النقاش:", value=default_settings['attend_discussion_points'], min_value=0)
+                    
+                    if st.form_submit_button("حفظ التحدي بالقوانين المخصصة"):
+                        success, message = db.add_book_and_challenge(
+                            user_id,
+                            st.session_state.new_challenge_data['book_info'],
+                            st.session_state.new_challenge_data['challenge_info'],
+                            rules
+                        )
                         if success:
                             st.success(f"✅ {message}")
-                            st.rerun()
                         else:
                             st.error(f"❌ {message}")
+
+                        del st.session_state.show_custom_rules_form
+                        del st.session_state.new_challenge_data
+                        st.rerun()
+
+            show_custom_rules_dialog()
         
         if 'challenge_to_delete' in st.session_state:
             @st.dialog("🚫 تأكيد الحذف النهائي")
