@@ -289,34 +289,151 @@ user_settings = db.get_user_settings(user_id)
 spreadsheet_url = user_settings.get("spreadsheet_url")
 form_url = user_settings.get("form_url")
 
-# =================================================================================
-# --- قسم الإعداد الأولي (سيتم إعادة بنائه في مهمة لاحقة) ---
-# =================================================================================
-# if not spreadsheet_url:
-#     # ... code ...
-#     st.stop()
-# if not form_url:
-#     # ... code ...
-#     st.stop()
-# =================================================================================
-
 all_data = db.get_all_data_for_stats(user_id)
 members_df = pd.DataFrame(all_data.get('members', []))
 periods_df = pd.DataFrame(all_data.get('periods', []))
-setup_complete = not periods_df.empty
+
+# --- متغيرات لتحديد اكتمال كل خطوة إعداد ---
+members_exist = not members_df.empty
+tools_exist = spreadsheet_url and form_url
+challenge_exist = not periods_df.empty
+setup_complete = members_exist and tools_exist and challenge_exist
 
 st.sidebar.title("لوحة التحكم")
 st.sidebar.success(f"أهلاً بك! {user_email}")
+st.sidebar.divider()
 
 # =================================================================================
-# --- التعديل هنا: إعادة تفعيل زر المزامنة وربطه بالمنطق الجديد ---
+# --- المعالج الجديد لإعداد المشرف ---
 # =================================================================================
+if not setup_complete:
+    st.title("🚀 مرحباً بك في ماراثون القراءة!")
+    st.info("لتجهيز مساحة العمل الخاصة بك، يرجى اتباع الخطوات التالية:")
+
+    # --- الخطوة 1: إضافة الأعضاء ---
+    if not members_exist:
+        st.header("الخطوة 1: إضافة أعضاء فريقك")
+        st.warning("قبل المتابعة، يجب إضافة عضو واحد على الأقل.")
+        with st.form("initial_members_form"):
+            names_str = st.text_area("أدخل أسماء المشاركين (كل اسم في سطر جديد):", height=150, placeholder="خالد\nسارة\n...")
+            if st.form_submit_button("إضافة الأعضاء وحفظهم", use_container_width=True, type="primary"):
+                names = [name.strip() for name in names_str.split('\n') if name.strip()]
+                if names:
+                    with st.spinner("جاري إضافة الأعضاء..."):
+                        db.add_members(user_id, names)
+                    st.success("تمت إضافة الأعضاء بنجاح! سيتم تحديث الصفحة للمتابعة إلى الخطوة التالية.")
+                    st.balloons()
+                    time.sleep(2)
+                    st.rerun()
+                else:
+                    st.error("يرجى إدخال اسم واحد على الأقل.")
+        st.stop()
+
+    # --- الخطوة 2: إنشاء أدوات جوجل ---
+    if not tools_exist:
+        st.header("الخطوة 2: إنشاء أدوات جوجل")
+        st.info("سيقوم التطبيق الآن بإنشاء جدول بيانات (Google Sheet) ونموذج تسجيل (Google Form) في حسابك.")
+        if 'sheet_title' not in st.session_state:
+            st.session_state.sheet_title = f"بيانات ماراثون القراءة - {user_email.split('@')[0]}"
+        st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
+        
+        if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
+            with st.spinner("جاري إنشاء جدول البيانات..."):
+                try:
+                    spreadsheet = gc.create(st.session_state.sheet_title)
+                    db.set_user_setting(user_id, "spreadsheet_url", spreadsheet.url)
+                    st.success("✅ تم إنشاء جدول البيانات بنجاح!")
+                except Exception as e:
+                    st.error(f"🌐 خطأ في إنشاء الشيت: {e}")
+                    st.stop()
+            
+            with st.spinner("جاري إنشاء نموذج التسجيل..."):
+                try:
+                    member_names = members_df['name'].tolist()
+                    new_form_info = {"info": {"title": st.session_state.sheet_title, "documentTitle": st.session_state.sheet_title}}
+                    form_result = forms_service.forms().create(body=new_form_info).execute()
+                    form_id = form_result['formId']
+                    date_options = generate_date_options()
+                    
+                    update_requests = {"requests": [
+                        {"updateFormInfo": {"info": {"description": "يرجى ملء هذا النموذج يومياً لتسجيل نشاطك في تحدي القراءة. بالتوفيق!"}, "updateMask": "description"}},
+                        {"createItem": {"item": {"title": "اسمك", "questionItem": {"question": {"required": True, "choiceQuestion": {"type": "DROP_DOWN", "options": [{"value": name} for name in member_names]}}}}, "location": {"index": 0}}},
+                        {"createItem": {"item": {"title": "تاريخ القراءة", "questionItem": {"question": {"required": True, "choiceQuestion": {"type": "DROP_DOWN", "options": [{"value": d} for d in date_options]}}}}, "location": {"index": 1}}},
+                        {"createItem": {"item": {"title": "مدة قراءة الكتاب المشترك (اختياري)", "questionItem": {"question": {"timeQuestion": {"duration": True}}}}, "location": {"index": 2}}},
+                        {"createItem": {"item": {"title": "مدة قراءة كتاب آخر (اختياري)", "questionItem": {"question": {"timeQuestion": {"duration": True}}}}, "location": {"index": 3}}},
+                        {"createItem": {"item": {"title": "ما هي الاقتباسات التي أرسلتها اليوم؟ (اختياري)", "questionItem": {"question": {"choiceQuestion": {"type": "CHECKBOX", "options": [{"value": "أرسلت اقتباساً من الكتاب المشترك"}, {"value": "أرسلت اقتباساً من كتاب آخر"}]}}}}, "location": {"index": 4}}},
+                        {"createItem": {"item": {"title": "إنجازات الكتب والنقاش (اختر فقط عند حدوثه لأول مرة)", "questionItem": {"question": {"choiceQuestion": {"type": "CHECKBOX", "options": [{"value": "أنهيت الكتاب المشترك"}, {"value": "أنهيت كتاباً آخر"}, {"value": "حضرت جلسة النقاش"}]}}}}, "location": {"index": 5}}}
+                    ]}
+                    
+                    update_result = forms_service.forms().batchUpdate(formId=form_id, body=update_requests).execute()
+                    
+                    member_question_id = update_result['replies'][1]['createItem']['itemId']
+                    db.set_user_setting(user_id, "form_id", form_id)
+                    db.set_user_setting(user_id, "member_question_id", member_question_id)
+                    db.set_user_setting(user_id, "form_url", form_result['responderUri'])
+                    
+                    st.success("✅ تم إنشاء النموذج وحفظ إعداداته بنجاح!")
+                except Exception as e:
+                    st.error(f"🌐 خطأ في إنشاء الفورم: {e}")
+                    st.stop()
+
+            st.header("🔗 الخطوة الأخيرة: الربط اليدوي")
+            st.warning("هذه الخطوة ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
+            editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
+            st.write("1. **افتح النموذج للتعديل** من الرابط أدناه:")
+            st.code(editor_url)
+            st.write("2. انتقل إلى تبويب **\"الردود\" (Responses)**.")
+            st.write("3. اضغط على أيقونة **'Link to Sheets'** (أيقونة جدول البيانات الخضراء).")
+            st.write("4. اختر **'Select existing spreadsheet'** وقم باختيار جدول البيانات الذي أنشأته للتو بنفس الاسم.")
+            if st.button("لقد قمت بالربط، تابع إلى الخطوة الأخيرة!"):
+                with st.spinner("جاري تنظيف جدول البيانات..."):
+                    try:
+                        spreadsheet = gc.open_by_url(spreadsheet_url)
+                        default_sheet = spreadsheet.worksheet('Sheet1')
+                        spreadsheet.del_worksheet(default_sheet)
+                    except gspread.exceptions.WorksheetNotFound: pass
+                    except Exception as e: st.warning(f"لم نتمكن من حذف الصفحة الفارغة تلقائياً: {e}.")
+                st.rerun()
+        st.stop()
+
+    # --- الخطوة 3: إنشاء أول تحدي ---
+    if not challenge_exist:
+        st.header("الخطوة 3: إنشاء أول تحدي لك")
+        st.info("أنت على وشك الانتهاء! كل ما عليك فعله هو إضافة تفاصيل أول كتاب وتحدي للبدء.")
+        with st.form("new_challenge_form", clear_on_submit=True):
+            st.text_input("عنوان الكتاب المشترك الأول", key="book_title")
+            st.text_input("اسم المؤلف", key="book_author")
+            st.number_input("سنة النشر", key="pub_year", value=date.today().year, step=1)
+            st.date_input("تاريخ بداية التحدي", key="start_date", value=date.today())
+            st.date_input("تاريخ نهاية التحدي", key="end_date", value=date.today() + timedelta(days=30))
+            if st.form_submit_button("بدء التحدي الأول!", use_container_width=True, type="primary"):
+                if st.session_state.book_title and st.session_state.book_author:
+                    book_info = {'title': st.session_state.book_title, 'author': st.session_state.book_author, 'year': st.session_state.pub_year}
+                    challenge_info = {'start_date': str(st.session_state.start_date), 'end_date': str(st.session_state.end_date)}
+                    default_rules = db.load_user_global_rules(user_id)
+                    if default_rules:
+                        success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
+                        if success:
+                            st.success("🎉 اكتمل الإعداد! تم إنشاء أول تحدي بنجاح.")
+                            st.balloons()
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            st.error(f"❌ فشلت العملية: {message}")
+                    else:
+                        st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
+                else:
+                    st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
+        st.stop()
+
+# =================================================================================
+# --- العرض الرئيسي للتطبيق بعد اكتمال الإعداد ---
+# =================================================================================
+
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
     with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
-        # تمرير gc و user_id إلى دالة المزامنة
         update_log = run_data_update(gc, user_id) 
         st.session_state['update_log'] = update_log
-        # مسح حالة المحرر بعد المزامنة الكاملة
         if 'editor_data' in st.session_state:
             del st.session_state['editor_data']
     st.rerun()
@@ -326,39 +443,7 @@ if 'update_log' in st.session_state:
     with st.expander("عرض تفاصيل سجل التحديث الأخير"):
         for message in st.session_state.update_log:
             st.text(message)
-    # مسح السجل بعد عرضه لمنع ظهوره مرة أخرى عند إعادة التحميل
     del st.session_state['update_log']
-# =================================================================================
-
-st.sidebar.divider()
-
-if not setup_complete:
-    st.header("الخطوة الأخيرة: إنشاء أول تحدي")
-    st.info("أنت على وشك الانتهاء! كل ما عليك فعله هو إضافة تفاصيل أول كتاب وتحدي للبدء.")
-    with st.form("new_challenge_form", clear_on_submit=True):
-        st.text_input("عنوان الكتاب المشترك الأول", key="book_title")
-        st.text_input("اسم المؤلف", key="book_author")
-        st.number_input("سنة النشر", key="pub_year", value=date.today().year, step=1)
-        st.date_input("تاريخ بداية التحدي", key="start_date", value=date.today())
-        st.date_input("تاريخ نهاية التحدي", key="end_date", value=date.today() + timedelta(days=30))
-        if st.form_submit_button("بدء التحدي الأول!", use_container_width=True):
-            if st.session_state.book_title and st.session_state.book_author:
-                book_info = {'title': st.session_state.book_title, 'author': st.session_state.book_author, 'year': st.session_state.pub_year}
-                challenge_info = {'start_date': str(st.session_state.start_date), 'end_date': str(st.session_state.end_date)}
-                default_rules = db.load_user_global_rules(user_id)
-                if default_rules:
-                    success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
-                    if success:
-                        st.success("🎉 اكتمل الإعداد! تم إنشاء أول تحدي بنجاح.")
-                        st.balloons()
-                        st.rerun()
-                    else:
-                        st.error(f"❌ فشلت العملية: {message}")
-                else:
-                    st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
-            else:
-                st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
-    st.stop()
 
 st.sidebar.title("التنقل")
 page_options = ["📈 لوحة التحكم العامة", "🎯 تحليلات التحديات", "⚙️ الإدارة والإعدادات"]
