@@ -105,7 +105,7 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         hoverongaps=False,
         customdata=hover_pivot,
         hovertemplate='%{customdata}<extra></extra>',
-        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15) # <-- MOVED COLORBAR TO THE LEFT
+        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15)
     ))
 
     fig.update_layout(
@@ -118,7 +118,7 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
         font_color='#333',
-        margin=dict(l=80) # <-- ADDED LEFT MARGIN FOR COLORBAR
+        margin=dict(l=80)
     )
     return fig
 
@@ -483,11 +483,7 @@ if not achievements_df.empty:
     
 member_stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
 if not member_stats_df.empty and not members_df.empty:
-    # لا حاجة لإعادة تسمية عمود 'members_id' لأنه الاسم الصحيح
-    # إعادة تسمية عمود الإحصائيات فقط لتوحيده قبل الدمج
     member_stats_df.rename(columns={'member_stats_id': 'members_id'}, inplace=True, errors='ignore')
-    
-    # استخدام 'members_id' في عملية الدمج
     member_stats_df = pd.merge(member_stats_df, members_df[['members_id', 'name']], on='members_id', how='left')
 
 if page == "📈 لوحة التحكم العامة":
@@ -706,7 +702,6 @@ elif page == "🎯 تحليلات التحديات":
         st.stop()
     
     today = date.today()
-    # استخدام 'periods_id' كمعرف فريد
     challenge_options_map = {period['periods_id']: period for index, period in periods_df.iterrows()}
     active_challenges, past_challenges, future_challenges = [], [], []
 
@@ -731,7 +726,6 @@ elif page == "🎯 تحليلات التحديات":
         if period_id in active_challenges: status_emoji = " (الحالي) 🟢"
         if period_id in past_challenges: status_emoji = " (السابق) 🏁"
         if period_id in future_challenges: status_emoji = " (المقبل) ⏳"
-        # استخدام book_title من البيانات المدمجة
         return f"{period_data.get('book_title', 'تحدي غير معروف')} | {period_data['start_date']} إلى {period_data['end_date']}{status_emoji}"
 
     default_index = 0
@@ -847,7 +841,7 @@ elif page == "🎯 تحليلات التحديات":
                     kpi1.metric("⏳ مجموع ساعات القراءة", f"{total_period_hours:,}")
                     kpi2.metric("👥 المشاركون الفعليون", f"{active_participants}")
                     kpi3, kpi4 = st.columns(2)
-                    kpi3.metric("✍️ الاقتباسات المرسلة", f"{total_period_quotes}")
+                    kpi3.metric("✍️ الاقتباسات المرسلة", f"{int(total_period_quotes)}")
                     kpi4.metric("📊 متوسط القراءة اليومي/عضو", f"{avg_daily_reading:.1f} دقيقة")
                 st.markdown("---")
 
@@ -1149,8 +1143,34 @@ elif page == "⚙️ الإدارة والإعدادات":
             st.info("لا توجد تحديات لعرضها.")
         
         with st.expander("اضغط هنا لإضافة تحدي جديد"):
-            # ... (هذا الجزء يعمل بشكل سليم من المهمة السابقة) ...
-            pass # Placeholder
+            with st.form("add_new_challenge_details_form_2"):
+                st.write("**تفاصيل الكتاب والتحدي**")
+                new_title = st.text_input("عنوان الكتاب الجديد", key="new_chal_title_2")
+                new_author = st.text_input("مؤلف الكتاب الجديد", key="new_chal_author_2")
+                new_year = st.number_input("سنة نشر الكتاب الجديد", value=datetime.now().year, step=1, key="new_chal_year_2")
+                
+                last_end_date = pd.to_datetime(periods_df['end_date'].max()).date() if not periods_df.empty else date.today() - timedelta(days=1)
+                suggested_start = last_end_date + timedelta(days=1)
+                new_start = st.date_input("تاريخ بداية التحدي الجديد", value=suggested_start, key="new_chal_start_2")
+                new_end = st.date_input("تاريخ نهاية التحدي الجديد", value=suggested_start + timedelta(days=30), key="new_chal_end_2")
+
+                if st.form_submit_button("إضافة التحدي"):
+                    if new_start <= last_end_date:
+                        st.error(f"⛔ التواريخ متداخلة: يرجى اختيار تاريخ بداية بعد {last_end_date}.")
+                    elif not new_title or not new_author:
+                        st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف للمتابعة.")
+                    elif new_start >= new_end:
+                        st.error("🗓️ خطأ في التواريخ: تاريخ نهاية التحدي يجب أن يكون بعد تاريخ بدايته.")
+                    else:
+                        book_info = {'title': new_title, 'author': new_author, 'year': new_year}
+                        challenge_info = {'start_date': str(new_start), 'end_date': str(new_end)}
+                        default_rules = db.load_user_global_rules(user_id)
+                        success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
+                        if success:
+                            st.success(f"✅ {message}")
+                            st.rerun()
+                        else:
+                            st.error(f"❌ {message}")
         
         if 'challenge_to_delete' in st.session_state:
             @st.dialog("🚫 تأكيد الحذف النهائي")
@@ -1206,5 +1226,151 @@ elif page == "⚙️ الإدارة والإعدادات":
                         st.error("حدث خطأ أثناء تحديث الإعدادات.")
     
     with admin_tab3:
+        # --- التعديل هنا: إعادة تفعيل محرر السجلات بالكامل ---
         st.header("📝 محرر السجلات الذكي")
-        st.info("سيتم تفعيل محرر السجلات في مهمة لاحقة.")
+        st.info("لضمان تعديل أحدث البيانات، يرجى الضغط على الزر أدناه لسحب السجلات مباشرة من Google Sheet قبل البدء بالتعديل.")
+
+        if st.button("⬇️ تحميل أحدث السجلات للتعديل", use_container_width=True):
+            with st.spinner("جاري سحب أحدث البيانات من Google Sheet..."):
+                try:
+                    spreadsheet = gc.open_by_url(spreadsheet_url)
+                    worksheet = spreadsheet.worksheet("Form Responses 1")
+                    sheet_data = worksheet.get_all_records()
+                    
+                    if not sheet_data:
+                        st.warning("جدول البيانات فارغ. لا توجد سجلات لعرضها.")
+                        st.stop()
+
+                    df = pd.DataFrame(sheet_data)
+                    df['sheet_row_index'] = df.index + 2
+
+                    ACHIEVEMENT_OPTIONS = {
+                        'ach_finish_common': 'أنهيت الكتاب المشترك',
+                        'ach_finish_other': 'أنهيت كتاباً آخر',
+                        'ach_attend_discussion': 'حضرت جلسة النقاش'
+                    }
+                    QUOTE_OPTIONS = {
+                        'quote_common': 'أرسلت اقتباساً من الكتاب المشترك',
+                        'quote_other': 'أرسلت اقتباساً من كتاب آخر'
+                    }
+
+                    achievements_col_name = next((col for col in df.columns if 'إنجازات الكتب والنقاش' in col), None)
+                    quotes_col_name = next((col for col in df.columns if 'الاقتباسات التي أرسلتها' in col), None)
+
+                    if achievements_col_name:
+                        df[achievements_col_name] = df[achievements_col_name].astype(str)
+                        for key, text in ACHIEVEMENT_OPTIONS.items():
+                            df[key] = df[achievements_col_name].str.contains(text, na=False)
+                    
+                    if quotes_col_name:
+                        df[quotes_col_name] = df[quotes_col_name].astype(str)
+                        for key, text in QUOTE_OPTIONS.items():
+                            df[key] = df[quotes_col_name].str.contains(text, na=False)
+                    
+                    st.session_state.editor_data = df
+                    st.session_state.original_editor_data = df.copy()
+                    st.rerun()
+
+                except Exception as e:
+                    st.error(f"حدث خطأ أثناء سحب البيانات من Google Sheet: {e}")
+
+        if 'editor_data' in st.session_state:
+            st.success("تم تحميل البيانات بنجاح. يمكنك الآن تعديل السجلات أدناه.")
+            
+            original_df = st.session_state.original_editor_data
+            
+            achievements_col_name = next((col for col in original_df.columns if 'إنجازات الكتب والنقاش' in col), "إنجازات الكتب والنقاش (اختر فقط عند حدوثه لأول مرة)")
+            quotes_col_name = next((col for col in original_df.columns if 'الاقتباسات التي أرسلتها' in col), "ما هي الاقتباسات التي أرسلتها اليوم؟ (اختياري)")
+            common_minutes_col_name = next((col for col in original_df.columns if 'مدة قراءة الكتاب المشترك' in col), "مدة قراءة الكتاب المشترك (اختياري)")
+            other_minutes_col_name = next((col for col in original_df.columns if 'مدة قراءة كتاب آخر' in col), "مدة قراءة كتاب آخر (اختياري)")
+            date_col_name = "تاريخ القراءة"
+            name_col_name = "اسمك"
+            timestamp_col_name = "Timestamp"
+
+            edited_df = st.data_editor(
+                st.session_state.editor_data,
+                key="data_editor_final",
+                column_config={
+                    achievements_col_name: None, quotes_col_name: None,
+                    'ach_finish_common': st.column_config.CheckboxColumn("أنهى المشترك؟"),
+                    'ach_finish_other': st.column_config.CheckboxColumn("أنهى آخر؟"),
+                    'ach_attend_discussion': st.column_config.CheckboxColumn("حضر النقاش؟"),
+                    'quote_common': st.column_config.CheckboxColumn("اقتباس مشترك؟"),
+                    'quote_other': st.column_config.CheckboxColumn("اقتباس آخر؟"),
+                    common_minutes_col_name: st.column_config.TextColumn("دقائق (مشترك)"),
+                    other_minutes_col_name: st.column_config.TextColumn("دقائق (آخر)"),
+                    date_col_name: st.column_config.TextColumn("تاريخ القراءة"),
+                    name_col_name: st.column_config.TextColumn("الاسم", disabled=True),
+                    timestamp_col_name: st.column_config.TextColumn("ختم الوقت", disabled=True),
+                    'sheet_row_index': None,
+                },
+                use_container_width=True, height=500, hide_index=True
+            )
+
+            if st.button("💾 حفظ التعديلات في Google Sheet", use_container_width=True, type="primary"):
+                with st.spinner("جاري حفظ التغييرات..."):
+                    try:
+                        spreadsheet = gc.open_by_url(spreadsheet_url)
+                        worksheet = spreadsheet.worksheet("Form Responses 1")
+                        sheet_headers = worksheet.row_values(1)
+
+                        comparison_cols = list(edited_df.columns)
+                        if 'sheet_row_index' in comparison_cols:
+                            comparison_cols.remove('sheet_row_index')
+                        
+                        # تحويل كل الأعمدة للمقارنة إلى نص لتجنب أخطاء الأنواع
+                        original_for_comp = original_df[comparison_cols].astype(str)
+                        edited_for_comp = edited_df[comparison_cols].astype(str)
+                        
+                        changed_rows_mask = (original_for_comp != edited_for_comp).any(axis=1)
+                        changes = edited_df[changed_rows_mask]
+                        
+                        if changes.empty:
+                            st.info("لم يتم العثور على أي تغييرات لحفظها.")
+                        else:
+                            batch_updates = []
+                            for idx in changes.index:
+                                edited_row = changes.loc[idx]
+                                sheet_row_to_update = edited_row['sheet_row_index']
+                                
+                                ACH_OPTIONS = {'ach_finish_common': 'أنهيت الكتاب المشترك', 'ach_finish_other': 'أنهيت كتاباً آخر', 'ach_attend_discussion': 'حضرت جلسة النقاش'}
+                                QUOTE_OPTIONS = {'quote_common': 'أرسلت اقتباساً من الكتاب المشترك', 'quote_other': 'أرسلت اقتباساً من كتاب آخر'}
+
+                                new_ach_list = [text for key, text in ACH_OPTIONS.items() if edited_row[key]]
+                                new_ach_str = ", ".join(new_ach_list)
+                                
+                                new_quote_list = [text for key, text in QUOTE_OPTIONS.items() if edited_row[key]]
+                                new_quote_str = ", ".join(new_quote_list)
+
+                                # تحديث الأعمدة البسيطة
+                                for col_name in [date_col_name, common_minutes_col_name, other_minutes_col_name]:
+                                    if col_name in sheet_headers:
+                                        col_idx = sheet_headers.index(col_name) + 1
+                                        batch_updates.append({'range': f'{gspread.utils.rowcol_to_a1(sheet_row_to_update, col_idx)}', 'values': [[str(edited_row[col_name])]]})
+                                
+                                # تحديث أعمدة الاختيار المتعدد
+                                if achievements_col_name in sheet_headers:
+                                    ach_col_idx = sheet_headers.index(achievements_col_name) + 1
+                                    batch_updates.append({'range': f'{gspread.utils.rowcol_to_a1(sheet_row_to_update, ach_col_idx)}', 'values': [[new_ach_str]]})
+                                
+                                if quotes_col_name in sheet_headers:
+                                    quote_col_idx = sheet_headers.index(quotes_col_name) + 1
+                                    batch_updates.append({'range': f'{gspread.utils.rowcol_to_a1(sheet_row_to_update, quote_col_idx)}', 'values': [[new_quote_str]]})
+                            
+                            if batch_updates:
+                                worksheet.batch_update(batch_updates)
+                                st.success(f"✅ تم تحديث {len(changes)} سجل بنجاح في Google Sheet.")
+                                st.info("سيتم الآن إعادة مزامنة التطبيق بالكامل لتعكس التغييرات.")
+                                with st.spinner("جاري المزامنة الكاملة..."):
+                                    run_data_update(gc, user_id)
+                                st.success("🎉 اكتملت المزامنة!")
+                            else:
+                                st.info("لم يتم العثور على أي تغييرات لحفظها.")
+                        
+                        del st.session_state.editor_data
+                        if 'original_editor_data' in st.session_state:
+                            del st.session_state.original_editor_data
+                        st.rerun()
+
+                    except Exception as e:
+                        st.error(f"حدث خطأ فادح أثناء عملية الحفظ: {e}")
