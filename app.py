@@ -483,9 +483,12 @@ if not achievements_df.empty:
     
 member_stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
 if not member_stats_df.empty and not members_df.empty:
-    members_df.rename(columns={'members_id': 'member_id'}, inplace=True, errors='ignore')
-    member_stats_df.rename(columns={'member_stats_id': 'member_id'}, inplace=True, errors='ignore')
-    member_stats_df = pd.merge(member_stats_df, members_df[['member_id', 'name']], on='member_id', how='left')
+    # لا حاجة لإعادة تسمية عمود 'members_id' لأنه الاسم الصحيح
+    # إعادة تسمية عمود الإحصائيات فقط لتوحيده قبل الدمج
+    member_stats_df.rename(columns={'member_stats_id': 'members_id'}, inplace=True, errors='ignore')
+    
+    # استخدام 'members_id' في عملية الدمج
+    member_stats_df = pd.merge(member_stats_df, members_df[['members_id', 'name']], on='members_id', how='left')
 
 if page == "📈 لوحة التحكم العامة":
     st.header("📈 لوحة التحكم العامة")
