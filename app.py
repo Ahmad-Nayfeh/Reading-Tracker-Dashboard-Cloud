@@ -275,7 +275,6 @@ def generate_challenge_headline(podium_df, period_achievements_df, members_df, e
 # --- Main App Authentication and Setup ---
 creds = auth_manager.authenticate()
 
-# --- التغيير الرئيسي هنا: الحصول على هوية المستخدم من الـ session state ---
 user_id = st.session_state.get('user_id')
 user_email = st.session_state.get('user_email')
 
@@ -310,13 +309,25 @@ st.sidebar.title("لوحة التحكم")
 st.sidebar.success(f"أهلاً بك! {user_email}")
 
 # =================================================================================
-# --- قسم تحديث البيانات (معطل مؤقتاً) ---
+# --- التعديل هنا: إعادة تفعيل زر المزامنة وربطه بالمنطق الجديد ---
 # =================================================================================
-st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True, disabled=True, help="سيتم تفعيل هذه الميزة في مهمة لاحقة")
-# if st.sidebar.button("..."):
-#     # ... code ...
-# if 'update_log' in st.session_state:
-#     # ... code ...
+if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
+    with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
+        # تمرير gc و user_id إلى دالة المزامنة
+        update_log = run_data_update(gc, user_id) 
+        st.session_state['update_log'] = update_log
+        # مسح حالة المحرر بعد المزامنة الكاملة
+        if 'editor_data' in st.session_state:
+            del st.session_state['editor_data']
+    st.rerun()
+
+if 'update_log' in st.session_state:
+    st.info("اكتملت عملية المزامنة.")
+    with st.expander("عرض تفاصيل سجل التحديث الأخير"):
+        for message in st.session_state.update_log:
+            st.text(message)
+    # مسح السجل بعد عرضه لمنع ظهوره مرة أخرى عند إعادة التحميل
+    del st.session_state['update_log']
 # =================================================================================
 
 st.sidebar.divider()
@@ -388,8 +399,6 @@ if page == "📈 لوحة التحكم العامة":
         total_hours, total_books_finished, total_quotes = 0, 0, 0
         king_of_reading, king_of_books, king_of_points, king_of_quotes = [pd.Series(dtype=object)]*4
 
-    # --- الإصلاح هنا ---
-    # التحقق مما إذا كان DataFrame للأعضاء فارغاً قبل الوصول إليه
     active_members_count = 0
     if not members_df.empty:
         active_members_count = len(members_df[members_df['is_active'] == 1])
@@ -634,4 +643,3 @@ elif page == "⚙️ الإدارة والإعدادات":
     with admin_tab3:
         st.header("📝 محرر السجلات الذكي")
         st.info("سيتم تفعيل محرر السجلات في مهمة لاحقة بعد ربط عملية المزامنة.")
-
