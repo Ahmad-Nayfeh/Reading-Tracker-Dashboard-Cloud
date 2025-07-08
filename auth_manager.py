@@ -4,8 +4,6 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 import os
-from googleapiclient.discovery import build
-
 
 # --- Configuration Constants ---
 
@@ -21,19 +19,16 @@ TOKEN_FILE = 'data/token.json'
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.file",
-    "https://www.googleapis.com/auth/forms.body",
-    "https://www.googleapis.com/auth/userinfo.email",
-    "openid"
+    "https://www.googleapis.com/auth/forms.body"
 ]
 
 def authenticate():
     """
-    The main authentication function. Handles all auth logic.
+    The main authentication function. It handles all authentication logic
+    in a robust, sequential way that is compatible with Streamlit.
 
     Returns:
-        tuple: A tuple containing:
-            - google.oauth2.credentials.Credentials: A valid user credential object.
-            - dict: A dictionary with the authenticated user's info (id, email).
+        google.oauth2.credentials.Credentials: A valid user credential object.
     """
     
     # Check the session state first for existing credentials.
@@ -48,12 +43,12 @@ def authenticate():
     if creds:
         if creds.valid:
             st.session_state.credentials = creds
-            return creds, get_user_info(creds)
+            return creds
         elif creds.expired and creds.refresh_token:
             creds.refresh(Request())
             st.session_state.credentials = creds
             save_credentials_to_file(creds) # Save the refreshed token
-            return creds, get_user_info(creds)
+            return creds
 
     # If we have no valid credentials, we need to start the login flow.
     try:
@@ -105,18 +100,3 @@ def get_gspread_client():
         st.error("🔒 **خطأ في المصادقة:** لم نتمكن من التحقق من صلاحيات الوصول. قد تكون هناك مشكلة في الاتصال أو أنك لم تمنح الصلاحيات اللازمة.")
         st.stop()
     return gspread.authorize(creds)
-
-
-@st.cache_data
-def get_user_info(_creds):
-    """
-    Uses the credentials to get the user's profile information
-    from the Google OAuth2 API.
-    """
-    try:
-        oauth2_service = build('oauth2', 'v2', credentials=_creds)
-        user_info = oauth2_service.userinfo().get().execute()
-        return {'id': user_info.get('id'), 'email': user_info.get('email')}
-    except Exception as e:
-        st.error(f"فشل في جلب معلومات المستخدم: {e}")
-        return None
