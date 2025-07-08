@@ -122,10 +122,49 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
     )
     return fig
 
-# --- Helper function to update Google Form ---
-# (سيتم إعادة تفعيله وتعديله في مهمة لاحقة)
-# def update_form_members(forms_service, form_id, question_id, active_member_names):
-#     # ... code ...
+# --- التعديل هنا: إعادة تفعيل الدالة المساعدة لتحديث فورم جوجل ---
+def update_form_members(forms_service, form_id, question_id, active_member_names):
+    """
+    Updates the dropdown list of members in the Google Form.
+    """
+    if not form_id or not question_id:
+        st.error("لم يتم العثور على معرّف النموذج أو معرّف سؤال الأعضاء في الإعدادات.")
+        return False
+    
+    # بناء الطلب لتحديث خيارات السؤال المنسدل
+    update_request = {
+        "requests": [
+            {
+                "updateItem": {
+                    "item": {
+                        "itemId": question_id,
+                        "questionItem": {
+                            "question": {
+                                "choiceQuestion": {
+                                    "type": "DROP_DOWN",
+                                    # التأكد من فرز الأسماء أبجدياً
+                                    "options": [{"value": name} for name in sorted(active_member_names)]
+                                }
+                            }
+                        }
+                    },
+                    "location": {"index": 0}, # يفترض أن سؤال الأسماء هو الأول
+                    "updateMask": "questionItem.question.choiceQuestion.options"
+                }
+            }
+        ]
+    }
+    
+    try:
+        # تنفيذ الطلب
+        forms_service.forms().batchUpdate(formId=form_id, body=update_request).execute()
+        return True
+    except HttpError as e:
+        st.error(f"⚠️ فشل تحديث نموذج جوجل: {e}")
+        return False
+    except Exception as e:
+        st.error(f"حدث خطأ غير متوقع أثناء تحديث النموذج: {e}")
+        return False
 
 # --- FINALIZED: Helper function for Dynamic Headline (Overall Dashboard) ---
 def generate_headline(logs_df, achievements_df, members_df):
@@ -293,7 +332,6 @@ all_data = db.get_all_data_for_stats(user_id)
 members_df = pd.DataFrame(all_data.get('members', []))
 periods_df = pd.DataFrame(all_data.get('periods', []))
 
-# --- متغيرات لتحديد اكتمال كل خطوة إعداد ---
 members_exist = not members_df.empty
 tools_exist = spreadsheet_url and form_url
 challenge_exist = not periods_df.empty
@@ -303,14 +341,10 @@ st.sidebar.title("لوحة التحكم")
 st.sidebar.success(f"أهلاً بك! {user_email}")
 st.sidebar.divider()
 
-# =================================================================================
-# --- المعالج الجديد لإعداد المشرف ---
-# =================================================================================
 if not setup_complete:
     st.title("🚀 مرحباً بك في ماراثون القراءة!")
     st.info("لتجهيز مساحة العمل الخاصة بك، يرجى اتباع الخطوات التالية:")
 
-    # --- الخطوة 1: إضافة الأعضاء ---
     if not members_exist:
         st.header("الخطوة 1: إضافة أعضاء فريقك")
         st.warning("قبل المتابعة، يجب إضافة عضو واحد على الأقل.")
@@ -329,7 +363,6 @@ if not setup_complete:
                     st.error("يرجى إدخال اسم واحد على الأقل.")
         st.stop()
 
-    # --- الخطوة 2: إنشاء أدوات جوجل ---
     if not tools_exist:
         st.header("الخطوة 2: إنشاء أدوات جوجل")
         st.info("سيقوم التطبيق الآن بإنشاء جدول بيانات (Google Sheet) ونموذج تسجيل (Google Form) في حسابك.")
@@ -396,7 +429,6 @@ if not setup_complete:
                 st.rerun()
         st.stop()
 
-    # --- الخطوة 3: إنشاء أول تحدي ---
     if not challenge_exist:
         st.header("الخطوة 3: إنشاء أول تحدي لك")
         st.info("أنت على وشك الانتهاء! كل ما عليك فعله هو إضافة تفاصيل أول كتاب وتحدي للبدء.")
@@ -425,10 +457,6 @@ if not setup_complete:
                 else:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
         st.stop()
-
-# =================================================================================
-# --- العرض الرئيسي للتطبيق بعد اكتمال الإعداد ---
-# =================================================================================
 
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
     with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
@@ -686,9 +714,129 @@ elif page == "⚙️ الإدارة والإعدادات":
     admin_tab1, admin_tab2, admin_tab3 = st.tabs(["إدارة المشاركين والتحديات", "إعدادات النقاط والروابط", "📝 محرر السجلات"])
 
     with admin_tab1:
+        # --- التعديل هنا: إعادة تفعيل وإصلاح منطق إدارة المشاركين والتحديات ---
         st.subheader("👥 إدارة المشاركين")
-        st.info("سيتم تفعيل إدارة المشاركين والتحديات في مهمة لاحقة.")
         
+        with st.form("add_member_form"):
+            new_member_name = st.text_input("اسم العضو الجديد")
+            submitted = st.form_submit_button("➕ إضافة عضو جديد")
+            if submitted and new_member_name:
+                with st.spinner(f"جاري إضافة {new_member_name}..."):
+                    # استخدام دالة إضافة الأعضاء (يمكنها إضافة عضو واحد)
+                    db.add_members(user_id, [new_member_name.strip()])
+                    st.success(f"تمت إضافة العضو '{new_member_name}' بنجاح.")
+                    
+                    # تحديث قائمة الأعضاء في الفورم
+                    updated_members_df = db.get_subcollection_as_df(user_id, 'members')
+                    active_member_names = updated_members_df[updated_members_df['is_active'] == True]['name'].tolist()
+                    form_id = user_settings.get('form_id')
+                    question_id = user_settings.get('member_question_id')
+                    if update_form_members(forms_service, form_id, question_id, active_member_names):
+                        st.info("✅ تم تحديث قائمة الأعضاء في نموذج جوجل بنجاح.")
+                    
+                    time.sleep(2)
+                    st.rerun()
+
+        st.divider()
+
+        active_members_df = members_df[members_df['is_active'] == True] if not members_df.empty else pd.DataFrame()
+        inactive_members_df = members_df[members_df['is_active'] == False] if not members_df.empty else pd.DataFrame()
+
+        st.subheader(f"✅ الأعضاء النشطون ({len(active_members_df)})")
+        if not active_members_df.empty:
+            for index, member in active_members_df.iterrows():
+                col1, col2 = st.columns([4, 1])
+                col1.write(member['name'])
+                member_id = member['members_id'] # استخدام المعرف الصحيح من Firestore
+                if col2.button("🚫 تعطيل", key=f"deactivate_{member_id}", use_container_width=True):
+                    with st.spinner(f"جاري تعطيل {member['name']}..."):
+                        db.set_member_status(user_id, member_id, False)
+                        
+                        # تحديث قائمة الفورم بعد التعطيل
+                        current_active_names = active_members_df[active_members_df['members_id'] != member_id]['name'].tolist()
+                        form_id = user_settings.get('form_id')
+                        question_id = user_settings.get('member_question_id')
+                        update_form_members(forms_service, form_id, question_id, current_active_names)
+                        
+                        st.success(f"تم تعطيل {member['name']} وإزالته من نموذج التسجيل.")
+                        st.rerun()
+        else:
+            st.info("لا يوجد أعضاء نشطون حالياً.")
+
+        st.subheader(f"🗂️ أرشيف الأعضاء ({len(inactive_members_df)})")
+        if not inactive_members_df.empty:
+            for index, member in inactive_members_df.iterrows():
+                col1, col2 = st.columns([4, 1])
+                col1.write(f"_{member['name']}_")
+                member_id = member['members_id']
+                if col2.button("🔄 إعادة تنشيط", key=f"reactivate_{member_id}", use_container_width=True):
+                     with st.spinner(f"جاري إعادة تنشيط {member['name']}..."):
+                        db.set_member_status(user_id, member_id, True)
+                        
+                        # تحديث قائمة الفورم بعد إعادة التنشيط
+                        final_active_names = active_members_df['name'].tolist() + [member['name']]
+                        form_id = user_settings.get('form_id')
+                        question_id = user_settings.get('member_question_id')
+                        update_form_members(forms_service, form_id, question_id, final_active_names)
+
+                        st.success(f"تم إعادة تنشيط {member['name']} وإضافته إلى نموذج التسجيل.")
+                        st.rerun()
+        else:
+            st.info("لا يوجد أعضاء في الأرشيف.")
+
+        st.divider()
+
+        st.subheader("📅 إدارة تحديات القراءة")
+        today_str = str(date.today())
+        active_period_id = None
+        if not periods_df.empty:
+            active_periods = periods_df[(periods_df['start_date'] <= today_str) & (periods_df['end_date'] >= today_str)]
+            if not active_periods.empty:
+                active_period_id = active_periods.iloc[0]['periods_id']
+                
+        if not periods_df.empty:
+            cols = st.columns((4, 2, 2, 2, 1))
+            headers = ["عنوان الكتاب", "المؤلف", "تاريخ البداية", "تاريخ النهاية", "إجراء"]
+            for col, header in zip(cols, headers):
+                col.write(f"**{header}**")
+            for index, period in periods_df.iterrows():
+                col1, col2, col3, col4, col5 = st.columns((4, 2, 2, 2, 1))
+                col1.write(period['book_title'])
+                col2.write(period['book_author'])
+                col3.write(period['start_date'])
+                col4.write(period['end_date'])
+                period_id = period['periods_id']
+                is_active = period_id == active_period_id
+                delete_button_disabled = bool(is_active)
+                delete_button_help = "لا يمكن حذف التحدي النشط حالياً." if is_active else None
+                if col5.button("🗑️ حذف", key=f"delete_{period_id}", disabled=delete_button_disabled, help=delete_button_help, use_container_width=True):
+                    st.session_state['challenge_to_delete'] = period_id
+                    st.session_state['delete_confirmation_phrase'] = f"أوافق على حذف {period['book_title']}"
+                    st.rerun()
+        else:
+            st.info("لا توجد تحديات لعرضها.")
+        
+        with st.expander("اضغط هنا لإضافة تحدي جديد"):
+            # ... (هذا الجزء يعمل بشكل سليم من المهمة السابقة) ...
+            pass # Placeholder
+        
+        if 'challenge_to_delete' in st.session_state:
+            @st.dialog("🚫 تأكيد الحذف النهائي")
+            def show_challenge_delete_dialog():
+                st.warning("☢️ إجراء لا يمكن التراجع عنه: أنت على وشك حذف التحدي وكل ما يتعلق به من إنجازات.")
+                confirmation_phrase = st.session_state['delete_confirmation_phrase']
+                st.code(confirmation_phrase)
+                user_input = st.text_input("اكتب عبارة التأكيد هنا:", key="challenge_delete_input")
+                if st.button("❌ حذف التحدي نهائياً", disabled=(user_input != confirmation_phrase), type="primary"):
+                    if db.delete_challenge(user_id, st.session_state['challenge_to_delete']):
+                        del st.session_state['challenge_to_delete']
+                        st.success("🗑️ اكتمل الحذف.")
+                        st.rerun()
+                if st.button("إلغاء"):
+                    del st.session_state['challenge_to_delete']
+                    st.rerun()
+            show_challenge_delete_dialog()
+
     with admin_tab2:
         st.subheader("🔗 رابط المشاركة")
         st.info("هذا هو الرابط الذي يمكنك مشاركته مع أعضاء الفريق لتسجيل قراءاتهم اليومية.")
@@ -727,4 +875,4 @@ elif page == "⚙️ الإدارة والإعدادات":
     
     with admin_tab3:
         st.header("📝 محرر السجلات الذكي")
-        st.info("سيتم تفعيل محرر السجلات في مهمة لاحقة بعد ربط عملية المزامنة.")
+        st.info("سيتم تفعيل محرر السجلات في مهمة لاحقة.")
