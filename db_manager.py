@@ -1,278 +1,309 @@
+import sqlite3
+import os
 import pandas as pd
-from firebase_admin import firestore
-import firebase_client
 
-# --- Helper to get the user's workspace reference ---
-def _get_db_and_workspace(user_id):
-    """Returns the main db client and a reference to the user's workspace."""
-    db = firebase_client.get_db_client()
-    workspace_ref = db.collection('Workspaces').document(user_id)
-    return db, workspace_ref
+# --- Constants ---
+DB_FOLDER = 'data'
+DB_NAME = 'reading_tracker.db'
+DB_PATH = os.path.join(DB_FOLDER, DB_NAME)
 
-# --- Helper function to convert Firestore collection to list of dicts ---
-def _collection_to_list(collection_ref):
-    """Converts a Firestore collection snapshot to a list of dictionaries."""
-    docs = []
-    for doc in collection_ref.stream():
-        doc_dict = doc.to_dict()
-        doc_dict['id'] = doc.id
-        docs.append(doc_dict)
-    return docs
+def get_db_connection():
+    """Establishes and returns a database connection."""
+    conn = sqlite3.connect(DB_PATH)
+    conn.row_factory = sqlite3.Row
+    return conn
 
-# --- AppSettings Functions (Now User-Specific) ---
-def set_setting(user_id, key, value):
-    """Saves or updates a key-value pair in a user's AppSettings sub-collection."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+# --- AppSettings Functions ---
+
+def set_setting(key, value):
+    """Saves or updates a key-value pair in the AppSettings table."""
+    conn = get_db_connection()
     try:
-        settings_ref = workspace_ref.collection('AppSettings').document(key)
-        settings_ref.set({'value': str(value)})
-    except Exception as e:
-        print(f"Firestore error in set_setting: {e}")
+        with conn:
+            conn.execute("INSERT OR REPLACE INTO AppSettings (key, value) VALUES (?, ?)", (key, str(value)))
+    except sqlite3.Error as e:
+        print(f"Database error in set_setting: {e}")
+    finally:
+        conn.close()
 
-def get_setting(user_id, key):
-    """Retrieves a value by its key from a user's AppSettings sub-collection."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def get_setting(key):
+    """Retrieves a value by its key from the AppSettings table."""
+    conn = get_db_connection()
     try:
-        doc_ref = workspace_ref.collection('AppSettings').document(key)
-        doc = doc_ref.get()
-        if doc.exists:
-            return doc.to_dict().get('value')
+        row = conn.execute("SELECT value FROM AppSettings WHERE key = ?", (key,)).fetchone()
+        return row['value'] if row and row['value'] else None
+    except sqlite3.Error as e:
+        print(f"Database error in get_setting: {e}")
         return None
-    except Exception as e:
-        print(f"Firestore error in get_setting: {e}")
-        return None
+    finally:
+        conn.close()
 
-# --- READ Functions (Now User-Specific) ---
-def get_all_data_for_stats(user_id):
-    """Fetches all data needed for the calculation engine from a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+# --- READ Functions ---
+
+def load_global_settings():
+    """Loads the general rules of the challenge (points only)."""
+    conn = get_db_connection()
     try:
-        members_ref = workspace_ref.collection('Members').order_by('name')
-        logs_ref = workspace_ref.collection('ReadingLogs')
-        achievements_ref = workspace_ref.collection('Achievements')
-        periods_ref = workspace_ref.collection('ChallengePeriods').order_by('start_date', direction=firestore.Query.DESCENDING)
-        books_ref = workspace_ref.collection('Books')
+        settings_row = conn.execute("SELECT * FROM GlobalSettings WHERE setting_id = 1").fetchone()
+        return dict(settings_row) if settings_row else None
+    finally:
+        conn.close()
 
-        members = _collection_to_list(members_ref)
-        logs = _collection_to_list(logs_ref)
-        achievements = _collection_to_list(achievements_ref)
-        periods_raw = _collection_to_list(periods_ref)
-        books_list = _collection_to_list(books_ref)
-
-        books_map = {book['id']: book for book in books_list}
-        periods = []
-        for period in periods_raw:
-            book_id = period.get('common_book_id')
-            if book_id in books_map:
-                book_data = books_map[book_id]
-                period['title'] = book_data.get('title')
-                period['author'] = book_data.get('author')
-                period['publication_year'] = book_data.get('publication_year')
-                periods.append(period)
-
-        for m in members: m['member_id'] = m.pop('id')
-        for p in periods: p['period_id'] = p.pop('id')
-
-    except Exception as e:
-        print(f"Error fetching all data from Firestore for user {user_id}: {e}")
+def get_all_data_for_stats():
+    """Fetches all data needed for the calculation engine in one go for efficiency."""
+    conn = get_db_connection()
+    try:
+        members = [dict(row) for row in conn.execute("SELECT * FROM Members ORDER BY name").fetchall()]
+        logs = [dict(row) for row in conn.execute("SELECT * FROM ReadingLogs").fetchall()]
+        achievements = [dict(row) for row in conn.execute("SELECT * FROM Achievements").fetchall()]
+        query = "SELECT cp.*, b.title, b.author, b.publication_year FROM ChallengePeriods cp JOIN Books b ON cp.common_book_id = b.book_id ORDER BY cp.start_date DESC"
+        periods = [dict(row) for row in conn.execute(query).fetchall()]
+    
+    except sqlite3.Error as e:
+        print(f"Error fetching all data from database: {e}")
         return None
-
+    finally:
+        conn.close()
+    
     return {"members": members, "logs": logs, "achievements": achievements, "periods": periods}
 
-def get_table_as_df(user_id, table_name):
-    """Fetches an entire sub-collection and returns it as a Pandas DataFrame."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def get_table_as_df(table_name):
+    """Fetches an entire table and returns it as a Pandas DataFrame."""
+    conn = get_db_connection()
     try:
-        collection_ref = workspace_ref.collection(table_name)
-        docs = _collection_to_list(collection_ref)
-        df = pd.DataFrame(docs)
-        if 'id' in df.columns:
-             pk_name = f"{table_name.lower().rstrip('s')}_id"
-             df.rename(columns={'id': pk_name}, inplace=True)
+        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
     except Exception as e:
-        print(f"Error reading collection {table_name} for user {user_id}: {e}")
+        print(f"Error reading table {table_name}: {e}")
         df = pd.DataFrame()
+    finally:
+        conn.close()
     return df
 
-def has_achievement(user_id, member_id, achievement_type, period_id):
-    """Checks if a specific achievement already exists for a member in a period."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    try:
-        achievements_ref = workspace_ref.collection('Achievements')
-        query = achievements_ref.where('member_id', '==', member_id)\
-                                .where('achievement_type', '==', achievement_type)\
-                                .where('period_id', '==', period_id)\
-                                .limit(1)
-        return len(list(query.stream())) > 0
-    except Exception as e:
-        print(f"Firestore error in has_achievement: {e}")
-        return False
+def check_log_exists(timestamp):
+    conn = get_db_connection()
+    log_exists = conn.execute("SELECT 1 FROM ReadingLogs WHERE timestamp = ?", (timestamp,)).fetchone()
+    conn.close()
+    return log_exists is not None
 
-# --- WRITE/UPDATE Functions (Now User-Specific) ---
-def add_members(user_id, names_list):
-    """Adds a list of new members to a user's Members sub-collection."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    # *** THE FIX IS HERE ***
-    batch = db.batch()
-    members_ref = workspace_ref.collection('Members')
-    for name in names_list:
-        existing_member_query = members_ref.where('name', '==', name).limit(1)
-        if not any(existing_member_query.stream()):
-            new_member_ref = members_ref.document()
-            batch.set(new_member_ref, {'name': name, 'is_active': True})
-    batch.commit()
+def has_achievement(member_id, achievement_type, period_id):
+    conn = get_db_connection()
+    query = "SELECT 1 FROM Achievements WHERE member_id = ? AND achievement_type = ? AND period_id = ?"
+    achievement_exists = conn.execute(query, (member_id, achievement_type, period_id)).fetchone()
+    conn.close()
+    return achievement_exists is not None
 
-def add_single_member(user_id, name):
-    """Adds or reactivates a single member in a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    members_ref = workspace_ref.collection('Members')
+def did_submit_quote_today(member_id, submission_date, quote_type):
+    conn = get_db_connection()
+    column_to_check = "submitted_common_quote" if quote_type == 'COMMON' else "submitted_other_quote"
+    query = f"SELECT 1 FROM ReadingLogs WHERE member_id = ? AND submission_date = ? AND {column_to_check} = 1"
+    quote_exists = conn.execute(query, (member_id, submission_date)).fetchone()
+    conn.close()
+    return quote_exists is not None
+
+# --- WRITE/UPDATE Functions ---
+
+def add_members(names_list):
+    """Adds a list of new members, setting them as active by default."""
+    conn = get_db_connection()
+    with conn:
+        conn.executemany("INSERT OR IGNORE INTO Members (name) VALUES (?)", [(name,) for name in names_list])
+    conn.close()
+
+def add_single_member(name):
+    """
+    Adds a single new member or reactivates an existing inactive one.
+    Returns a status tuple: (status_code, message)
+    """
+    conn = get_db_connection()
     try:
-        query = members_ref.where('name', '==', name).limit(1)
-        existing_members = list(query.stream())
-        if existing_members:
-            member_doc = existing_members[0]
-            if member_doc.to_dict().get('is_active'):
-                return ('exists', f"العضو '{name}' موجود ونشط بالفعل.")
+        with conn:
+            cursor = conn.execute("SELECT member_id, is_active FROM Members WHERE name = ?", (name,))
+            member = cursor.fetchone()
+            
+            if member:
+                if member['is_active'] == 1:
+                    return ('exists', f"العضو '{name}' موجود ونشط بالفعل.")
+                else:
+                    conn.execute("UPDATE Members SET is_active = 1 WHERE member_id = ?", (member['member_id'],))
+                    return ('reactivated', f"تمت إعادة تنشيط العضو '{name}' بنجاح.")
             else:
-                member_doc.reference.update({'is_active': True})
-                return ('reactivated', f"تمت إعادة تنشيط العضو '{name}' بنجاح.")
-        else:
-            members_ref.add({'name': name, 'is_active': True})
-            return ('added', f"تمت إضافة العضو الجديد '{name}' بنجاح.")
-    except Exception as e:
-        return ('error', f"Firestore error: {e}")
+                conn.execute("INSERT INTO Members (name) VALUES (?)", (name,))
+                return ('added', f"تمت إضافة العضو الجديد '{name}' بنجاح.")
+    except sqlite3.Error as e:
+        return ('error', f"Database error: {e}")
+    finally:
+        conn.close()
 
-def set_member_status(user_id, member_id, is_active: bool):
-    """Sets a member's status in a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def set_member_status(member_id, is_active: int):
+    """Sets a member's status to active (1) or inactive (0)."""
+    conn = get_db_connection()
     try:
-        member_ref = workspace_ref.collection('Members').document(member_id)
-        member_ref.update({'is_active': is_active})
+        with conn:
+            conn.execute("UPDATE Members SET is_active = ? WHERE member_id = ?", (is_active, member_id))
         return True
-    except Exception as e:
-        print(f"Firestore error in set_member_status: {e}")
+    except sqlite3.Error as e:
+        print(f"Database error in set_member_status: {e}")
         return False
+    finally:
+        conn.close()
 
-def add_book_and_challenge(user_id, book_info, challenge_info, rules_info):
-    """Adds a new book and challenge to a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def add_book_and_challenge(book_info, challenge_info, rules_info):
+    """Adds a new book and a new challenge period with its specific point rules."""
+    conn = get_db_connection()
     try:
-        books_ref = workspace_ref.collection('Books')
-        existing_book_query = books_ref.where('title', '==', book_info['title']).limit(1)
-        if any(existing_book_query.stream()):
-            return False, f"خطأ: كتاب بعنوان '{book_info['title']}' موجود بالفعل في قاعدة البيانات."
+        with conn:
+            cursor = conn.execute("INSERT INTO Books (title, author, publication_year) VALUES (?, ?, ?)",
+                                  (book_info['title'], book_info['author'], book_info['year']))
+            book_id = cursor.lastrowid
 
-        book_data = {'title': book_info['title'], 'author': book_info['author'], 'publication_year': book_info['year']}
-        update_time, book_ref = workspace_ref.collection('Books').add(book_data)
-        book_id = book_ref.id
-
-        challenge_data = {'start_date': challenge_info['start_date'], 'end_date': challenge_info['end_date'], 'common_book_id': book_id, **rules_info}
-        workspace_ref.collection('ChallengePeriods').add(challenge_data)
+            challenge_data = {
+                'start_date': challenge_info['start_date'],
+                'end_date': challenge_info['end_date'],
+                'common_book_id': book_id,
+                **rules_info
+            }
+            
+            conn.execute("""
+                INSERT INTO ChallengePeriods (
+                    start_date, end_date, common_book_id,
+                    minutes_per_point_common, minutes_per_point_other,
+                    finish_common_book_points, finish_other_book_points,
+                    quote_common_book_points, quote_other_book_points,
+                    attend_discussion_points
+                ) VALUES (
+                    :start_date, :end_date, :common_book_id,
+                    :minutes_per_point_common, :minutes_per_point_other,
+                    :finish_common_book_points, :finish_other_book_points,
+                    :quote_common_book_points, :quote_other_book_points,
+                    :attend_discussion_points
+                )
+            """, challenge_data)
         return True, "تمت إضافة التحدي بنجاح."
-    except Exception as e:
+    except sqlite3.Error as e:
+        if "UNIQUE constraint failed: Books.title" in str(e):
+             return False, f"خطأ: كتاب بعنوان '{book_info['title']}' موجود بالفعل في قاعدة البيانات."
+        print(f"Database error in add_book_and_challenge: {e}")
         return False, f"خطأ في قاعدة البيانات: {e}"
+    finally:
+        conn.close()
 
-def add_log_and_achievements(user_id, log_data, achievements_to_add):
-    """Adds a log and achievements to a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    # *** THE FIX IS HERE ***
-    batch = db.batch()
-    log_ref = workspace_ref.collection('ReadingLogs').document()
-    batch.set(log_ref, log_data)
-    if achievements_to_add:
-        achievements_ref = workspace_ref.collection('Achievements')
-        for ach_data_tuple in achievements_to_add:
-            ach_ref = achievements_ref.document()
-            ach_data_dict = {"member_id": ach_data_tuple[0], "achievement_type": ach_data_tuple[1], "achievement_date": ach_data_tuple[2], "period_id": ach_data_tuple[3], "book_id": ach_data_tuple[4]}
-            batch.set(ach_ref, ach_data_dict)
-    batch.commit()
+def add_log_and_achievements(log_data, achievements_to_add):
+    conn = get_db_connection()
+    with conn:
+        conn.execute("INSERT INTO ReadingLogs (timestamp, member_id, submission_date, common_book_minutes, other_book_minutes, submitted_common_quote, submitted_other_quote) VALUES (:timestamp, :member_id, :submission_date, :common_book_minutes, :other_book_minutes, :submitted_common_quote, :submitted_other_quote)", log_data)
+        if achievements_to_add:
+            conn.executemany("INSERT INTO Achievements (member_id, achievement_type, achievement_date, period_id, book_id) VALUES (?, ?, ?, ?, ?)", achievements_to_add)
+    conn.close()
 
-def _delete_collection(db, coll_ref, batch_size=50):
-    """Deletes all documents in a collection in batches."""
-    docs = coll_ref.limit(batch_size).stream()
-    deleted = 0
-    # *** THE FIX IS HERE ***
-    batch = db.batch()
-    for doc in docs:
-        batch.delete(doc.reference)
-        deleted += 1
-    if deleted > 0:
-        batch.commit()
-        if deleted >= batch_size:
-            return _delete_collection(db, coll_ref, batch_size)
+def rebuild_stats_tables(member_stats_data, group_stats_data):
+    conn = get_db_connection()
+    with conn:
+        conn.execute("DELETE FROM MemberStats;")
+        conn.execute("DELETE FROM GroupStats;")
+        if member_stats_data:
+            conn.executemany("""
+                INSERT INTO MemberStats (
+                    member_id, total_points, total_reading_minutes_common, 
+                    total_reading_minutes_other, total_common_books_read, 
+                    total_other_books_read, total_quotes_submitted, 
+                    meetings_attended, last_log_date, last_quote_date
+                ) VALUES (
+                    :member_id, :total_points, :total_reading_minutes_common, 
+                    :total_reading_minutes_other, :total_common_books_read, 
+                    :total_other_books_read, :total_quotes_submitted, 
+                    :meetings_attended, :last_log_date, :last_quote_date
+                )
+            """, member_stats_data)
+        if group_stats_data:
+             conn.executemany("INSERT INTO GroupStats (period_id, total_group_minutes_common, total_group_minutes_other, total_group_quotes_common, total_group_quotes_other, active_members) VALUES (:period_id, :total_group_minutes_common, :total_group_minutes_other, :total_group_quotes_common, :total_group_quotes_other, :active_members)", group_stats_data)
+    conn.close()
 
-def rebuild_stats_tables(user_id, member_stats_data, group_stats_data):
-    """Rebuilds the stats sub-collections in a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    _delete_collection(db, workspace_ref.collection('MemberStats'))
-    _delete_collection(db, workspace_ref.collection('GroupStats'))
-    # *** THE FIX IS HERE ***
-    batch = db.batch()
-    if member_stats_data:
-        member_stats_ref = workspace_ref.collection('MemberStats')
-        for stats in member_stats_data:
-            doc_id = stats.pop('member_id')
-            doc_ref = member_stats_ref.document(doc_id)
-            batch.set(doc_ref, stats)
-    if group_stats_data:
-        group_stats_ref = workspace_ref.collection('GroupStats')
-        for stats in group_stats_data:
-            doc_id = stats.pop('period_id')
-            doc_ref = group_stats_ref.document(doc_id)
-            batch.set(doc_ref, stats)
-    batch.commit()
-
-def update_global_settings(user_id, settings_dict):
-    """Updates the global settings document in a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def update_global_settings(settings_dict):
+    conn = get_db_connection()
     try:
-        settings_ref = workspace_ref.collection('GlobalSettings').document('default')
-        settings_ref.set(settings_dict, merge=True)
+        with conn:
+            conn.execute("""
+                UPDATE GlobalSettings
+                SET minutes_per_point_common = :minutes_per_point_common,
+                    minutes_per_point_other = :minutes_per_point_other,
+                    finish_common_book_points = :finish_common_book_points,
+                    finish_other_book_points = :finish_other_book_points,
+                    quote_common_book_points = :quote_common_book_points,
+                    quote_other_book_points = :quote_other_book_points,
+                    attend_discussion_points = :attend_discussion_points
+                WHERE setting_id = 1
+            """, settings_dict)
         return True
-    except Exception as e:
+    except sqlite3.Error as e:
+        print(f"Error updating settings: {e}")
         return False
+    finally:
+        conn.close()
 
-def load_global_settings(user_id):
-    """Loads the global settings document from a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def delete_challenge(period_id):
+    """Deletes a challenge period and associated data."""
+    conn = get_db_connection()
     try:
-        doc_ref = workspace_ref.collection('GlobalSettings').document('default')
-        doc = doc_ref.get()
-        if doc.exists:
-            return doc.to_dict()
-        else:
-            default_settings = {"minutes_per_point_common": 10, "minutes_per_point_other": 5, "finish_common_book_points": 50, "finish_other_book_points": 25, "quote_common_book_points": 3, "quote_other_book_points": 1, "attend_discussion_points": 25}
-            update_global_settings(user_id, default_settings)
-            return default_settings
-    except Exception as e:
-        return None
-
-def delete_challenge(user_id, period_id):
-    """Deletes a challenge and its data from a user's workspace."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
-    try:
-        period_ref = workspace_ref.collection('ChallengePeriods').document(period_id)
-        period_doc = period_ref.get()
-        if not period_doc.exists: return True
-        book_id = period_doc.to_dict().get('common_book_id')
-        ach_query = workspace_ref.collection('Achievements').where('period_id', '==', period_id)
-        _delete_collection(db, ach_query)
-        workspace_ref.collection('GroupStats').document(period_id).delete()
-        period_ref.delete()
-        if book_id:
-            other_challenges_query = workspace_ref.collection('ChallengePeriods').where('common_book_id', '==', book_id).limit(1)
-            if not any(other_challenges_query.stream()):
-                workspace_ref.collection('Books').document(book_id).delete()
+        with conn:
+            conn.execute("DELETE FROM Achievements WHERE period_id = ?", (period_id,))
+            conn.execute("DELETE FROM GroupStats WHERE period_id = ?", (period_id,))
+            cursor = conn.execute("SELECT common_book_id FROM ChallengePeriods WHERE period_id = ?", (period_id,))
+            result = cursor.fetchone()
+            if result:
+                book_id = result['common_book_id']
+                conn.execute("DELETE FROM ChallengePeriods WHERE period_id = ?", (period_id,))
+                cursor = conn.execute("SELECT COUNT(*) FROM ChallengePeriods WHERE common_book_id = ?", (book_id,))
+                if cursor.fetchone()[0] == 0:
+                    conn.execute("DELETE FROM Books WHERE book_id = ?", (book_id,))
         return True
-    except Exception as e:
+    except sqlite3.Error as e:
+        print(f"Database error in delete_challenge: {e}")
         return False
+    finally:
+        conn.close()
 
-def clear_all_logs_and_achievements(user_id):
-    """Wipes the logs and achievements sub-collections for a user."""
-    db, workspace_ref = _get_db_and_workspace(user_id)
+def clear_all_logs_and_achievements():
+    """
+    Wipes the ReadingLogs and Achievements tables for a full resync.
+    This is crucial for the new robust synchronization logic.
+    """
+    conn = get_db_connection()
     try:
-        _delete_collection(db, workspace_ref.collection('ReadingLogs'))
-        _delete_collection(db, workspace_ref.collection('Achievements'))
+        with conn:
+            conn.execute("DELETE FROM ReadingLogs;")
+            conn.execute("DELETE FROM Achievements;")
         return True
-    except Exception as e:
+    except sqlite3.Error as e:
+        print(f"Database error in clear_all_logs_and_achievements: {e}")
         return False
+    finally:
+        conn.close()
+
+def get_all_logs_with_member_names():
+    """
+    Fetches all reading logs and joins with the members table to get member names.
+    Returns a Pandas DataFrame ready for the data editor.
+    """
+    conn = get_db_connection()
+    try:
+        query = """
+            SELECT 
+                rl.log_id,
+                m.name,
+                rl.submission_date,
+                rl.common_book_minutes,
+                rl.other_book_minutes,
+                rl.submitted_common_quote,
+                rl.submitted_other_quote,
+                rl.timestamp
+            FROM ReadingLogs rl
+            JOIN Members m ON rl.member_id = m.member_id
+            ORDER BY rl.log_id DESC
+        """
+        df = pd.read_sql_query(query, conn)
+    except Exception as e:
+        print(f"Error reading logs with member names: {e}")
+        df = pd.DataFrame()
+    finally:
+        conn.close()
+    return df

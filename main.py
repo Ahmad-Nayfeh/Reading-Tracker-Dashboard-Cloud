@@ -3,9 +3,9 @@ from datetime import datetime, date, timedelta
 import db_manager as db
 import gspread
 
-def run_data_update(gc: gspread.Client, user_id: str):
+def run_data_update(gc: gspread.Client):
     update_log = ["--- بدء عملية تحديث بيانات التحدي ---"]
-    spreadsheet_url = db.get_setting(user_id, "spreadsheet_url")
+    spreadsheet_url = db.get_setting("spreadsheet_url")
     if not spreadsheet_url:
         update_log.append("❌ خطأ: لم يتم العثور على رابط جدول البيانات في الإعدادات.")
         return update_log
@@ -21,22 +21,21 @@ def run_data_update(gc: gspread.Client, user_id: str):
         return update_log
 
     if raw_data_df is not None and not raw_data_df.empty:
-        all_data = db.get_all_data_for_stats(user_id)
-
+        all_data = db.get_all_data_for_stats()
         if not all_data or not all_data.get("members") or not all_data.get("periods"):
             update_log.append("❌ خطأ حرج: لم تكتمل عملية الإعداد.")
             return update_log
         
         # --- NEW ROBUST LOGIC ---
         update_log.append("🔄 جاري مسح السجلات القديمة استعداداً للمزامنة الكاملة...")
-        db.clear_all_logs_and_achievements(user_id)
+        db.clear_all_logs_and_achievements()
         update_log.append("👍 تم مسح السجلات بنجاح.")
 
-        entries_processed = process_all_data(user_id, raw_data_df, all_data)
+        entries_processed = process_all_data(raw_data_df, all_data)
         update_log.append(f"🔄 تمت معالجة وإعادة إدخال {entries_processed} تسجيل.")
         
         update_log.append("🧮 جاري حساب وتحديث جميع الإحصائيات...")
-        calculate_and_update_stats(user_id)
+        calculate_and_update_stats()
         update_log.append("✅ اكتمل حساب الإحصائيات.")
     else:
         update_log.append("ℹ️ لا توجد بيانات جديدة في الجدول.")
@@ -51,7 +50,7 @@ def parse_duration_to_minutes(duration_str):
         return h * 60 + m
     except (ValueError, TypeError): return 0
 
-def process_all_data(user_id, df, all_data):
+def process_all_data(df, all_data):
     member_map = {member['name']: member['member_id'] for member in all_data['members']}
     today = date.today()
     entries_processed_count = 0
@@ -96,20 +95,20 @@ def process_all_data(user_id, df, all_data):
         if current_period:
             period_id = current_period['period_id']
             # We check the DB here because it's being populated in this same loop
-            if 'أنهيت الكتاب المشترك' in achievement_responses and not db.has_achievement(user_id, member_id, 'FINISHED_COMMON_BOOK', period_id):
+            if 'أنهيت الكتاب المشترك' in achievement_responses and not db.has_achievement(member_id, 'FINISHED_COMMON_BOOK', period_id):
                 achievements_to_add.append((member_id, 'FINISHED_COMMON_BOOK', str(submission_date_obj), period_id, current_period['common_book_id']))
-            if 'حضرت جلسة النقاش' in achievement_responses and not db.has_achievement(user_id, member_id, 'ATTENDED_DISCUSSION', period_id):
+            if 'حضرت جلسة النقاش' in achievement_responses and not db.has_achievement(member_id, 'ATTENDED_DISCUSSION', period_id):
                  achievements_to_add.append((member_id, 'ATTENDED_DISCUSSION', str(submission_date_obj), period_id, None))
             if 'أنهيت كتاباً آخر' in achievement_responses:
                 # For "other book", we don't check for duplicates within the challenge, as one can finish multiple other books
                 achievements_to_add.append((member_id, 'FINISHED_OTHER_BOOK', str(submission_date_obj), period_id, None))
         
-        db.add_log_and_achievements(user_id, log_data, achievements_to_add)
+        db.add_log_and_achievements(log_data, achievements_to_add)
     return entries_processed_count
 
 
-def calculate_and_update_stats(user_id):
-    all_data = db.get_all_data_for_stats(user_id)
+def calculate_and_update_stats():
+    all_data = db.get_all_data_for_stats()
     if not all_data or not all_data.get("members"): return
 
     periods_map = {p['period_id']: p for p in all_data["periods"]}
@@ -183,4 +182,4 @@ def calculate_and_update_stats(user_id):
             
         final_member_stats_data.append(member_stats)
     
-    db.rebuild_stats_tables(user_id, final_member_stats_data, [])
+    db.rebuild_stats_tables(final_member_stats_data, [])
