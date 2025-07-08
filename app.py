@@ -306,18 +306,12 @@ def generate_challenge_headline(podium_df, period_achievements_df, members_df, e
     return f"<div style='{style}'>{final_text}</div>"
     
 # --- Main App Authentication and Setup ---
-creds, user_info = auth_manager.authenticate()
-if user_info:
-    st.session_state.user_id = user_info['id']
-    st.session_state.user_email = user_info['email']
-
+creds = auth_manager.authenticate()
 gc = auth_manager.get_gspread_client()
 forms_service = build('forms', 'v1', credentials=creds)
 
-spreadsheet_url = db.get_setting(st.session_state.user_id, "spreadsheet_url")
-
-form_url = db.get_setting(st.session_state.user_id, "form_url")
-
+spreadsheet_url = db.get_setting("spreadsheet_url")
+form_url = db.get_setting("form_url")
 
 if not spreadsheet_url:
     st.header("✨ الخطوة 1: تجهيز مساحة العمل")
@@ -329,8 +323,7 @@ if not spreadsheet_url:
         with st.spinner("جاري إنشاء جدول البيانات..."):
             try:
                 spreadsheet = gc.create(st.session_state.sheet_title)
-                db.set_setting(st.session_state.user_id, "spreadsheet_url", spreadsheet.url)
-
+                db.set_setting("spreadsheet_url", spreadsheet.url)
                 st.success("✅ تم إنشاء جدول البيانات بنجاح!")
                 st.balloons()
                 st.rerun()
@@ -341,8 +334,7 @@ if not spreadsheet_url:
 if not form_url:
     st.header("👥 الخطوة 2: إضافة أعضاء فريقك وإنشاء النموذج")
     st.info("قبل إنشاء نموذج التسجيل، يرجى إضافة أسماء المشاركين في التحدي (كل اسم في سطر).")
-    all_data_for_form = db.get_all_data_for_stats(st.session_state.user_id)
-
+    all_data_for_form = db.get_all_data_for_stats()
     members_df_for_form = pd.DataFrame(all_data_for_form.get('members', []))
     if members_df_for_form.empty:
         with st.form("initial_members_form"):
@@ -350,8 +342,7 @@ if not form_url:
             if st.form_submit_button("إضافة الأعضاء وحفظهم", use_container_width=True):
                 names = [name.strip() for name in names_str.split('\n') if name.strip()]
                 if names:
-                    db.add_members(st.session_state.user_id, names)
-
+                    db.add_members(names)
                     st.success("تمت إضافة الأعضاء بنجاح! يمكنك الآن إنشاء النموذج.")
                     st.rerun()
     else:
@@ -379,12 +370,9 @@ if not form_url:
                     update_result = forms_service.forms().batchUpdate(formId=form_id, body=update_requests).execute()
                     
                     member_question_id = update_result['replies'][1]['createItem']['itemId']
-                    db.set_setting(st.session_state.user_id, "form_id", form_id)
-
-                    db.set_setting(st.session_state.user_id, "member_question_id", member_question_id)
-
-                    db.set_setting(st.session_state.user_id, "form_url", form_result['responderUri'])
-
+                    db.set_setting("form_id", form_id)
+                    db.set_setting("member_question_id", member_question_id)
+                    db.set_setting("form_url", form_result['responderUri'])
                     
                     with st.spinner("تتم مزامنة الملف مع Google Drive..."): time.sleep(7)
                     st.success("✅ تم إنشاء النموذج وحفظ معرّفاته بنجاح!")
@@ -409,18 +397,16 @@ if not form_url:
     st.stop()
 
 # --- Main Application Logic ---
-all_data = db.get_all_data_for_stats(st.session_state.user_id)
-
+all_data = db.get_all_data_for_stats()
 members_df = pd.DataFrame(all_data.get('members', []))
 periods_df = pd.DataFrame(all_data.get('periods', []))
 setup_complete = not periods_df.empty
 
 st.sidebar.title("لوحة التحكم")
-st.sidebar.success(f"أهلاً بك، {st.session_state.get('user_email', '!')}")
+st.sidebar.success(f"أهلاً بك! (تم تسجيل الدخول)")
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
     with st.spinner("جاري سحب البيانات..."):
-        update_log = run_data_update(gc, st.session_state.user_id)
-
+        update_log = run_data_update(gc)
         st.session_state['update_log'] = update_log
         # Clear editor state after a full sync
         if 'editor_data' in st.session_state:
@@ -447,13 +433,11 @@ if not setup_complete:
             if st.session_state.book_title and st.session_state.book_author:
                 book_info = {'title': st.session_state.book_title, 'author': st.session_state.book_author, 'year': st.session_state.pub_year}
                 challenge_info = {'start_date': str(st.session_state.start_date), 'end_date': str(st.session_state.end_date)}
-                default_rules = db.load_global_settings(st.session_state.user_id)
-
+                default_rules = db.load_global_settings()
                 if default_rules:
                     if 'setting_id' in default_rules:
                         del default_rules['setting_id']
-                    success, message = db.add_book_and_challenge(st.session_state.user_id, book_info, challenge_info, default_rules)
-
+                    success, message = db.add_book_and_challenge(book_info, challenge_info, default_rules)
                     if success:
                         st.success("🎉 اكتمل الإعداد! تم إنشاء أول تحدي بنجاح.")
                         st.balloons()
@@ -483,10 +467,10 @@ achievements_df = pd.DataFrame(all_data.get('achievements', []))
 if not achievements_df.empty:
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date'], errors='coerce').dt.date
     
-member_stats_df = db.get_table_as_df(st.session_state.user_id, 'MemberStats')
-
+member_stats_df = db.get_table_as_df('MemberStats')
 if not member_stats_df.empty and not members_df.empty:
-    member_stats_df = pd.merge(member_stats_df, members_df[['member_id', 'name']], left_on='memberstat_id', right_on='member_id', how='left')
+    member_stats_df = pd.merge(member_stats_df, members_df[['member_id', 'name']], on='member_id', how='left')
+
 # --- Page Content ---
 if page == "📈 لوحة التحكم العامة":
     st.header("📈 لوحة التحكم العامة")
@@ -1084,17 +1068,13 @@ elif page == "⚙️ الإدارة والإعدادات":
             submitted = st.form_submit_button("➕ إضافة أو إعادة تنشيط عضو")
             if submitted and new_member_name:
                 with st.spinner(f"جاري إضافة {new_member_name}..."):
-                    status_code, message = db.add_single_member(st.session_state.user_id, new_member_name.strip())
-
+                    status_code, message = db.add_single_member(new_member_name.strip())
                     if status_code in ['added', 'reactivated']:
                         st.success(message)
-                        all_members = db.get_table_as_df(st.session_state.user_id, 'Members')
-
+                        all_members = db.get_table_as_df('Members')
                         active_members = all_members[all_members['is_active'] == 1]['name'].tolist()
-                        form_id = db.get_setting(st.session_state.user_id, 'form_id')
-
-                        question_id = db.get_setting(st.session_state.user_id, 'member_question_id')
-
+                        form_id = db.get_setting('form_id')
+                        question_id = db.get_setting('member_question_id')
                         if update_form_members(forms_service, form_id, question_id, active_members):
                             st.info("✅ تم تحديث نموذج جوجل بنجاح.")
                         st.rerun()
@@ -1105,8 +1085,7 @@ elif page == "⚙️ الإدارة والإعدادات":
 
         st.divider()
 
-        all_members_df = db.get_table_as_df(st.session_state.user_id, 'Members')
-
+        all_members_df = db.get_table_as_df('Members')
         active_members_df = all_members_df[all_members_df['is_active'] == 1]
         inactive_members_df = all_members_df[all_members_df['is_active'] == 0]
 
@@ -1117,13 +1096,10 @@ elif page == "⚙️ الإدارة والإعدادات":
                 col1.write(member['name'])
                 if col2.button("🚫 تعطيل", key=f"deactivate_{member['member_id']}", use_container_width=True):
                     with st.spinner(f"جاري تعطيل {member['name']}..."):
-                        db.set_member_status(st.session_state.user_id, member['member_id'], False)
-
+                        db.set_member_status(member['member_id'], 0)
                         updated_active_members = active_members_df[active_members_df['member_id'] != member['member_id']]['name'].tolist()
-                        form_id = db.get_setting(st.session_state.user_id, 'form_id')
-
-                        question_id = db.get_setting(st.session_state.user_id, 'member_question_id')
-
+                        form_id = db.get_setting('form_id')
+                        question_id = db.get_setting('member_question_id')
                         if update_form_members(forms_service, form_id, question_id, updated_active_members):
                             st.success(f"تم تعطيل {member['name']} وإزالته من نموذج التسجيل.")
                         st.rerun()
@@ -1137,14 +1113,11 @@ elif page == "⚙️ الإدارة والإعدادات":
                 col1.write(f"_{member['name']}_")
                 if col2.button("🔄 إعادة تنشيط", key=f"reactivate_{member['member_id']}", use_container_width=True):
                      with st.spinner(f"جاري إعادة تنشيط {member['name']}..."):
-                        db.set_member_status(st.session_state.user_id, member['member_id'], True)
-
+                        db.set_member_status(member['member_id'], 1)
                         current_active_names = active_members_df['name'].tolist()
                         current_active_names.append(member['name'])
-                        form_id = db.get_setting(st.session_state.user_id, 'form_id')
-
-                        question_id = db.get_setting(st.session_state.user_id, 'member_question_id')
-
+                        form_id = db.get_setting('form_id')
+                        question_id = db.get_setting('member_question_id')
                         if update_form_members(forms_service, form_id, question_id, current_active_names):
                             st.success(f"تم إعادة تنشيط {member['name']} وإضافته إلى نموذج التسجيل.")
                         st.rerun()
@@ -1213,12 +1186,10 @@ elif page == "⚙️ الإدارة والإعدادات":
                 st.write(f"اختر نظام النقاط الذي تريد تطبيقه على تحدي كتاب **'{st.session_state.new_challenge_data['book_info']['title']}'**.")
                 
                 if st.button("📈 استخدام النظام الافتراضي", use_container_width=True):
-                    default_rules = db.load_global_settings(st.session_state.user_id)
-
+                    default_rules = db.load_global_settings()
                     if 'setting_id' in default_rules: del default_rules['setting_id']
                     
                     success, message = db.add_book_and_challenge(
-                        st.session_state.user_id,
                         st.session_state.new_challenge_data['book_info'],
                         st.session_state.new_challenge_data['challenge_info'],
                         default_rules
@@ -1242,8 +1213,7 @@ elif page == "⚙️ الإدارة والإعدادات":
         if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom_rules_form:
             @st.dialog("تخصيص قوانين التحدي")
             def show_custom_rules_dialog():
-                default_settings = db.load_global_settings(st.session_state.user_id)
-
+                default_settings = db.load_global_settings()
                 with st.form("custom_rules_form"):
                     st.info("أنت الآن تقوم بتعيين قوانين خاصة لهذا التحدي فقط.")
                     c1, c2 = st.columns(2)
@@ -1258,7 +1228,6 @@ elif page == "⚙️ الإدارة والإعدادات":
                     
                     if st.form_submit_button("حفظ التحدي بالقوانين المخصصة"):
                         success, message = db.add_book_and_challenge(
-                            st.session_state.user_id,
                             st.session_state.new_challenge_data['book_info'],
                             st.session_state.new_challenge_data['challenge_info'],
                             rules
@@ -1282,8 +1251,7 @@ elif page == "⚙️ الإدارة والإعدادات":
                 st.code(confirmation_phrase)
                 user_input = st.text_input("اكتب عبارة التأكيد هنا:", key="challenge_delete_input")
                 if st.button("❌ حذف التحدي نهائياً", disabled=(user_input != confirmation_phrase), type="primary"):
-                    if db.delete_challenge(st.session_state.user_id, st.session_state['challenge_to_delete']):
-
+                    if db.delete_challenge(st.session_state['challenge_to_delete']):
                         del st.session_state['challenge_to_delete']; st.success("🗑️ اكتمل الحذف."); st.rerun()
                 if st.button("إلغاء"):
                     del st.session_state['challenge_to_delete']; st.rerun()
@@ -1292,8 +1260,7 @@ elif page == "⚙️ الإدارة والإعدادات":
     with admin_tab2:
         st.subheader("🔗 رابط المشاركة")
         st.info("هذا هو الرابط الذي يمكنك مشاركته مع أعضاء الفريق لتسجيل قراءاتهم اليومية. يسهل نسخه من المربع أدناه.")
-        form_url = db.get_setting(st.session_state.user_id, "form_url")
-
+        form_url = db.get_setting("form_url")
         if form_url:
             st.code(form_url)
         else:
@@ -1303,8 +1270,7 @@ elif page == "⚙️ الإدارة والإعدادات":
 
         st.subheader("🎯 نظام النقاط الافتراضي")
         st.info("هذه هي القوانين الافتراضية التي سيتم تطبيقها على التحديات الجديدة التي لا يتم تخصيص قوانين لها.")
-        settings = db.load_global_settings(st.session_state.user_id)
-
+        settings = db.load_global_settings()
         if settings:
             with st.form("settings_form"):
                 c1, c2 = st.columns(2)
@@ -1323,8 +1289,7 @@ elif page == "⚙️ الإدارة والإعدادات":
                         "finish_common_book_points": s_f_common, "finish_other_book_points": s_f_other,
                         "attend_discussion_points": s_a_disc
                     }
-                    if db.update_global_settings(st.session_state.user_id, new_settings):
-
+                    if db.update_global_settings(new_settings):
                         st.success("👍 تم حفظ التغييرات! تم تحديث نظام النقاط الافتراضي بنجاح.")
                     else:
                         st.error("حدث خطأ أثناء تحديث الإعدادات.")
@@ -1462,8 +1427,7 @@ elif page == "⚙️ الإدارة والإعدادات":
                                 st.success(f"✅ تم تحديث {updates_count} سجل بنجاح في Google Sheet.")
                                 st.info("سيتم الآن إعادة مزامنة التطبيق بالكامل.")
                                 with st.spinner("جاري المزامنة الكاملة..."):
-                                    run_data_update(gc, st.session_state.user_id)
-
+                                    run_data_update(gc)
                                 st.success("🎉 اكتملت المزامنة!")
                             else:
                                 st.info("لم يتم العثور على أي تغييرات لحفظها.")
