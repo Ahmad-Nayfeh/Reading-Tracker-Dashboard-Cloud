@@ -1,309 +1,278 @@
-import sqlite3
-import os
 import pandas as pd
+from firebase_config import db # استيراد عميل قاعدة البيانات المهيأ
 
-# --- Constants ---
-DB_FOLDER = 'data'
-DB_NAME = 'reading_tracker.db'
-DB_PATH = os.path.join(DB_FOLDER, DB_NAME)
+# --- بنية قاعدة البيانات في Firestore ---
+# users (collection)
+#  └── {user_id} (document) - يمثل مساحة عمل كل مشرف
+#      ├── settings (document) - يحتوي على إعدادات المشرف مثل رابط الشيت
+#      ├── global_rules (document) - يحتوي على نظام النقاط الافتراضي للمشرف
+#      │
+#      ├── members (subcollection)
+#      │    └── {member_id} (document)
+#      │
+#      ├── books (subcollection)
+#      │    └── {book_id} (document)
+#      │
+#      ├── periods (subcollection)
+#      │    └── {period_id} (document)
+#      │
+#      ├── logs (subcollection)
+#      │    └── {log_id} (document)
+#      │
+#      ├── achievements (subcollection)
+#      │    └── {achievement_id} (document)
+#      │
+#      └── member_stats (subcollection)
+#           └── {member_id} (document)
+# -------------------------------------------------
 
-def get_db_connection():
-    """Establishes and returns a database connection."""
-    conn = sqlite3.connect(DB_PATH)
-    conn.row_factory = sqlite3.Row
-    return conn
 
-# --- AppSettings Functions ---
-
-def set_setting(key, value):
-    """Saves or updates a key-value pair in the AppSettings table."""
-    conn = get_db_connection()
-    try:
-        with conn:
-            conn.execute("INSERT OR REPLACE INTO AppSettings (key, value) VALUES (?, ?)", (key, str(value)))
-    except sqlite3.Error as e:
-        print(f"Database error in set_setting: {e}")
-    finally:
-        conn.close()
-
-def get_setting(key):
-    """Retrieves a value by its key from the AppSettings table."""
-    conn = get_db_connection()
-    try:
-        row = conn.execute("SELECT value FROM AppSettings WHERE key = ?", (key,)).fetchone()
-        return row['value'] if row and row['value'] else None
-    except sqlite3.Error as e:
-        print(f"Database error in get_setting: {e}")
-        return None
-    finally:
-        conn.close()
-
-# --- READ Functions ---
-
-def load_global_settings():
-    """Loads the general rules of the challenge (points only)."""
-    conn = get_db_connection()
-    try:
-        settings_row = conn.execute("SELECT * FROM GlobalSettings WHERE setting_id = 1").fetchone()
-        return dict(settings_row) if settings_row else None
-    finally:
-        conn.close()
-
-def get_all_data_for_stats():
-    """Fetches all data needed for the calculation engine in one go for efficiency."""
-    conn = get_db_connection()
-    try:
-        members = [dict(row) for row in conn.execute("SELECT * FROM Members ORDER BY name").fetchall()]
-        logs = [dict(row) for row in conn.execute("SELECT * FROM ReadingLogs").fetchall()]
-        achievements = [dict(row) for row in conn.execute("SELECT * FROM Achievements").fetchall()]
-        query = "SELECT cp.*, b.title, b.author, b.publication_year FROM ChallengePeriods cp JOIN Books b ON cp.common_book_id = b.book_id ORDER BY cp.start_date DESC"
-        periods = [dict(row) for row in conn.execute(query).fetchall()]
-    
-    except sqlite3.Error as e:
-        print(f"Error fetching all data from database: {e}")
-        return None
-    finally:
-        conn.close()
-    
-    return {"members": members, "logs": logs, "achievements": achievements, "periods": periods}
-
-def get_table_as_df(table_name):
-    """Fetches an entire table and returns it as a Pandas DataFrame."""
-    conn = get_db_connection()
-    try:
-        df = pd.read_sql_query(f"SELECT * FROM {table_name}", conn)
-    except Exception as e:
-        print(f"Error reading table {table_name}: {e}")
-        df = pd.DataFrame()
-    finally:
-        conn.close()
-    return df
-
-def check_log_exists(timestamp):
-    conn = get_db_connection()
-    log_exists = conn.execute("SELECT 1 FROM ReadingLogs WHERE timestamp = ?", (timestamp,)).fetchone()
-    conn.close()
-    return log_exists is not None
-
-def has_achievement(member_id, achievement_type, period_id):
-    conn = get_db_connection()
-    query = "SELECT 1 FROM Achievements WHERE member_id = ? AND achievement_type = ? AND period_id = ?"
-    achievement_exists = conn.execute(query, (member_id, achievement_type, period_id)).fetchone()
-    conn.close()
-    return achievement_exists is not None
-
-def did_submit_quote_today(member_id, submission_date, quote_type):
-    conn = get_db_connection()
-    column_to_check = "submitted_common_quote" if quote_type == 'COMMON' else "submitted_other_quote"
-    query = f"SELECT 1 FROM ReadingLogs WHERE member_id = ? AND submission_date = ? AND {column_to_check} = 1"
-    quote_exists = conn.execute(query, (member_id, submission_date)).fetchone()
-    conn.close()
-    return quote_exists is not None
-
-# --- WRITE/UPDATE Functions ---
-
-def add_members(names_list):
-    """Adds a list of new members, setting them as active by default."""
-    conn = get_db_connection()
-    with conn:
-        conn.executemany("INSERT OR IGNORE INTO Members (name) VALUES (?)", [(name,) for name in names_list])
-    conn.close()
-
-def add_single_member(name):
+def check_user_exists(user_id: str):
     """
-    Adds a single new member or reactivates an existing inactive one.
-    Returns a status tuple: (status_code, message)
+    يتحقق مما إذا كان للمستخدم مساحة عمل موجودة في Firestore.
+    
+    Args:
+        user_id (str): المعرف الفريد للمستخدم من جوجل.
+
+    Returns:
+        bool: True إذا كان المستخدم موجودًا، وإلا False.
     """
-    conn = get_db_connection()
-    try:
-        with conn:
-            cursor = conn.execute("SELECT member_id, is_active FROM Members WHERE name = ?", (name,))
-            member = cursor.fetchone()
-            
-            if member:
-                if member['is_active'] == 1:
-                    return ('exists', f"العضو '{name}' موجود ونشط بالفعل.")
-                else:
-                    conn.execute("UPDATE Members SET is_active = 1 WHERE member_id = ?", (member['member_id'],))
-                    return ('reactivated', f"تمت إعادة تنشيط العضو '{name}' بنجاح.")
-            else:
-                conn.execute("INSERT INTO Members (name) VALUES (?)", (name,))
-                return ('added', f"تمت إضافة العضو الجديد '{name}' بنجاح.")
-    except sqlite3.Error as e:
-        return ('error', f"Database error: {e}")
-    finally:
-        conn.close()
+    user_doc_ref = db.collection('users').document(user_id)
+    return user_doc_ref.get().exists
 
-def set_member_status(member_id, is_active: int):
-    """Sets a member's status to active (1) or inactive (0)."""
-    conn = get_db_connection()
-    try:
-        with conn:
-            conn.execute("UPDATE Members SET is_active = ? WHERE member_id = ?", (is_active, member_id))
-        return True
-    except sqlite3.Error as e:
-        print(f"Database error in set_member_status: {e}")
-        return False
-    finally:
-        conn.close()
+def create_new_user_workspace(user_id: str, user_email: str):
+    """
+    ينشئ مساحة عمل جديدة لمشرف جديد عند تسجيل الدخول لأول مرة.
+    
+    Args:
+        user_id (str): المعرف الفريد للمستخدم.
+        user_email (str): البريد الإلكتروني للمستخدم.
+    """
+    user_doc_ref = db.collection('users').document(user_id)
+    
+    # إنشاء المستند الرئيسي للمستخدم مع بعض المعلومات الأساسية
+    user_doc_ref.set({
+        'email': user_email,
+        'created_at': pd.Timestamp.now()
+    })
+    
+    # إنشاء مستند الإعدادات الافتراضية
+    user_doc_ref.collection('settings').document('config').set({
+        'spreadsheet_url': '',
+        'form_url': '',
+        'form_id': '',
+        'member_question_id': ''
+    })
+    
+    # إنشاء مستند نظام النقاط الافتراضي
+    user_doc_ref.collection('global_rules').document('rules').set({
+        'minutes_per_point_common': 10,
+        'minutes_per_point_other': 5,
+        'finish_common_book_points': 50,
+        'finish_other_book_points': 25,
+        'quote_common_book_points': 3,
+        'quote_other_book_points': 1,
+        'attend_discussion_points': 25
+    })
 
-def add_book_and_challenge(book_info, challenge_info, rules_info):
-    """Adds a new book and a new challenge period with its specific point rules."""
-    conn = get_db_connection()
-    try:
-        with conn:
-            cursor = conn.execute("INSERT INTO Books (title, author, publication_year) VALUES (?, ?, ?)",
-                                  (book_info['title'], book_info['author'], book_info['year']))
-            book_id = cursor.lastrowid
+# --- دوال الإعدادات الخاصة بكل مستخدم ---
 
-            challenge_data = {
-                'start_date': challenge_info['start_date'],
-                'end_date': challenge_info['end_date'],
-                'common_book_id': book_id,
-                **rules_info
-            }
-            
-            conn.execute("""
-                INSERT INTO ChallengePeriods (
-                    start_date, end_date, common_book_id,
-                    minutes_per_point_common, minutes_per_point_other,
-                    finish_common_book_points, finish_other_book_points,
-                    quote_common_book_points, quote_other_book_points,
-                    attend_discussion_points
-                ) VALUES (
-                    :start_date, :end_date, :common_book_id,
-                    :minutes_per_point_common, :minutes_per_point_other,
-                    :finish_common_book_points, :finish_other_book_points,
-                    :quote_common_book_points, :quote_other_book_points,
-                    :attend_discussion_points
-                )
-            """, challenge_data)
+def set_user_setting(user_id: str, key: str, value: str):
+    """
+    يحفظ أو يحدّث إعدادًا معينًا للمستخدم المحدد.
+    """
+    settings_ref = db.collection('users').document(user_id).collection('settings').document('config')
+    settings_ref.update({key: value})
+
+def get_user_settings(user_id: str):
+    """
+    يسترجع جميع إعدادات المستخدم المحدد.
+    """
+    settings_ref = db.collection('users').document(user_id).collection('settings').document('config')
+    doc = settings_ref.get()
+    return doc.to_dict() if doc.exists else {}
+
+def load_user_global_rules(user_id: str):
+    """
+    يقوم بتحميل نظام النقاط الافتراضي للمستخدم المحدد.
+    """
+    rules_ref = db.collection('users').document(user_id).collection('global_rules').document('rules')
+    doc = rules_ref.get()
+    return doc.to_dict() if doc.exists else None
+
+def update_user_global_rules(user_id: str, settings_dict: dict):
+    """
+    يحدّث نظام النقاط الافتراضي للمستخدم المحدد.
+    """
+    rules_ref = db.collection('users').document(user_id).collection('global_rules').document('rules')
+    rules_ref.set(settings_dict)
+    return True
+
+# --- دوال القراءة (Read Functions) ---
+
+def get_subcollection_as_df(user_id: str, collection_name: str):
+    """
+    يجلب مجموعة فرعية كاملة للمستخدم المحدد ويعيدها كـ Pandas DataFrame.
+    """
+    collection_ref = db.collection('users').document(user_id).collection(collection_name)
+    docs = collection_ref.stream()
+    data = []
+    for doc in docs:
+        doc_data = doc.to_dict()
+        doc_data[f'{collection_name}_id'] = doc.id # إضافة معرّف المستند
+        data.append(doc_data)
+    return pd.DataFrame(data)
+
+def get_all_data_for_stats(user_id: str):
+    """
+    يجلب جميع البيانات اللازمة لمحرك الحسابات لمستخدم معين.
+    """
+    members_df = get_subcollection_as_df(user_id, 'members')
+    logs_df = get_subcollection_as_df(user_id, 'logs')
+    achievements_df = get_subcollection_as_df(user_id, 'achievements')
+    periods_df = get_subcollection_as_df(user_id, 'periods')
+    books_df = get_subcollection_as_df(user_id, 'books')
+
+    # دمج بيانات الكتب مع التحديات
+    if not periods_df.empty and not books_df.empty:
+        # إعادة تسمية الأعمدة لتجنب التضارب
+        books_df.rename(columns={'title': 'book_title', 'author': 'book_author', 'publication_year': 'book_year'}, inplace=True)
+        periods_df = pd.merge(periods_df, books_df, left_on='common_book_id', right_on='books_id', how='left')
+    
+    return {
+        "members": members_df.to_dict('records'),
+        "logs": logs_df.to_dict('records'),
+        "achievements": achievements_df.to_dict('records'),
+        "periods": periods_df.to_dict('records')
+    }
+
+def has_achievement(user_id: str, member_id: str, achievement_type: str, period_id: str):
+    """
+    يتحقق مما إذا كان لدى العضو إنجاز معين في تحدي معين.
+    """
+    achievements_ref = db.collection('users').document(user_id).collection('achievements')
+    query = achievements_ref.where('member_id', '==', member_id)\
+                            .where('achievement_type', '==', achievement_type)\
+                            .where('period_id', '==', period_id)
+    return len(query.get()) > 0
+
+# --- دوال الكتابة والتحديث (Write/Update Functions) ---
+
+def add_members(user_id: str, names_list: list):
+    """
+    يضيف قائمة من الأعضاء الجدد إلى مساحة عمل المستخدم.
+    """
+    members_ref = db.collection('users').document(user_id).collection('members')
+    for name in names_list:
+        members_ref.add({'name': name, 'is_active': True})
+
+def set_member_status(user_id: str, member_id: str, is_active: bool):
+    """
+    يضبط حالة العضو (نشط/غير نشط).
+    """
+    member_ref = db.collection('users').document(user_id).collection('members').document(member_id)
+    member_ref.update({'is_active': is_active})
+    return True
+
+def add_book_and_challenge(user_id: str, book_info: dict, challenge_info: dict, rules_info: dict):
+    """
+    يضيف كتابًا جديدًا وتحديًا جديدًا بقواعده الخاصة لمستخدم معين.
+    """
+    try:
+        # التحقق مما إذا كان الكتاب موجودًا بالفعل لهذا المستخدم
+        books_ref = db.collection('users').document(user_id).collection('books')
+        existing_books = books_ref.where('title', '==', book_info['title']).limit(1).get()
+        if len(existing_books) > 0:
+            return False, f"خطأ: كتاب بعنوان '{book_info['title']}' موجود بالفعل في قاعدة البيانات."
+
+        # إضافة الكتاب
+        book_ref = books_ref.add({
+            'title': book_info['title'],
+            'author': book_info['author'],
+            'publication_year': book_info['year']
+        })
+        book_id = book_ref[1].id # الحصول على معرف المستند الجديد
+
+        # إضافة التحدي مع ربطه بمعرف الكتاب
+        challenge_data = {**challenge_info, **rules_info, 'common_book_id': book_id}
+        db.collection('users').document(user_id).collection('periods').add(challenge_data)
+        
         return True, "تمت إضافة التحدي بنجاح."
-    except sqlite3.Error as e:
-        if "UNIQUE constraint failed: Books.title" in str(e):
-             return False, f"خطأ: كتاب بعنوان '{book_info['title']}' موجود بالفعل في قاعدة البيانات."
-        print(f"Database error in add_book_and_challenge: {e}")
-        return False, f"خطأ في قاعدة البيانات: {e}"
-    finally:
-        conn.close()
-
-def add_log_and_achievements(log_data, achievements_to_add):
-    conn = get_db_connection()
-    with conn:
-        conn.execute("INSERT INTO ReadingLogs (timestamp, member_id, submission_date, common_book_minutes, other_book_minutes, submitted_common_quote, submitted_other_quote) VALUES (:timestamp, :member_id, :submission_date, :common_book_minutes, :other_book_minutes, :submitted_common_quote, :submitted_other_quote)", log_data)
-        if achievements_to_add:
-            conn.executemany("INSERT INTO Achievements (member_id, achievement_type, achievement_date, period_id, book_id) VALUES (?, ?, ?, ?, ?)", achievements_to_add)
-    conn.close()
-
-def rebuild_stats_tables(member_stats_data, group_stats_data):
-    conn = get_db_connection()
-    with conn:
-        conn.execute("DELETE FROM MemberStats;")
-        conn.execute("DELETE FROM GroupStats;")
-        if member_stats_data:
-            conn.executemany("""
-                INSERT INTO MemberStats (
-                    member_id, total_points, total_reading_minutes_common, 
-                    total_reading_minutes_other, total_common_books_read, 
-                    total_other_books_read, total_quotes_submitted, 
-                    meetings_attended, last_log_date, last_quote_date
-                ) VALUES (
-                    :member_id, :total_points, :total_reading_minutes_common, 
-                    :total_reading_minutes_other, :total_common_books_read, 
-                    :total_other_books_read, :total_quotes_submitted, 
-                    :meetings_attended, :last_log_date, :last_quote_date
-                )
-            """, member_stats_data)
-        if group_stats_data:
-             conn.executemany("INSERT INTO GroupStats (period_id, total_group_minutes_common, total_group_minutes_other, total_group_quotes_common, total_group_quotes_other, active_members) VALUES (:period_id, :total_group_minutes_common, :total_group_minutes_other, :total_group_quotes_common, :total_group_quotes_other, :active_members)", group_stats_data)
-    conn.close()
-
-def update_global_settings(settings_dict):
-    conn = get_db_connection()
-    try:
-        with conn:
-            conn.execute("""
-                UPDATE GlobalSettings
-                SET minutes_per_point_common = :minutes_per_point_common,
-                    minutes_per_point_other = :minutes_per_point_other,
-                    finish_common_book_points = :finish_common_book_points,
-                    finish_other_book_points = :finish_other_book_points,
-                    quote_common_book_points = :quote_common_book_points,
-                    quote_other_book_points = :quote_other_book_points,
-                    attend_discussion_points = :attend_discussion_points
-                WHERE setting_id = 1
-            """, settings_dict)
-        return True
-    except sqlite3.Error as e:
-        print(f"Error updating settings: {e}")
-        return False
-    finally:
-        conn.close()
-
-def delete_challenge(period_id):
-    """Deletes a challenge period and associated data."""
-    conn = get_db_connection()
-    try:
-        with conn:
-            conn.execute("DELETE FROM Achievements WHERE period_id = ?", (period_id,))
-            conn.execute("DELETE FROM GroupStats WHERE period_id = ?", (period_id,))
-            cursor = conn.execute("SELECT common_book_id FROM ChallengePeriods WHERE period_id = ?", (period_id,))
-            result = cursor.fetchone()
-            if result:
-                book_id = result['common_book_id']
-                conn.execute("DELETE FROM ChallengePeriods WHERE period_id = ?", (period_id,))
-                cursor = conn.execute("SELECT COUNT(*) FROM ChallengePeriods WHERE common_book_id = ?", (book_id,))
-                if cursor.fetchone()[0] == 0:
-                    conn.execute("DELETE FROM Books WHERE book_id = ?", (book_id,))
-        return True
-    except sqlite3.Error as e:
-        print(f"Database error in delete_challenge: {e}")
-        return False
-    finally:
-        conn.close()
-
-def clear_all_logs_and_achievements():
-    """
-    Wipes the ReadingLogs and Achievements tables for a full resync.
-    This is crucial for the new robust synchronization logic.
-    """
-    conn = get_db_connection()
-    try:
-        with conn:
-            conn.execute("DELETE FROM ReadingLogs;")
-            conn.execute("DELETE FROM Achievements;")
-        return True
-    except sqlite3.Error as e:
-        print(f"Database error in clear_all_logs_and_achievements: {e}")
-        return False
-    finally:
-        conn.close()
-
-def get_all_logs_with_member_names():
-    """
-    Fetches all reading logs and joins with the members table to get member names.
-    Returns a Pandas DataFrame ready for the data editor.
-    """
-    conn = get_db_connection()
-    try:
-        query = """
-            SELECT 
-                rl.log_id,
-                m.name,
-                rl.submission_date,
-                rl.common_book_minutes,
-                rl.other_book_minutes,
-                rl.submitted_common_quote,
-                rl.submitted_other_quote,
-                rl.timestamp
-            FROM ReadingLogs rl
-            JOIN Members m ON rl.member_id = m.member_id
-            ORDER BY rl.log_id DESC
-        """
-        df = pd.read_sql_query(query, conn)
     except Exception as e:
-        print(f"Error reading logs with member names: {e}")
-        df = pd.DataFrame()
-    finally:
-        conn.close()
-    return df
+        return False, f"خطأ في قاعدة البيانات: {e}"
+
+def add_log_and_achievements(user_id: str, log_data: dict, achievements_to_add: list):
+    """
+    يضيف سجل قراءة ومجموعة من الإنجازات دفعة واحدة.
+    """
+    logs_ref = db.collection('users').document(user_id).collection('logs')
+    achievements_ref = db.collection('users').document(user_id).collection('achievements')
+    
+    # استخدام batch لضمان تنفيذ جميع العمليات معًا أو فشلها معًا
+    batch = db.batch()
+    
+    # إضافة سجل القراءة
+    new_log_ref = logs_ref.document()
+    batch.set(new_log_ref, log_data)
+    
+    # إضافة الإنجازات
+    for ach_data in achievements_to_add:
+        new_ach_ref = achievements_ref.document()
+        batch.set(new_ach_ref, ach_data)
+        
+    batch.commit()
+
+def clear_subcollection(user_id: str, collection_name: str):
+    """
+    يمسح جميع المستندات من مجموعة فرعية معينة لمستخدم.
+    """
+    coll_ref = db.collection('users').document(user_id).collection(collection_name)
+    docs = coll_ref.stream()
+    for doc in docs:
+        doc.reference.delete()
+    return True
+
+def rebuild_stats_tables(user_id: str, member_stats_data: list):
+    """
+    يعيد بناء جدول إحصائيات الأعضاء.
+    """
+    # أولاً، مسح الإحصائيات القديمة
+    clear_subcollection(user_id, 'member_stats')
+    
+    # ثانياً، إضافة الإحصائيات الجديدة
+    stats_ref = db.collection('users').document(user_id).collection('member_stats')
+    for stats in member_stats_data:
+        # استخدام member_id كمعرف للمستند لسهولة الوصول
+        member_id = stats.pop('member_id') 
+        stats_ref.document(member_id).set(stats)
+
+def delete_challenge(user_id: str, period_id: str):
+    """
+    يحذف تحديًا معينًا وجميع البيانات المرتبطة به.
+    """
+    period_ref = db.collection('users').document(user_id).collection('periods').document(period_id)
+    period_doc = period_ref.get()
+    
+    if not period_doc.exists:
+        return False
+
+    book_id = period_doc.to_dict().get('common_book_id')
+
+    # حذف الإنجازات المرتبطة بهذا التحدي
+    ach_ref = db.collection('users').document(user_id).collection('achievements')
+    ach_to_delete = ach_ref.where('period_id', '==', period_id).stream()
+    for doc in ach_to_delete:
+        doc.reference.delete()
+    
+    # حذف التحدي نفسه
+    period_ref.delete()
+    
+    # التحقق مما إذا كان الكتاب مرتبطًا بتحديات أخرى قبل حذفه
+    if book_id:
+        other_periods = db.collection('users').document(user_id).collection('periods')\
+                          .where('common_book_id', '==', book_id).limit(1).get()
+        if len(other_periods) == 0:
+            # إذا لم يكن مرتبطًا، احذف الكتاب
+            db.collection('users').document(user_id).collection('books').document(book_id).delete()
+            
+    return True
