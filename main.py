@@ -3,42 +3,62 @@ from datetime import datetime, date, timedelta
 import db_manager as db
 import gspread
 
-def run_data_update(gc: gspread.Client):
+def run_data_update(gc: gspread.Client, user_id: str):
+    """
+    The main data synchronization engine, now tailored for a specific user.
+    
+    Args:
+        gc (gspread.Client): The authenticated gspread client.
+        user_id (str): The unique ID of the user (admin) to sync data for.
+    """
     update_log = ["--- بدء عملية تحديث بيانات التحدي ---"]
-    spreadsheet_url = db.get_setting("spreadsheet_url")
+    
+    # الخطوة 1: جلب إعدادات المستخدم المحدد (رابط الشيت)
+    user_settings = db.get_user_settings(user_id)
+    spreadsheet_url = user_settings.get("spreadsheet_url")
+    
     if not spreadsheet_url:
-        update_log.append("❌ خطأ: لم يتم العثور على رابط جدول البيانات في الإعدادات.")
+        update_log.append("❌ خطأ: لم يتم العثور على رابط جدول البيانات في إعداداتك. يرجى إكمال الإعداد أولاً.")
         return update_log
-    update_log.append(f"🔗 جاري سحب البيانات من Google Sheet...")
+
+    update_log.append(f"� جاري سحب البيانات من Google Sheet الخاص بك...")
     try:
         spreadsheet = gc.open_by_url(spreadsheet_url)
         worksheet = spreadsheet.worksheet("Form Responses 1")
         records = worksheet.get_all_records()
         raw_data_df = pd.DataFrame(records)
         update_log.append(f"✅ تم العثور على {len(raw_data_df)} صف في الجدول.")
+    except gspread.exceptions.WorksheetNotFound:
+        update_log.append("❌ خطأ: لم يتم العثور على صفحة 'Form Responses 1'. تأكد من ربط النموذج بالشيت بشكل صحيح.")
+        return update_log
     except Exception as e:
         update_log.append(f"❌ خطأ أثناء سحب البيانات: {e}")
         return update_log
 
-    if raw_data_df is not None and not raw_data_df.empty:
-        all_data = db.get_all_data_for_stats()
+    if not raw_data_df.empty:
+        # الخطوة 2: جلب البيانات الحالية للمستخدم من Firestore
+        all_data = db.get_all_data_for_stats(user_id)
         if not all_data or not all_data.get("members") or not all_data.get("periods"):
-            update_log.append("❌ خطأ حرج: لم تكتمل عملية الإعداد.")
+            update_log.append("❌ خطأ: لم تكتمل عملية إعداد التحديات أو الأعضاء. يرجى إضافتهم من صفحة الإدارة.")
             return update_log
         
-        # --- NEW ROBUST LOGIC ---
+        # الخطوة 3: مسح السجلات والإنجازات القديمة للمستخدم المحدد
         update_log.append("🔄 جاري مسح السجلات القديمة استعداداً للمزامنة الكاملة...")
-        db.clear_all_logs_and_achievements()
+        db.clear_subcollection(user_id, 'logs')
+        db.clear_subcollection(user_id, 'achievements')
         update_log.append("👍 تم مسح السجلات بنجاح.")
 
-        entries_processed = process_all_data(raw_data_df, all_data)
+        # الخطوة 4: معالجة وإعادة إدخال البيانات للمستخدم المحدد
+        entries_processed = process_all_data(raw_data_df, all_data, user_id)
         update_log.append(f"🔄 تمت معالجة وإعادة إدخال {entries_processed} تسجيل.")
         
+        # الخطوة 5: حساب وتحديث إحصائيات المستخدم المحدد
         update_log.append("🧮 جاري حساب وتحديث جميع الإحصائيات...")
-        calculate_and_update_stats()
+        calculate_and_update_stats(user_id)
         update_log.append("✅ اكتمل حساب الإحصائيات.")
     else:
         update_log.append("ℹ️ لا توجد بيانات جديدة في الجدول.")
+    
     update_log.append("\n--- ✅ انتهت عملية مزامنة البيانات بنجاح ---")
     return update_log
 
@@ -50,12 +70,15 @@ def parse_duration_to_minutes(duration_str):
         return h * 60 + m
     except (ValueError, TypeError): return 0
 
-def process_all_data(df, all_data):
-    member_map = {member['name']: member['member_id'] for member in all_data['members']}
-    today = date.today()
+def process_all_data(df, all_data, user_id: str):
+    """
+    Processes all rows from the Google Sheet and adds them to the user's
+    database space in Firestore.
+    """
+    # استخدام members_id الذي يأتي من Firestore
+    member_map = {member['name']: member['members_id'] for member in all_data['members']}
     entries_processed_count = 0
     
-    # Sort dataframe by timestamp to process achievements in order
     df = df.sort_values(by='Timestamp').reset_index(drop=True)
 
     for index, row in df.iterrows():
@@ -93,25 +116,28 @@ def process_all_data(df, all_data):
         current_period = next((p for p in all_data['periods'] if datetime.strptime(p['start_date'], '%Y-%m-%d').date() <= submission_date_obj <= datetime.strptime(p['end_date'], '%Y-%m-%d').date()), None)
 
         if current_period:
-            period_id = current_period['period_id']
-            # We check the DB here because it's being populated in this same loop
-            if 'أنهيت الكتاب المشترك' in achievement_responses and not db.has_achievement(member_id, 'FINISHED_COMMON_BOOK', period_id):
-                achievements_to_add.append((member_id, 'FINISHED_COMMON_BOOK', str(submission_date_obj), period_id, current_period['common_book_id']))
-            if 'حضرت جلسة النقاش' in achievement_responses and not db.has_achievement(member_id, 'ATTENDED_DISCUSSION', period_id):
-                 achievements_to_add.append((member_id, 'ATTENDED_DISCUSSION', str(submission_date_obj), period_id, None))
+            period_id = current_period['periods_id']
+            # تمرير user_id للدالة
+            if 'أنهيت الكتاب المشترك' in achievement_responses and not db.has_achievement(user_id, member_id, 'FINISHED_COMMON_BOOK', period_id):
+                achievements_to_add.append({'member_id': member_id, 'achievement_type': 'FINISHED_COMMON_BOOK', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': current_period['common_book_id']})
+            if 'حضرت جلسة النقاش' in achievement_responses and not db.has_achievement(user_id, member_id, 'ATTENDED_DISCUSSION', period_id):
+                 achievements_to_add.append({'member_id': member_id, 'achievement_type': 'ATTENDED_DISCUSSION', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': None})
             if 'أنهيت كتاباً آخر' in achievement_responses:
-                # For "other book", we don't check for duplicates within the challenge, as one can finish multiple other books
-                achievements_to_add.append((member_id, 'FINISHED_OTHER_BOOK', str(submission_date_obj), period_id, None))
+                achievements_to_add.append({'member_id': member_id, 'achievement_type': 'FINISHED_OTHER_BOOK', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': None})
         
-        db.add_log_and_achievements(log_data, achievements_to_add)
+        # تمرير user_id للدالة
+        db.add_log_and_achievements(user_id, log_data, achievements_to_add)
     return entries_processed_count
 
-
-def calculate_and_update_stats():
-    all_data = db.get_all_data_for_stats()
+def calculate_and_update_stats(user_id: str):
+    """
+    Calculates all statistics for a given user and updates their
+    member_stats subcollection in Firestore.
+    """
+    all_data = db.get_all_data_for_stats(user_id)
     if not all_data or not all_data.get("members"): return
 
-    periods_map = {p['period_id']: p for p in all_data["periods"]}
+    periods_map = {p['periods_id']: p for p in all_data["periods"]}
     logs_df = pd.DataFrame(all_data["logs"])
     
     if not logs_df.empty:
@@ -124,7 +150,7 @@ def calculate_and_update_stats():
     final_member_stats_data = []
 
     for member in all_data["members"]:
-        member_id = member['member_id']
+        member_id = member['members_id']
         
         member_stats = {
             "member_id": member_id, "total_points": 0, "total_reading_minutes_common": 0, 
@@ -165,12 +191,12 @@ def calculate_and_update_stats():
                     elif achievement['achievement_type'] == 'FINISHED_OTHER_BOOK':
                         member_stats['total_points'] += achievement_period_rules['finish_other_book_points']
 
-        
         if not member_logs_df.empty:
             member_stats['total_reading_minutes_common'] = int(member_logs_df['common_book_minutes'].sum())
             member_stats['total_reading_minutes_other'] = int(member_logs_df['other_book_minutes'].sum())
             member_stats['total_quotes_submitted'] = int(member_logs_df['submitted_common_quote'].sum() + member_logs_df['submitted_other_quote'].sum())
-            member_stats['last_log_date'] = str(member_logs_df['submission_date_dt'].max())
+            if not member_logs_df['submission_date_dt'].isnull().all():
+                member_stats['last_log_date'] = str(member_logs_df['submission_date_dt'].max())
             quote_logs = member_logs_df[(member_logs_df['submitted_common_quote'] == 1) | (member_logs_df['submitted_other_quote'] == 1)]
             if not quote_logs.empty and not quote_logs['submission_date_dt'].isnull().all():
                 member_stats['last_quote_date'] = str(quote_logs['submission_date_dt'].max())
@@ -182,4 +208,5 @@ def calculate_and_update_stats():
             
         final_member_stats_data.append(member_stats)
     
-    db.rebuild_stats_tables(final_member_stats_data, [])
+    # تمرير user_id للدالة
+    db.rebuild_stats_tables(user_id, final_member_stats_data)
