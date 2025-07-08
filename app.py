@@ -1120,27 +1120,58 @@ elif page == "⚙️ الإدارة والإعدادات":
             if not active_periods.empty:
                 active_period_id = active_periods.iloc[0]['periods_id']
                 
+        # عرض القائمة إذا كانت هناك تحديات
         if not periods_df.empty:
-            cols = st.columns((4, 2, 2, 2, 1))
-            headers = ["عنوان الكتاب", "المؤلف", "تاريخ البداية", "تاريخ النهاية", "إجراء"]
+            cols = st.columns((4, 2, 2, 2, 1, 1))
+            headers = ["عنوان الكتاب", "المؤلف", "تاريخ البداية", "تاريخ النهاية", "معلومات", "إجراء"]
             for col, header in zip(cols, headers):
                 col.write(f"**{header}**")
+                
             for index, period in periods_df.iterrows():
-                col1, col2, col3, col4, col5 = st.columns((4, 2, 2, 2, 1))
+                col1, col2, col3, col4, col5, col6 = st.columns((4, 2, 2, 2, 1, 1))
                 col1.write(period['book_title'])
                 col2.write(period['book_author'])
                 col3.write(period['start_date'])
                 col4.write(period['end_date'])
                 period_id = period['periods_id']
+
+                if col5.button("ℹ️", key=f"info_{period_id}", help="عرض نظام النقاط لهذا التحدي"):
+                    st.session_state.challenge_to_show_rules = period.to_dict()
+                    st.rerun()
+
                 is_active = period_id == active_period_id
                 delete_button_disabled = bool(is_active)
                 delete_button_help = "لا يمكن حذف التحدي النشط حالياً." if is_active else None
-                if col5.button("🗑️ حذف", key=f"delete_{period_id}", disabled=delete_button_disabled, help=delete_button_help, use_container_width=True):
+                if col6.button("🗑️", key=f"delete_{period_id}", disabled=delete_button_disabled, help=delete_button_help, use_container_width=True):
                     st.session_state['challenge_to_delete'] = period_id
                     st.session_state['delete_confirmation_phrase'] = f"أوافق على حذف {period['book_title']}"
                     st.rerun()
+        # عرض رسالة إذا لم تكن هناك تحديات
         else:
             st.info("لا توجد تحديات لعرضها.")
+
+        # --- منطق النافذة المنبثقة لعرض القوانين (يجب أن يكون خارج كتلة if/else) ---
+        if 'challenge_to_show_rules' in st.session_state:
+            @st.dialog("نظام النقاط المطبق على التحدي")
+            def show_challenge_rules_dialog():
+                rules = st.session_state.challenge_to_show_rules
+                st.subheader(f"كتاب: {rules.get('book_title', 'N/A')}")
+                
+                st.markdown(f"""
+                - **دقائق قراءة الكتاب المشترك لكل نقطة:** `{rules.get('minutes_per_point_common', 'N/A')}`
+                - **دقائق قراءة كتاب آخر لكل نقطة:** `{rules.get('minutes_per_point_other', 'N/A')}`
+                - **نقاط إنهاء الكتاب المشترك:** `{rules.get('finish_common_book_points', 'N/A')}`
+                - **نقاط إنهاء كتاب آخر:** `{rules.get('finish_other_book_points', 'N/A')}`
+                - **نقاط اقتباس الكتاب المشترك:** `{rules.get('quote_common_book_points', 'N/A')}`
+                - **نقاط اقتباس كتاب آخر:** `{rules.get('quote_other_book_points', 'N/A')}`
+                - **نقاط حضور جلسة النقاش:** `{rules.get('attend_discussion_points', 'N/A')}`
+                """)
+                
+                if st.button("إغلاق"):
+                    del st.session_state.challenge_to_show_rules
+                    st.rerun()
+                    
+            show_challenge_rules_dialog()
         
         with st.expander("اضغط هنا لإضافة تحدي جديد"):
             with st.form("add_new_challenge_details_form"):
