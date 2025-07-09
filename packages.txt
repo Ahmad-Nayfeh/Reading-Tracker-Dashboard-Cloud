@@ -1,4 +1,3 @@
-# Packages for graphics and fonts
 libgl1-mesa-glx
 libglib2.0-0
 libsm6
@@ -6,11 +5,7 @@ libxext6
 libxrender-dev
 libfontconfig1
 libice6
-
-# FFMPEG for video/image processing
 ffmpeg
-
-# Headless Chrome dependencies (often needed by Kaleido)
 libnss3
 libxss1
 libasound2
