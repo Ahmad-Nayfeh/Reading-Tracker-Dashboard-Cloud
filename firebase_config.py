@@ -1,33 +1,30 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import os
 
 @st.cache_resource
 def initialize_firebase_app():
     """
-    Initializes the Firebase Admin SDK using Streamlit Secrets for deployment,
-    or a local file for local development.
+    Initializes the Firebase Admin SDK using st.secrets.
+    This works for both local development (with .streamlit/secrets.toml)
+    and Streamlit Cloud deployment.
     """
     try:
+        # Check if the app is already initialized
         if not firebase_admin._apps:
-            # التحقق مما إذا كنا نعمل على Streamlit Cloud
-            if 'firebase_credentials' in st.secrets:
+            # st.secrets automatically reads from the secrets.toml file locally
+            if "firebase_credentials" in st.secrets:
                 creds_dict = dict(st.secrets["firebase_credentials"])
                 cred = credentials.Certificate(creds_dict)
+                firebase_admin.initialize_app(cred)
             else:
-                # الوضع المحلي يعمل كما هو
-                SERVICE_ACCOUNT_FILE = 'firebase_service_account.json'
-                if not os.path.exists(SERVICE_ACCOUNT_FILE):
-                    st.error(f"🔑 ملف '{SERVICE_ACCOUNT_FILE}' غير موجود. يرجى التأكد من وجوده محلياً.")
-                    st.stop()
-                cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
-            
-            firebase_admin.initialize_app(cred)
+                st.error("🔥 خطأ: لم يتم العثور على إعدادات `firebase_credentials` في ملف الأسرار (secrets.toml).")
+                st.stop()
         
         return firestore.client()
     except Exception as e:
         st.error(f"🔥 خطأ في تهيئة Firebase: {e}")
         st.stop()
 
+# Initialize the database client
 db = initialize_firebase_app()
