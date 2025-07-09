@@ -315,7 +315,7 @@ if not user_id:
     st.error("خطأ: لم يتم تحديد هوية المستخدم. يرجى محاولة إعادة تحميل الصفحة.")
     st.stop()
 
-gc = auth_manager.get_gspread_client()
+gc = auth_manager.get_gspread_client(creds)
 forms_service = build('forms', 'v1', credentials=creds)
 
 user_settings = db.get_user_settings(user_id)
