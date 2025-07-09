@@ -8,12 +8,12 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import gspread
 import time
+import os
 
 # --- Page Configuration and RTL CSS Injection ---
-# This should be the first Streamlit command in the app
 st.set_page_config(
     page_title="الصفحة الرئيسية | ماراثون القراءة",
-    page_icon="�",
+    page_icon="📚",
     layout="wide"
 )
 
@@ -46,28 +46,18 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Helper function for Date Dropdown (Used in Setup) ---
-def generate_date_options():
-    today_obj = date.today()
-    dates = []
-    arabic_days = {"Monday": "الاثنين", "Tuesday": "الثلاثاء", "Wednesday": "الأربعاء", "Thursday": "الخميس", "Friday": "الجمعة", "Saturday": "السبت", "Sunday": "الأحد"}
-    for i in range(7):
-        current = today_obj - timedelta(days=i)
-        english_day_name = current.strftime('%A')
-        arabic_day_name = arabic_days.get(english_day_name, english_day_name)
-        dates.append(f"{current.strftime('%Y-%m-%d')} ({arabic_day_name})")
-    return dates
-
 # --- Main App Authentication and Setup ---
-# This block runs on every page load for any page in the app
 creds = auth_manager.authenticate()
 
+# This part will only run after successful authentication
 user_id = st.session_state.get('user_id')
 user_email = st.session_state.get('user_email')
 
+# If authentication fails, auth_manager would have already stopped the app.
+# But as a safeguard:
 if not user_id:
-    st.error("خطأ: لم يتم تحديد هوية المستخدم. يرجى محاولة إعادة تحميل الصفحة.")
-    st.stop()
+    st.error("حدث خطأ في المصادقة. يرجى إعادة تحميل الصفحة.")
+    st.stop() # This is one of the few acceptable uses of st.stop()
 
 # Initialize Google clients once and cache them
 gc = auth_manager.get_gspread_client(user_id, creds)
@@ -82,7 +72,6 @@ if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary"
     with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
         update_log = run_data_update(gc, user_id)
         st.session_state['update_log'] = update_log
-    # No rerun needed here, the log will be displayed on the next interaction
     st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
 
 
@@ -91,33 +80,31 @@ if 'update_log' in st.session_state:
     with st.sidebar.expander("عرض تفاصيل سجل التحديث"):
         for message in st.session_state.update_log:
             st.text(message)
-    # Clear the log after displaying it so it doesn't persist
     del st.session_state['update_log']
 
 
 # --- Check if setup is complete ---
-# This logic determines whether to show the setup wizard or the main app pages
 user_settings = db.get_user_settings(user_id)
-spreadsheet_url = user_settings.get("spreadsheet_url")
-form_url = user_settings.get("form_url")
-
 all_data = db.get_all_data_for_stats(user_id)
 members_df = pd.DataFrame(all_data.get('members', []))
 periods_df = pd.DataFrame(all_data.get('periods', []))
 
-members_exist = not members_df.empty
-tools_exist = spreadsheet_url and form_url
-challenge_exist = not periods_df.empty
-setup_complete = members_exist and tools_exist and challenge_exist
-
+setup_complete = (
+    user_settings.get("spreadsheet_url") and
+    user_settings.get("form_url") and
+    not members_df.empty and
+    not periods_df.empty
+)
 
 # --- Main Page Content ---
+# This is the crucial change: using if/else instead of st.stop()
 if not setup_complete:
+    # --- SETUP WIZARD ---
     st.title("🚀 مرحباً بك في ماراثون القراءة!")
     st.info("لتجهيز مساحة العمل الخاصة بك، يرجى اتباع الخطوات التالية:")
 
     # Step 1: Add Members
-    if not members_exist:
+    if members_df.empty:
         st.header("الخطوة 1: إضافة أعضاء فريقك")
         st.warning("قبل المتابعة، يجب إضافة عضو واحد على الأقل.")
         with st.form("initial_members_form"):
@@ -133,10 +120,9 @@ if not setup_complete:
                     st.rerun()
                 else:
                     st.error("يرجى إدخال اسم واحد على الأقل.")
-        st.stop()
 
     # Step 2: Create Google Tools
-    if not tools_exist:
+    elif not user_settings.get("spreadsheet_url") or not user_settings.get("form_url"):
         st.header("الخطوة 2: إنشاء أدوات جوجل")
         st.info("سيقوم التطبيق الآن بإنشاء جدول بيانات (Google Sheet) ونموذج تسجيل (Google Form) في حسابك.")
         if 'sheet_title' not in st.session_state:
@@ -144,6 +130,7 @@ if not setup_complete:
         st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
 
         if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
+            # ... (The rest of the form creation code is identical to before)
             with st.spinner("جاري إنشاء جدول البيانات..."):
                 try:
                     spreadsheet = gc.create(st.session_state.sheet_title)
@@ -197,7 +184,7 @@ if not setup_complete:
             if st.button("تحقق من الإعدادات وتابع", type="primary", use_container_width=True):
                 with st.spinner("جاري التحقق من الإعدادات..."):
                     try:
-                        spreadsheet = gc.open_by_url(spreadsheet_url)
+                        spreadsheet = gc.open_by_url(user_settings.get("spreadsheet_url"))
                         worksheet = spreadsheet.worksheet("Form Responses 1")
                         st.success("✅ تم التحقق بنجاح! تم العثور على ورقة 'Form Responses 1'.")
                         try:
@@ -212,10 +199,9 @@ if not setup_complete:
                         st.error("❌ فشل التحقق. لم نتمكن من العثور على ورقة باسم 'Form Responses 1'. يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط.")
                     except Exception as e:
                         st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
-            st.stop()
 
     # Step 3: Create First Challenge
-    if not challenge_exist:
+    elif periods_df.empty:
         st.header("الخطوة 3: إنشاء أول تحدي لك")
         st.info("أنت على وشك الانتهاء! كل ما عليك فعله هو إضافة تفاصيل أول كتاب وتحدي للبدء.")
         with st.form("new_challenge_form", clear_on_submit=True):
@@ -242,15 +228,14 @@ if not setup_complete:
                         st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
                 else:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
-        st.stop()
 
 else:
-    # This is the main landing page content after setup is complete
+    # --- MAIN WELCOME PAGE (if setup is complete) ---
     st.title("📚 أهلاً بك في لوحة تحكم ماراثون القراءة")
     st.markdown("---")
     st.info("🎉 اكتمل إعداد حسابك بنجاح!")
     st.markdown("يمكنك الآن التنقل بين صفحات التطبيق المختلفة باستخدام القائمة الموجودة في الشريط الجانبي.")
-    
+
     st.subheader("ماذا يمكنك أن تفعل الآن؟")
     st.markdown("""
     - **📈 لوحة التحكم العامة:** للحصول على نظرة شاملة على أداء جميع المشاركين في كل التحديات.
@@ -258,4 +243,4 @@ else:
     - **⚙️ الإدارة والإعدادات:** لإضافة أعضاء جدد، إنشاء تحديات مستقبلية، أو تعديل نظام النقاط.
     - **❓ عن التطبيق:** لمعرفة المزيد عن المشروع وكيفية عمل نظام النقاط.
     """)
-    st.success("🚀 **نصيحة:** ابدأ بالذهاب إلى **'لوحة التحكم العامة'** من الشريط الجانبي لرؤية الصورة الكاملة.")
+    st.success("🚀 **نصيحة:** ابدأ بالذهاب إلى **'Overall Dashboard'** من الشريط الجانبي لرؤية الصورة الكاملة.")
