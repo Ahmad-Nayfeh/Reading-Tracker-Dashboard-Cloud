@@ -1,7 +1,7 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import json
+import json # <-- الإضافة الأولى: استيراد مكتبة JSON
 import os
 
 @st.cache_resource
@@ -12,21 +12,24 @@ def initialize_firebase_app():
     """
     try:
         if not firebase_admin._apps:
-            # التحقق مما إذا كنا نعمل على Streamlit Cloud (حيث توجد الأسرار)
             if 'firebase_credentials' in st.secrets:
-                # قراءة المفتاح من Streamlit Secrets
-                creds_json = st.secrets["firebase_credentials"]
-                cred = credentials.Certificate(creds_json)
+                # قراءة المفتاح كنص من أسرار Streamlit
+                creds_str = st.secrets["firebase_credentials"]
+                
+                # --- الإضافة الثانية: تحويل النص إلى قاموس ---
+                creds_dict = json.loads(creds_str)
+                cred = credentials.Certificate(creds_dict)
+
             else:
-                # إذا كنا نعمل محلياً، اقرأ المفتاح من الملف
+                # الوضع المحلي يعمل كما هو
                 SERVICE_ACCOUNT_FILE = 'firebase_service_account.json'
                 if not os.path.exists(SERVICE_ACCOUNT_FILE):
                     st.error(f"🔑 ملف '{SERVICE_ACCOUNT_FILE}' غير موجود. يرجى التأكد من وجوده محلياً.")
                     st.stop()
                 cred = credentials.Certificate(SERVICE_ACCOUNT_FILE)
-
+            
             firebase_admin.initialize_app(cred)
-
+        
         return firestore.client()
     except Exception as e:
         st.error(f"🔥 خطأ في تهيئة Firebase: {e}")
