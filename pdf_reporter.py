@@ -8,6 +8,7 @@ import os
 from PIL import Image
 import arabic_reshaper
 from bidi.algorithm import get_display
+import plotly.io as pio
 
 # --- Constants ---
 FONT_NAME = "Amiri-Regular.ttf"
@@ -166,7 +167,9 @@ class PDFReporter(FPDF):
     def add_plot(self, fig: go.Figure, width_percent=90):
         if not self.font_loaded or not fig: return None, 0
         styled_fig = self._style_figure_for_arabic(fig)
+        pio.kaleido.scope.chromium_args = ("--headless", "--no-sandbox", "--disable-gpu")
         img_bytes = styled_fig.to_image(format="png", scale=2, width=800, height=500)
+
         img_file = io.BytesIO(img_bytes)
         pil_img = Image.open(img_file)
         aspect_ratio = pil_img.height / pil_img.width
