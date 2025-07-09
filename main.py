@@ -24,26 +24,12 @@ def run_data_update(gc: gspread.Client, user_id: str):
     update_log.append(f"جاري سحب البيانات من Google Sheet الخاص بك...")
     try:
         spreadsheet = gc.open_by_url(spreadsheet_url)
-
-        # قائمة بأسماء أوراق العمل المحتملة
-        POSSIBLE_SHEET_NAMES = ["Form Responses 1", "Form responses 1", "ردود النموذج 1"]
-        worksheet = None
-        for name in POSSIBLE_SHEET_NAMES:
-            try:
-                worksheet = spreadsheet.worksheet(name)
-                break # توقف عند العثور على الورقة الصحيحة
-            except gspread.exceptions.WorksheetNotFound:
-                continue
-
-        if worksheet is None:
-            # إذا لم يتم العثور على أي من الأسماء، أظهر رسالة خطأ
-            raise gspread.exceptions.WorksheetNotFound
-
+        worksheet = spreadsheet.worksheet("Form Responses 1")
         records = worksheet.get_all_records()
         raw_data_df = pd.DataFrame(records)
-        update_log.append(f"✅ تم العثور على {len(raw_data_df)} صف في الجدول (باسم: '{worksheet.title}').")
+        update_log.append(f"✅ تم العثور على {len(raw_data_df)} صف في الجدول.")
     except gspread.exceptions.WorksheetNotFound:
-        update_log.append("❌ خطأ: لم نتمكن من العثور على ورقة الردود التلقائية. يرجى التأكد من أن اسمها أحد هذه الخيارات: " + ", ".join(POSSIBLE_SHEET_NAMES))
+        update_log.append("❌ خطأ: لم يتم العثور على ورقة 'Form Responses 1'. يرجى التأكد من إعدادات الربط وإعادة تسمية الورقة.")
         return update_log
     except Exception as e:
         update_log.append(f"❌ خطأ أثناء سحب البيانات: {e}")
