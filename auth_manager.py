@@ -4,8 +4,9 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 import os
-import db_manager as db # <-- استيراد مدير قاعدة البيانات الجديد
+import db_manager as db 
 from googleapiclient.discovery import build
+from google.oauth2.credentials import Credentials 
 
 # --- Configuration Constants ---
 CLIENT_SECRET_FILE = 'client_secret.json'
@@ -121,12 +122,12 @@ def save_credentials_to_file(creds, user_id):
 
 
 @st.cache_resource
-def get_gspread_client():
+def get_gspread_client(creds: Credentials):
     """
-    يستخدم صلاحيات الدخول المخزنة لإنشاء gspread client.
+    ينشئ gspread client باستخدام بيانات اعتماد المستخدم المحددة.
+    التخزين المؤقت الآن خاص بكل مستخدم لأن كائن 'creds' فريد.
     """
-    creds = st.session_state.get('credentials')
     if not creds:
-        st.error("🔒 **خطأ في المصادقة:** لم نتمكن من التحقق من صلاحيات الوصول.")
+        st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
     return gspread.authorize(creds)
