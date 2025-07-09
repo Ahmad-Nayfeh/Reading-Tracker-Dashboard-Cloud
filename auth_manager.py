@@ -3,15 +3,8 @@ import gspread
 from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
-import os
 import db_manager as db
 from googleapiclient.discovery import build
-import json
-
-# --- Configuration Constants ---
-CLIENT_SECRET_FILE = 'client_secret.json'
-TOKEN_DIR = 'data'
-TOKEN_FILE = os.path.join(TOKEN_DIR, 'token.json') 
 
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -22,107 +15,67 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email"
 ]
 
-def save_credentials(creds):
+def get_redirect_uri():
     """
-    دالة جديدة ومبسطة لحفظ صلاحيات الدخول في ملف التوكن الثابت.
+    Determines the correct redirect URI based on the execution environment.
     """
-    os.makedirs(TOKEN_DIR, exist_ok=True)
-    with open(TOKEN_FILE, 'w') as token:
-        token.write(creds.to_json())
+    try:
+        from streamlit.web.server.server import Server
+        # When running on Streamlit Cloud, the server address will contain 'streamlit.app'
+        is_cloud = "streamlit.app" in Server.get_current()._get_server_address_for_browser()
+    except (ImportError, AttributeError):
+        # Fallback for different environments or streamlit versions, assume local
+        is_cloud = False
 
-def load_credentials():
-    """
-    دالة جديدة لتحميل صلاحيات الدخول من ملف التوكن إن وجد.
-    """
-    if os.path.exists(TOKEN_FILE):
-        return Credentials.from_authorized_user_file(TOKEN_FILE, SCOPES)
-    return None
+    creds_dict = dict(st.secrets["google_oauth_credentials"])
+    redirect_uris = creds_dict.get('redirect_uris', [])
+
+    if is_cloud:
+        return next((uri for uri in redirect_uris if 'streamlit.app' in uri), None)
+    else:
+        return next((uri for uri in redirect_uris if 'localhost' in uri), redirect_uris[0] if redirect_uris else None)
+
 
 def authenticate():
     """
-    ## دالة المصادقة الرئيسية (مُعاد بناؤها بالكامل) ##
-    تتعامل مع منطق المصادقة بشكل ذكي ومستمر.
-    
-    التسلسل المنطقي الجديد:
-    1.  التحقق من وجود صلاحيات صالحة في الجلسة الحالية (st.session_state).
-    2.  إذا لم توجد، محاولة تحميل الصلاحيات من ملف التوكن المحفوظ (token.json).
-    3.  تحديث الصلاحيات تلقائياً إذا كانت منتهية الصلاحية (باستخدام الـ refresh token).
-    4.  إذا لم ينجح أي مما سبق، تبدأ عملية المصادقة الكاملة للمستخدم الجديد.
+    Handles the authentication flow using st.secrets for configuration.
+    It prioritizes credentials stored in the current session.
     """
-    # الخطوة 1: التحقق من الجلسة الحالية لتسريع التنقل داخل التطبيق
+    # Priority 1: Check for valid credentials in the current session state
     if 'credentials' in st.session_state and st.session_state.credentials.valid:
         return st.session_state.credentials
 
-    # الخطوة 2: محاولة تحميل الصلاحيات من الملف المحفوظ (للمستخدم العائد)
-    creds = load_credentials()
+    # Check if secrets are configured
+    if "google_oauth_credentials" not in st.secrets:
+        st.error("🔑 **خطأ في الإعدادات:** لم يتم العثور على `google_oauth_credentials` في ملف الأسرار (secrets.toml).")
+        st.stop()
+
+    # Configure the OAuth flow using st.secrets
+    creds_dict = dict(st.secrets["google_oauth_credentials"])
+    redirect_uri = get_redirect_uri()
+
+    if not redirect_uri:
+        st.error("🔑 **خطأ في الإعدادات:** لم يتم العثور على `redirect_uri` مناسب في ملف الأسرار (secrets.toml).")
+        st.stop()
+
+    flow = Flow.from_client_config(
+        client_config={'web': creds_dict},
+        scopes=SCOPES,
+        redirect_uri=redirect_uri
+    )
     
-    if creds:
-        # التحقق مما إذا كانت الصلاحيات منتهية، وتحديثها بصمت إن أمكن
-        if creds.expired and creds.refresh_token:
-            try:
-                creds.refresh(Request())
-                save_credentials(creds) # حفظ الصلاحيات المحدثة
-            except Exception as e:
-                st.error("انتهت صلاحية جلسة الدخول. يرجى تسجيل الدخول مرة أخرى.")
-                # في حال فشل التحديث، قم بإزالة الملف الفاسد لتبدأ عملية مصادقة جديدة
-                if os.path.exists(TOKEN_FILE):
-                    os.remove(TOKEN_FILE)
-                creds = None # إعادة التعيين إلى None للمتابعة لصفحة تسجيل الدخول
-
-        # إذا كانت الصلاحيات صالحة (أو تم تحديثها بنجاح)، قم بتعبئة الـ session_state
-        if creds and creds.valid:
-            try:
-                userinfo_service = build('oauth2', 'v2', credentials=creds)
-                user_info = userinfo_service.userinfo().get().execute()
-                user_id = user_info.get('id')
-
-                # إذا لم نتمكن من الحصول على user_id، فهذا يعني أن الصلاحيات قد تكون غير كافية
-                if not user_id:
-                     raise Exception("لم يتم العثور على معرّف المستخدم في الصلاحيات.")
-
-                st.session_state.user_id = user_id
-                st.session_state.user_email = user_info.get('email')
-                st.session_state.credentials = creds
-                return creds
-            except Exception as e:
-                # إذا حدث خطأ أثناء جلب معلومات المستخدم، ربما الصلاحيات غير سليمة
-                st.warning(f"حدث خطأ أثناء التحقق من الصلاحيات: {e}. قد تحتاج لتسجيل الدخول مجدداً.")
-                if os.path.exists(TOKEN_FILE):
-                    os.remove(TOKEN_FILE)
-    
-    # --- بداية منطق المصادقة للمستخدم الجديد (إذا فشلت كل المحاولات السابقة) ---
-
-    # إعداد flow المصادقة
-    if 'google_oauth_credentials' in st.secrets:
-        creds_dict = st.secrets["google_oauth_credentials"]
-        flow = Flow.from_client_config(
-            client_config={'web': creds_dict},
-            scopes=SCOPES,
-            redirect_uri='https://reading-marathon.streamlit.app'
-        )
-    else:
-        try:
-            flow = Flow.from_client_secrets_file(
-                CLIENT_SECRET_FILE,
-                scopes=SCOPES,
-                redirect_uri='http://localhost:8501'
-            )
-        except FileNotFoundError:
-            st.error(f"🔑 **خطأ في الإعدادات:** لم يتم العثور على ملف `{CLIENT_SECRET_FILE}`.")
-            st.stop()
-
-    # التحقق من وجود كود المصادقة في رابط URL
+    # Check for the authorization code in the URL query parameters
     authorization_code = st.query_params.get("code")
     
     if authorization_code:
-        # إذا كنا في مرحلة العودة من جوجل مع كود المصادقة
+        # If we have a code, fetch the token
         flow.fetch_token(code=authorization_code)
         creds = flow.credentials
         
-        # حفظ الصلاحيات الجديدة في الملف للمستقبل
-        save_credentials(creds)
+        # Store credentials in the session state
+        st.session_state.credentials = creds
         
-        # الحصول على معلومات المستخدم والتحقق من مساحة العمل
+        # Get user info and set up the workspace if it's the first time
         try:
             userinfo_service = build('oauth2', 'v2', credentials=creds)
             user_info = userinfo_service.userinfo().get().execute()
@@ -136,7 +89,6 @@ def authenticate():
 
             st.session_state.user_id = user_id
             st.session_state.user_email = user_info.get('email')
-            st.session_state.credentials = creds
 
             if not db.check_user_exists(user_id):
                 with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
@@ -146,12 +98,12 @@ def authenticate():
             st.error(f"حدث خطأ أثناء الحصول على معلومات المستخدم أو إنشاء مساحة العمل: {e}")
             st.stop()
         
-        # مسح الـ query parameters من الرابط وإعادة تشغيل التطبيق
+        # Clear the query parameters from the URL and rerun the app
         st.query_params.clear()
         st.rerun()
     
     else:
-        # إذا لم يكن هناك أي صلاحيات محفوظة أو كود مصادقة، نعرض زر تسجيل الدخول
+        # If there are no credentials and no code, show the login button
         auth_url, _ = flow.authorization_url(prompt='consent')
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
         st.info("للبدء، يرجى ربط حسابك في جوجل. سيقوم التطبيق بإنشاء مساحة عمل سحابية خاصة بك لإدارة تحديات القراءة بكل سهولة.")
@@ -161,9 +113,7 @@ def authenticate():
 @st.cache_resource
 def get_gspread_client(user_id: str, _creds: Credentials):
     """
-    ينشئ gspread client فريد لكل مستخدم.
-    يعتمد التخزين المؤقت على user_id القابل للبصم،
-    بينما يتم تجاهل كائن _creds في عملية البصم ولكنه يستخدم لإنشاء العميل.
+    Creates a unique gspread client for each user.
     """
     if not _creds or not _creds.valid:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
