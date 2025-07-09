@@ -4,14 +4,12 @@ from google.oauth2.credentials import Credentials
 from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 import os
-import db_manager as db 
+import db_manager as db
 from googleapiclient.discovery import build
 import json
 
 # --- Configuration Constants ---
 CLIENT_SECRET_FILE = 'client_secret.json'
-# --- تعديل رئيسي: سنستخدم ملف توكن واحد وثابت ---
-# هذا يبسط عملية المصادقة للجلسات المستمرة في بيئة النشر
 TOKEN_DIR = 'data'
 TOKEN_FILE = os.path.join(TOKEN_DIR, 'token.json') 
 
@@ -137,7 +135,7 @@ def authenticate():
                 st.stop()
 
             st.session_state.user_id = user_id
-            st.session_state.user_email = user_email
+            st.session_state.user_email = user_info.get('email')
             st.session_state.credentials = creds
 
             if not db.check_user_exists(user_id):
@@ -161,10 +159,11 @@ def authenticate():
         st.stop()
 
 @st.cache_resource
-def get_gspread_client(_creds: Credentials):
+def get_gspread_client(user_id: str, _creds: Credentials):
     """
-    لم يتم تغيير هذه الدالة، ولكن تم تعديل الوسيط _creds ليكون بدون تحديد نوع
-    لأن st.cache_resource لا تتعامل جيداً مع أنواع الكائنات المعقدة.
+    ينشئ gspread client فريد لكل مستخدم.
+    يعتمد التخزين المؤقت على user_id القابل للبصم،
+    بينما يتم تجاهل كائن _creds في عملية البصم ولكنه يستخدم لإنشاء العميل.
     """
     if not _creds or not _creds.valid:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
