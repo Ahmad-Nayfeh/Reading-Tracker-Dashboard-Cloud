@@ -415,24 +415,57 @@ if not setup_complete:
                     st.error(f"🌐 خطأ في إنشاء الفورم: {e}")
                     st.stop()
 
-            st.header("🔗 الخطوة الأخيرة: الربط اليدوي")
-            st.warning("هذه الخطوة ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
+            st.header("🔗 الخطوة الأخيرة: الربط والتحقق")
+            st.warning("هذه الخطوات ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
             editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
+            
             st.write("1. **افتح النموذج للتعديل** من الرابط أدناه:")
             st.code(editor_url)
             st.write("2. انتقل إلى تبويب **\"الردود\" (Responses)**.")
             st.write("3. اضغط على أيقونة **'Link to Sheets'** (أيقونة جدول البيانات الخضراء).")
             st.write("4. اختر **'Select existing spreadsheet'** وقم باختيار جدول البيانات الذي أنشأته للتو بنفس الاسم.")
-            if st.button("لقد قمت بالربط، تابع إلى الخطوة الأخيرة!"):
-                with st.spinner("جاري تنظيف جدول البيانات..."):
+            st.write("5. **(خطوة هامة لضمان عمل التواريخ بشكل صحيح)** افتح جدول البيانات، ومن القائمة العلوية اذهب إلى **File > Settings**، ثم غيّر الـ **Locale** إلى **United Kingdom** واضغط **Save settings**. هذا يضمن أن كل التواريخ ستُكتب بصيغة (DD/MM/YYYY).")
+
+            if st.button("تحقق من الربط وتابع", type="primary", use_container_width=True):
+                with st.spinner("جاري التحقق من ربط النموذج بجدول البيانات..."):
                     try:
                         spreadsheet = gc.open_by_url(spreadsheet_url)
-                        default_sheet = spreadsheet.worksheet('Sheet1')
-                        spreadsheet.del_worksheet(default_sheet)
-                    except gspread.exceptions.WorksheetNotFound: pass
-                    except Exception as e: st.warning(f"لم نتمكن من حذف الصفحة الفارغة تلقائياً: {e}.")
-                st.rerun()
-        st.stop()
+                        
+                        # قائمة بأسماء أوراق العمل المحتملة التي سيبحث عنها التطبيق
+                        POSSIBLE_SHEET_NAMES = ["Form Responses 1", "Form responses 1", "ردود النموذج 1"]
+                        
+                        all_worksheets = spreadsheet.worksheets()
+                        found_sheet = None
+                        for sheet in all_worksheets:
+                            if sheet.title in POSSIBLE_SHEET_NAMES:
+                                found_sheet = sheet
+                                break
+
+                        if found_sheet:
+                            st.success(f"✅ تم التحقق بنجاح! تم العثور على ورقة الردود باسم: '{found_sheet.title}'.")
+                            
+                            # محاولة تنظيف الصفحة الافتراضية "Sheet1"
+                            try:
+                                default_sheet = spreadsheet.worksheet('Sheet1')
+                                spreadsheet.del_worksheet(default_sheet)
+                                st.info("ℹ️ تم حذف ورقة 'Sheet1' الفارغة بنجاح.")
+                            except gspread.exceptions.WorksheetNotFound:
+                                pass # الورقة غير موجودة، وهذا جيد
+                            
+                            time.sleep(2)
+                            st.rerun()
+                        else:
+                            # إذا لم يتم العثور على ورقة متوقعة، أظهر خطأ للمستخدم
+                            sheet_titles = [s.title for s in all_worksheets]
+                            st.error(
+                                "❌ فشل التحقق. لم يتم العثور على ورقة ردود بالأسماء المتوقعة. "
+                                f"الأسماء التي وجدناها هي: {', '.join(sheet_titles)}. "
+                                "يرجى التأكد من اسم الورقة التي تم إنشاؤها وتغييره إلى 'Form Responses 1' ثم المحاولة مرة أخرى."
+                            )
+
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
+            st.stop()
 
     if not challenge_exist:
         st.header("الخطوة 3: إنشاء أول تحدي لك")
