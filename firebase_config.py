@@ -1,7 +1,6 @@
 import streamlit as st
 import firebase_admin
 from firebase_admin import credentials, firestore
-import json # <-- الإضافة الأولى: استيراد مكتبة JSON
 import os
 
 @st.cache_resource
@@ -12,14 +11,12 @@ def initialize_firebase_app():
     """
     try:
         if not firebase_admin._apps:
+            # التحقق مما إذا كنا نعمل على Streamlit Cloud
             if 'firebase_credentials' in st.secrets:
-                # قراءة المفتاح كنص من أسرار Streamlit
-                creds_str = st.secrets["firebase_credentials"]
-                
-                # --- الإضافة الثانية: تحويل النص إلى قاموس ---
-                creds_dict = json.loads(creds_str)
+                # --- الإصلاح النهائي هنا ---
+                # st.secrets يُرجع قاموساً جاهزاً، لذلك نستخدمه مباشرة
+                creds_dict = st.secrets["firebase_credentials"]
                 cred = credentials.Certificate(creds_dict)
-
             else:
                 # الوضع المحلي يعمل كما هو
                 SERVICE_ACCOUNT_FILE = 'firebase_service_account.json'
