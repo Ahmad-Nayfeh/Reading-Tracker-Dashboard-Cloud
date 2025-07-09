@@ -122,12 +122,13 @@ def save_credentials_to_file(creds, user_id):
 
 
 @st.cache_resource
-def get_gspread_client(creds: Credentials):
+def get_gspread_client(user_id: str, _creds: Credentials):
     """
-    ينشئ gspread client باستخدام بيانات اعتماد المستخدم المحددة.
-    التخزين المؤقت الآن خاص بكل مستخدم لأن كائن 'creds' فريد.
+    ينشئ gspread client فريد لكل مستخدم.
+    يعتمد التخزين المؤقت على user_id القابل للبصم،
+    بينما يتم تجاهل كائن _creds في عملية البصم ولكنه يستخدم لإنشاء العميل.
     """
-    if not creds:
+    if not _creds:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
-    return gspread.authorize(creds)
+    return gspread.authorize(_creds)
