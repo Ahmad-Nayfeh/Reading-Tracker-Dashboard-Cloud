@@ -38,16 +38,26 @@ def authenticate():
     if 'user_id' in st.session_state and 'credentials' in st.session_state:
         return st.session_state.credentials
 
-    # إذا لم تكن موجودة، نبدأ عملية المصادقة
-    try:
-        flow = Flow.from_client_secrets_file(
-            CLIENT_SECRET_FILE,
+
+    # Check if google_oauth_credentials are in Streamlit Secrets
+    if 'google_oauth_credentials' in st.secrets:
+        creds_dict = st.secrets["google_oauth_credentials"]
+        flow = Flow.from_client_config(
+            client_config={'web': creds_dict},
             scopes=SCOPES,
-            redirect_uri='http://localhost:8501'
+            redirect_uri='https://your-app-name.streamlit.app' # <-- Important: Change this later
         )
-    except FileNotFoundError:
-        st.error(f"🔑 **خطأ في الإعدادات:** لم يتم العثور على ملف `{CLIENT_SECRET_FILE}`. يرجى التأكد من اتباع إرشادات الإعداد ووضع الملف في المجلد الرئيسي للمشروع.")
-        st.stop()
+    else:
+        # Fallback to local file for development
+        try:
+            flow = Flow.from_client_secrets_file(
+                CLIENT_SECRET_FILE,
+                scopes=SCOPES,
+                redirect_uri='http://localhost:8501'
+            )
+        except FileNotFoundError:
+            st.error(f"🔑 **خطأ في الإعدادات:** لم يتم العثور على ملف `{CLIENT_SECRET_FILE}`. يرجى التأكد من وجوده محلياً أو إضافة 'google_oauth_credentials' إلى st.secrets.")
+            st.stop()
 
     authorization_code = st.query_params.get("code")
     
