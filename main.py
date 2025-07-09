@@ -6,30 +6,44 @@ import gspread
 def run_data_update(gc: gspread.Client, user_id: str):
     """
     The main data synchronization engine, now tailored for a specific user.
-    
+
     Args:
         gc (gspread.Client): The authenticated gspread client.
         user_id (str): The unique ID of the user (admin) to sync data for.
     """
     update_log = ["--- بدء عملية تحديث بيانات التحدي ---"]
-    
+
     # الخطوة 1: جلب إعدادات المستخدم المحدد (رابط الشيت)
     user_settings = db.get_user_settings(user_id)
     spreadsheet_url = user_settings.get("spreadsheet_url")
-    
+
     if not spreadsheet_url:
         update_log.append("❌ خطأ: لم يتم العثور على رابط جدول البيانات في إعداداتك. يرجى إكمال الإعداد أولاً.")
         return update_log
 
-    update_log.append(f"� جاري سحب البيانات من Google Sheet الخاص بك...")
+    update_log.append(f"جاري سحب البيانات من Google Sheet الخاص بك...")
     try:
         spreadsheet = gc.open_by_url(spreadsheet_url)
-        worksheet = spreadsheet.worksheet("Form Responses 1")
+
+        # قائمة بأسماء أوراق العمل المحتملة
+        POSSIBLE_SHEET_NAMES = ["Form Responses 1", "Form responses 1", "ردود النموذج 1"]
+        worksheet = None
+        for name in POSSIBLE_SHEET_NAMES:
+            try:
+                worksheet = spreadsheet.worksheet(name)
+                break # توقف عند العثور على الورقة الصحيحة
+            except gspread.exceptions.WorksheetNotFound:
+                continue
+
+        if worksheet is None:
+            # إذا لم يتم العثور على أي من الأسماء، أظهر رسالة خطأ
+            raise gspread.exceptions.WorksheetNotFound
+
         records = worksheet.get_all_records()
         raw_data_df = pd.DataFrame(records)
-        update_log.append(f"✅ تم العثور على {len(raw_data_df)} صف في الجدول.")
+        update_log.append(f"✅ تم العثور على {len(raw_data_df)} صف في الجدول (باسم: '{worksheet.title}').")
     except gspread.exceptions.WorksheetNotFound:
-        update_log.append("❌ خطأ: لم يتم العثور على صفحة 'Form Responses 1'. تأكد من ربط النموذج بالشيت بشكل صحيح.")
+        update_log.append("❌ خطأ: لم نتمكن من العثور على ورقة الردود التلقائية. يرجى التأكد من أن اسمها أحد هذه الخيارات: " + ", ".join(POSSIBLE_SHEET_NAMES))
         return update_log
     except Exception as e:
         update_log.append(f"❌ خطأ أثناء سحب البيانات: {e}")
@@ -41,7 +55,7 @@ def run_data_update(gc: gspread.Client, user_id: str):
         if not all_data or not all_data.get("members") or not all_data.get("periods"):
             update_log.append("❌ خطأ: لم تكتمل عملية إعداد التحديات أو الأعضاء. يرجى إضافتهم من صفحة الإدارة.")
             return update_log
-        
+
         # الخطوة 3: مسح السجلات والإنجازات القديمة للمستخدم المحدد
         update_log.append("🔄 جاري مسح السجلات القديمة استعداداً للمزامنة الكاملة...")
         db.clear_subcollection(user_id, 'logs')
@@ -51,14 +65,14 @@ def run_data_update(gc: gspread.Client, user_id: str):
         # الخطوة 4: معالجة وإعادة إدخال البيانات للمستخدم المحدد
         entries_processed = process_all_data(raw_data_df, all_data, user_id)
         update_log.append(f"🔄 تمت معالجة وإعادة إدخال {entries_processed} تسجيل.")
-        
+
         # الخطوة 5: حساب وتحديث إحصائيات المستخدم المحدد
         update_log.append("🧮 جاري حساب وتحديث جميع الإحصائيات...")
         calculate_and_update_stats(user_id)
         update_log.append("✅ اكتمل حساب الإحصائيات.")
     else:
         update_log.append("ℹ️ لا توجد بيانات جديدة في الجدول.")
-    
+
     update_log.append("\n--- ✅ انتهت عملية مزامنة البيانات بنجاح ---")
     return update_log
 
@@ -75,34 +89,37 @@ def process_all_data(df, all_data, user_id: str):
     Processes all rows from the Google Sheet and adds them to the user's
     database space in Firestore.
     """
-    # استخدام members_id الذي يأتي من Firestore
     member_map = {member['name']: member['members_id'] for member in all_data['members']}
     entries_processed_count = 0
-    
+
     df = df.sort_values(by='Timestamp').reset_index(drop=True)
 
     for index, row in df.iterrows():
         timestamp = str(row.get('Timestamp', '')).strip()
         if not timestamp:
             continue
-        
+
         submission_date_str = str(row.get('تاريخ القراءة', '')).strip()
+        
+        # --- التعديل النهائي هنا: الاعتماد على معيار تاريخ ثابت ---
         try:
+            # بما أننا سنفرض معيار DD/MM/YYYY عبر إعدادات الشيت، يمكننا استخدامه بثقة
             date_part = submission_date_str.split(' ')[0]
-            submission_date_obj = datetime.strptime(date_part, '%Y-%m-%d').date()
+            submission_date_obj = datetime.strptime(date_part, '%d/%m/%Y').date()
         except (ValueError, TypeError, IndexError):
+            # تجاهل أي صف لا يتطابق تاريخه مع هذا المعيار
             continue
         
         member_name = str(row.get('اسمك', '')).strip()
         member_id = member_map.get(member_name)
         if not member_id: continue
-        
+
         entries_processed_count += 1
-        
+
         quote_responses = str(row.get('ما هي الاقتباسات التي أرسلتها اليوم؟ (اختر كل ما ينطبق)', '') or row.get('ما هي الاقتباسات التي أرسلتها اليوم؟ (اختياري)', ''))
         common_quote_today = 1 if 'الكتاب المشترك' in quote_responses else 0
         other_quote_today = 1 if 'كتاب آخر' in quote_responses else 0
-            
+
         log_data = {
             "timestamp": timestamp, "member_id": member_id, "submission_date": submission_date_obj.strftime('%d/%m/%Y'),
             "common_book_minutes": parse_duration_to_minutes(row.get('مدة قراءة الكتاب المشترك') or row.get('مدة قراءة الكتاب المشترك (اختياري)')),
@@ -110,22 +127,20 @@ def process_all_data(df, all_data, user_id: str):
             "submitted_common_quote": common_quote_today,
             "submitted_other_quote": other_quote_today,
         }
-        
+
         achievements_to_add = []
         achievement_responses = str(row.get('إنجازات الكتب والنقاش', '') or row.get('إنجازات الكتب والنقاش (اختر فقط عند حدوثه لأول مرة)', ''))
         current_period = next((p for p in all_data['periods'] if datetime.strptime(p['start_date'], '%Y-%m-%d').date() <= submission_date_obj <= datetime.strptime(p['end_date'], '%Y-%m-%d').date()), None)
 
         if current_period:
             period_id = current_period['periods_id']
-            # تمرير user_id للدالة
             if 'أنهيت الكتاب المشترك' in achievement_responses and not db.has_achievement(user_id, member_id, 'FINISHED_COMMON_BOOK', period_id):
                 achievements_to_add.append({'member_id': member_id, 'achievement_type': 'FINISHED_COMMON_BOOK', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': current_period['common_book_id']})
             if 'حضرت جلسة النقاش' in achievement_responses and not db.has_achievement(user_id, member_id, 'ATTENDED_DISCUSSION', period_id):
-                 achievements_to_add.append({'member_id': member_id, 'achievement_type': 'ATTENDED_DISCUSSION', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': None})
+                achievements_to_add.append({'member_id': member_id, 'achievement_type': 'ATTENDED_DISCUSSION', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': None})
             if 'أنهيت كتاباً آخر' in achievement_responses:
                 achievements_to_add.append({'member_id': member_id, 'achievement_type': 'FINISHED_OTHER_BOOK', 'achievement_date': str(submission_date_obj), 'period_id': period_id, 'book_id': None})
-        
-        # تمرير user_id للدالة
+
         db.add_log_and_achievements(user_id, log_data, achievements_to_add)
     return entries_processed_count
 
@@ -139,7 +154,7 @@ def calculate_and_update_stats(user_id: str):
 
     periods_map = {p['periods_id']: p for p in all_data["periods"]}
     logs_df = pd.DataFrame(all_data["logs"])
-    
+
     if not logs_df.empty:
         logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date'], format='%d/%m/%Y', errors='coerce').dt.date
         numeric_cols = ['common_book_minutes', 'other_book_minutes', 'submitted_common_quote', 'submitted_other_quote']
@@ -151,17 +166,17 @@ def calculate_and_update_stats(user_id: str):
 
     for member in all_data["members"]:
         member_id = member['members_id']
-        
+
         member_stats = {
-            "member_id": member_id, "total_points": 0, "total_reading_minutes_common": 0, 
-            "total_reading_minutes_other": 0, "total_common_books_read": 0, 
-            "total_other_books_read": 0, "total_quotes_submitted": 0, 
+            "member_id": member_id, "total_points": 0, "total_reading_minutes_common": 0,
+            "total_reading_minutes_other": 0, "total_common_books_read": 0,
+            "total_other_books_read": 0, "total_quotes_submitted": 0,
             "meetings_attended": 0, "last_log_date": None, "last_quote_date": None
         }
 
         member_logs_df = logs_df[logs_df['member_id'] == member_id] if not logs_df.empty else pd.DataFrame()
         member_achievements_df = achievements_df[achievements_df['member_id'] == member_id] if not achievements_df.empty else pd.DataFrame()
-        
+
         if not member_logs_df.empty:
             for index, log in member_logs_df.iterrows():
                 log_date = log['submission_date_dt']
@@ -170,26 +185,26 @@ def calculate_and_update_stats(user_id: str):
                 log_period = next((p for p in all_data['periods'] if datetime.strptime(p['start_date'], '%Y-%m-%d').date() <= log_date <= datetime.strptime(p['end_date'], '%Y-%m-%d').date()), None)
 
                 if log_period:
-                    if log_period['minutes_per_point_common'] > 0:
+                    if log_period.get('minutes_per_point_common', 0) > 0:
                         member_stats['total_points'] += log['common_book_minutes'] // log_period['minutes_per_point_common']
-                    if log_period['minutes_per_point_other'] > 0:
+                    if log_period.get('minutes_per_point_other', 0) > 0:
                         member_stats['total_points'] += log['other_book_minutes'] // log_period['minutes_per_point_other']
-                    
-                    member_stats['total_points'] += log['submitted_common_quote'] * log_period['quote_common_book_points']
-                    member_stats['total_points'] += log['submitted_other_quote'] * log_period['quote_other_book_points']
+
+                    member_stats['total_points'] += log['submitted_common_quote'] * log_period.get('quote_common_book_points', 0)
+                    member_stats['total_points'] += log['submitted_other_quote'] * log_period.get('quote_other_book_points', 0)
 
         if not member_achievements_df.empty:
             for index, achievement in member_achievements_df.iterrows():
                 period_id = achievement.get('period_id')
                 if period_id in periods_map:
                     achievement_period_rules = periods_map[period_id]
-                    
+
                     if achievement['achievement_type'] == 'FINISHED_COMMON_BOOK':
-                        member_stats['total_points'] += achievement_period_rules['finish_common_book_points']
+                        member_stats['total_points'] += achievement_period_rules.get('finish_common_book_points', 0)
                     elif achievement['achievement_type'] == 'ATTENDED_DISCUSSION':
-                        member_stats['total_points'] += achievement_period_rules['attend_discussion_points']
+                        member_stats['total_points'] += achievement_period_rules.get('attend_discussion_points', 0)
                     elif achievement['achievement_type'] == 'FINISHED_OTHER_BOOK':
-                        member_stats['total_points'] += achievement_period_rules['finish_other_book_points']
+                        member_stats['total_points'] += achievement_period_rules.get('finish_other_book_points', 0)
 
         if not member_logs_df.empty:
             member_stats['total_reading_minutes_common'] = int(member_logs_df['common_book_minutes'].sum())
@@ -205,8 +220,7 @@ def calculate_and_update_stats(user_id: str):
             member_stats['total_common_books_read'] = len(member_achievements_df[member_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'])
             member_stats['total_other_books_read'] = len(member_achievements_df[member_achievements_df['achievement_type'] == 'FINISHED_OTHER_BOOK'])
             member_stats['meetings_attended'] = len(member_achievements_df[member_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION'])
-            
+
         final_member_stats_data.append(member_stats)
-    
-    # تمرير user_id للدالة
+
     db.rebuild_stats_tables(user_id, final_member_stats_data)
