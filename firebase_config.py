@@ -13,9 +13,7 @@ def initialize_firebase_app():
         if not firebase_admin._apps:
             # التحقق مما إذا كنا نعمل على Streamlit Cloud
             if 'firebase_credentials' in st.secrets:
-                # --- الإصلاح النهائي هنا ---
-                # st.secrets يُرجع قاموساً جاهزاً، لذلك نستخدمه مباشرة
-                creds_dict = st.secrets["firebase_credentials"]
+                creds_dict = dict(st.secrets["firebase_credentials"])
                 cred = credentials.Certificate(creds_dict)
             else:
                 # الوضع المحلي يعمل كما هو
