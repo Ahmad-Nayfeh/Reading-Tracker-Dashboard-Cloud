@@ -45,7 +45,7 @@ def authenticate():
         flow = Flow.from_client_config(
             client_config={'web': creds_dict},
             scopes=SCOPES,
-            redirect_uri='https://reading-marathon.streamlit.app' # <-- Important: Change this later
+            redirect_uri='https://reading-marathon.streamlit.app'
         )
     else:
         # Fallback to local file for development
