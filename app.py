@@ -12,9 +12,20 @@ import gspread
 import time
 import locale
 import base64
-
-# Import the new PDF reporter class
 from pdf_reporter import PDFReporter
+
+
+# --- دالة لتسريع سحب البيانات باستخدام الكاش ---
+@st.cache_data
+def load_all_data(user_id):
+    """
+    هذه الدالة تقوم بسحب جميع بيانات المستخدم من قاعدة البيانات.
+    بفضل المزخرف @st.cache_data، سيتم تخزين النتيجة في ذاكرة مؤقتة
+    ولن يتم استدعاء قاعدة البيانات مرة أخرى إلا عند الحاجة.
+    """
+    return db.get_all_data_for_stats(user_id)
+
+
 
 # --- Page Configuration and RTL CSS Injection ---
 st.set_page_config(page_title="ماراثون القراءة", page_icon="📚", layout="wide")
@@ -322,7 +333,7 @@ user_settings = db.get_user_settings(user_id)
 spreadsheet_url = user_settings.get("spreadsheet_url")
 form_url = user_settings.get("form_url")
 
-all_data = db.get_all_data_for_stats(user_id)
+all_data = load_all_data(user_id)
 members_df = pd.DataFrame(all_data.get('members', []))
 periods_df = pd.DataFrame(all_data.get('periods', []))
 
@@ -487,6 +498,7 @@ if not setup_complete:
         st.stop()
 
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
+    load_all_data.clear() # تفريغ الذاكرة المؤقتة قبل سحب البيانات الجديدة
     with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
         update_log = run_data_update(gc, user_id) 
         st.session_state['update_log'] = update_log
