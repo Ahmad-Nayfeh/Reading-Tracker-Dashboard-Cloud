@@ -424,45 +424,35 @@ if not setup_complete:
             st.write("2. انتقل إلى تبويب **\"الردود\" (Responses)**.")
             st.write("3. اضغط على أيقونة **'Link to Sheets'** (أيقونة جدول البيانات الخضراء).")
             st.write("4. اختر **'Select existing spreadsheet'** وقم باختيار جدول البيانات الذي أنشأته للتو بنفس الاسم.")
-            st.write("5. **(خطوة هامة لضمان عمل التواريخ بشكل صحيح)** افتح جدول البيانات، ومن القائمة العلوية اذهب إلى **File > Settings**، ثم غيّر الـ **Locale** إلى **United Kingdom** واضغط **Save settings**. هذا يضمن أن كل التواريخ ستُكتب بصيغة (DD/MM/YYYY).")
+            st.write("5. **(خطوة هامة جداً)** سيتم إنشاء ورقة عمل جديدة. اضغط عليها وقم **بإعادة تسميتها** إلى `Form Responses 1` بالضبط.")
+            st.write("6. **(للتواريخ)** افتح جدول البيانات، ومن القائمة العلوية اذهب إلى **File > Settings**، ثم غيّر الـ **Locale** إلى **United Kingdom** واضغط **Save settings**.")
 
-            if st.button("تحقق من الربط وتابع", type="primary", use_container_width=True):
-                with st.spinner("جاري التحقق من ربط النموذج بجدول البيانات..."):
+            if st.button("تحقق من الإعدادات وتابع", type="primary", use_container_width=True):
+                with st.spinner("جاري التحقق من الإعدادات..."):
                     try:
                         spreadsheet = gc.open_by_url(spreadsheet_url)
                         
-                        # قائمة بأسماء أوراق العمل المحتملة التي سيبحث عنها التطبيق
-                        POSSIBLE_SHEET_NAMES = ["Form Responses 1", "Form responses 1", "ردود النموذج 1"]
+                        # الآن سنتحقق من وجود اسم واحد فقط
+                        worksheet = spreadsheet.worksheet("Form Responses 1")
                         
-                        all_worksheets = spreadsheet.worksheets()
-                        found_sheet = None
-                        for sheet in all_worksheets:
-                            if sheet.title in POSSIBLE_SHEET_NAMES:
-                                found_sheet = sheet
-                                break
+                        st.success("✅ تم التحقق بنجاح! تم العثور على ورقة 'Form Responses 1'.")
+                        
+                        # محاولة تنظيف الصفحة الافتراضية "Sheet1"
+                        try:
+                            default_sheet = spreadsheet.worksheet('Sheet1')
+                            spreadsheet.del_worksheet(default_sheet)
+                            st.info("ℹ️ تم حذف ورقة 'Sheet1' الفارغة بنجاح.")
+                        except gspread.exceptions.WorksheetNotFound:
+                            pass 
+                        
+                        time.sleep(2)
+                        st.rerun()
 
-                        if found_sheet:
-                            st.success(f"✅ تم التحقق بنجاح! تم العثور على ورقة الردود باسم: '{found_sheet.title}'.")
-                            
-                            # محاولة تنظيف الصفحة الافتراضية "Sheet1"
-                            try:
-                                default_sheet = spreadsheet.worksheet('Sheet1')
-                                spreadsheet.del_worksheet(default_sheet)
-                                st.info("ℹ️ تم حذف ورقة 'Sheet1' الفارغة بنجاح.")
-                            except gspread.exceptions.WorksheetNotFound:
-                                pass # الورقة غير موجودة، وهذا جيد
-                            
-                            time.sleep(2)
-                            st.rerun()
-                        else:
-                            # إذا لم يتم العثور على ورقة متوقعة، أظهر خطأ للمستخدم
-                            sheet_titles = [s.title for s in all_worksheets]
-                            st.error(
-                                "❌ فشل التحقق. لم يتم العثور على ورقة ردود بالأسماء المتوقعة. "
-                                f"الأسماء التي وجدناها هي: {', '.join(sheet_titles)}. "
-                                "يرجى التأكد من اسم الورقة التي تم إنشاؤها وتغييره إلى 'Form Responses 1' ثم المحاولة مرة أخرى."
-                            )
-
+                    except gspread.exceptions.WorksheetNotFound:
+                        st.error(
+                            "❌ فشل التحقق. لم نتمكن من العثور على ورقة باسم 'Form Responses 1'. "
+                            "يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط."
+                        )
                     except Exception as e:
                         st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
             st.stop()
@@ -1371,9 +1361,10 @@ elif page == "⚙️ الإدارة والإعدادات":
             with st.spinner("جاري سحب أحدث البيانات من Google Sheet..."):
                 try:
                     spreadsheet = gc.open_by_url(spreadsheet_url)
+                    # البحث عن اسم الورقة المحدد والثابت
                     worksheet = spreadsheet.worksheet("Form Responses 1")
                     sheet_data = worksheet.get_all_records()
-                    
+
                     if not sheet_data:
                         st.warning("جدول البيانات فارغ. لا توجد سجلات لعرضها.")
                         st.stop()
@@ -1408,6 +1399,8 @@ elif page == "⚙️ الإدارة والإعدادات":
                     st.session_state.original_editor_data = df.copy()
                     st.rerun()
 
+                except gspread.exceptions.WorksheetNotFound:
+                    st.error("❌ لم يتم العثور على ورقة 'Form Responses 1'. يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط كما هو مطلوب في خطوات الإعداد.")
                 except Exception as e:
                     st.error(f"حدث خطأ أثناء سحب البيانات من Google Sheet: {e}")
 
