@@ -1,5 +1,5 @@
 import pandas as pd
-from firebase_config import db # استيراد عميل قاعدة البيانات المهيأ
+from firebase_config_old import db # استيراد عميل قاعدة البيانات المهيأ
 
 # --- بنية قاعدة البيانات في Firestore ---
 # users (collection)
