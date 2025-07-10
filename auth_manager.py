@@ -21,31 +21,30 @@ def get_redirect_uri():
     """
     Determines the correct redirect URI based on the execution environment.
     """
-    try:
-        # This is the most reliable way to check for Streamlit Cloud
-        from streamlit.runtime.get_instance import get_instance
-        from streamlit.runtime.scriptrunner.script_run_context import get_script_run_ctx
-        ctx = get_script_run_ctx()
-        is_cloud = 'streamlit.app' in ctx.query_string
-    except (ImportError, AttributeError):
-        # Fallback for older versions or different environments
-        is_cloud = "STREAMLIT_SERVER_ADDRESS" in os.environ
+    # هذه الطريقة أكثر موثوقية للتحقق من بيئة Streamlit Cloud
+    is_cloud = "STREAMLIT_SERVER_ADDRESS" in os.environ
 
     creds_dict = dict(st.secrets["google_oauth_credentials"])
     redirect_uris = creds_dict.get('redirect_uris', [])
 
     if is_cloud:
+        # ابحث عن الرابط الذي يحتوي على 'streamlit.app'
         uri = next((uri for uri in redirect_uris if 'streamlit.app' in uri), None)
-        if uri: return uri
-    
-    # Default to localhost if not on cloud or if cloud URI not found
-    return next((uri for uri in redirect_uris if 'localhost' in uri), redirect_uris[0] if redirect_uris else None)
+        if uri:
+            return uri
+        else:
+            # في حال لم يجد الرابط السحابي في ملف الأسرار لسبب ما
+            st.error("لم يتم العثور على رابط التوجيه (redirect URI) الخاص بالنسخة السحابية في إعداداتك.")
+            st.stop()
+
+    # إذا لم يكن على السحابة، استخدم الرابط المحلي
+    return next((uri for uri in redirect_uris if 'localhost' in uri), None)
 
 
 def authenticate():
     """
-    Handles the complete authentication flow using st.session_state for persistence.
-    This method is robust against page reloads and works on Streamlit Cloud.
+    Handles the complete authentication flow using st.session_state for persistence
+    and requesting a refresh token for long-term access.
     """
     # Check if secrets are configured
     if "google_oauth_credentials" not in st.secrets:
@@ -69,24 +68,8 @@ def authenticate():
     # Check for authorization code in URL
     authorization_code = st.query_params.get("code")
 
-    # If code is in the URL, this is the callback from Google
-    if authorization_code and not st.session_state.get('authed_from_code'):
-        try:
-            flow.fetch_token(code=authorization_code)
-            creds = flow.credentials
-            # Store the credentials as a JSON string in the session state
-            st.session_state.credentials_json = creds.to_json()
-            # A flag to prevent re-authenticating from the same code
-            st.session_state.authed_from_code = True 
-            # Clear the query params and rerun to clean the URL
-            st.query_params.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"فشل في الحصول على التوكن: {e}")
-            st.stop()
-
     # If credentials are in the session state, use them
-    elif 'credentials_json' in st.session_state:
+    if 'credentials_json' in st.session_state:
         creds_info = json.loads(st.session_state.credentials_json)
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
 
@@ -94,11 +77,9 @@ def authenticate():
         if creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
-                # Update the session state with the refreshed credentials
                 st.session_state.credentials_json = creds.to_json()
             except Exception as e:
                 st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
-                # Clear the faulty credentials and rerun
                 del st.session_state.credentials_json
                 st.rerun()
         
@@ -109,18 +90,30 @@ def authenticate():
                 user_info = userinfo_service.userinfo().get().execute()
                 st.session_state.user_id = user_info.get('id')
                 st.session_state.user_email = user_info.get('email')
-                # Create workspace if it's the first time for this user
                 if not db.check_user_exists(st.session_state.user_id):
                     with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
                         db.create_new_user_workspace(st.session_state.user_id, st.session_state.user_email)
             
-            # Store the live credentials object for other functions to use
             st.session_state.credentials = creds
             return creds
 
+    # If code is in the URL, this is the callback from Google
+    elif authorization_code:
+        try:
+            flow.fetch_token(code=authorization_code)
+            creds = flow.credentials
+            st.session_state.credentials_json = creds.to_json()
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"فشل في الحصول على التوكن: {e}")
+            st.stop()
+
     # If no credentials and no code, show the login button
     else:
-        auth_url, _ = flow.authorization_url(prompt='consent')
+        # **CRITICAL CHANGE**: Request offline access to get a refresh token
+        auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
+        
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
         st.info("للبدء، يرجى ربط حسابك في جوجل. سيقوم التطبيق بإنشاء مساحة عمل سحابية خاصة بك لإدارة تحديات القراءة بكل سهولة.")
         st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
@@ -136,3 +129,4 @@ def get_gspread_client(user_id: str, _creds: Credentials):
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
     return gspread.authorize(_creds)
+
