@@ -7,7 +7,7 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
-import socket # Keep this new library for robust detection
+import socket
 
 # The scopes required by the application.
 SCOPES = [
@@ -23,38 +23,48 @@ def get_correct_uri():
     """
     Determines the single correct redirect URI based on the execution environment's hostname.
     """
+    st.warning("--- DEBUG: Executing get_correct_uri() ---")
     try:
         hostname = socket.gethostname()
+        st.warning(f"DEBUG: Detected hostname: {hostname}")
         if 'streamlit' in hostname:
-            # This is the URI for the deployed Streamlit Cloud app.
+            st.warning("DEBUG: 'streamlit' in hostname. Selecting CLOUD URI.")
             return "https://reading-marathon.streamlit.app"
         else:
-            # This is the URI for local development.
+            st.warning("DEBUG: 'streamlit' not in hostname. Selecting LOCAL URI.")
             return "http://localhost:8501"
-    except Exception:
-        # A safe fallback for any unforeseen errors.
+    except Exception as e:
+        st.error(f"Error detecting hostname: {e}")
         return "http://localhost:8501"
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow using the final corrected logic.
+    Handles the complete Google OAuth 2.0 flow by loading a unified configuration
+    and explicitly setting the redirect URI.
     """
+    st.warning("--- DEBUG: Starting authenticate() function ---")
+
     if "google_oauth_credentials" not in st.secrets:
-        st.error("🔑 **خطأ في الإعدادات:** لم يتم العثور على `google_oauth_credentials` في ملف الأسرار.")
+        st.error("Secrets block [google_oauth_credentials] not found!")
         st.stop()
 
+    # Load the unified credentials block.
     client_config_dict = dict(st.secrets["google_oauth_credentials"])
+    st.warning("DEBUG: Loaded [google_oauth_credentials] from secrets.")
     
-    # Determine the correct URI using our robust function.
+    # Determine the correct URI to pass to the Flow object.
     correct_redirect_uri = get_correct_uri()
-    
-    # Create the Flow instance by passing the client config AND the explicit redirect_uri.
-    # This combines the lessons learned from all previous errors.
+    st.warning(f"DEBUG: Determined correct redirect_uri to be passed to Flow: {correct_redirect_uri}")
+
+    # Create the Flow instance, explicitly passing the redirect_uri.
+    # Since the config from secrets no longer contains 'redirect_uris',
+    # the library is forced to use the one we provide here.
     flow = Flow.from_client_config(
         client_config={'web': client_config_dict},
         scopes=SCOPES,
-        redirect_uri=correct_redirect_uri  # This is the correct way
+        redirect_uri=correct_redirect_uri
     )
+    st.warning("DEBUG: Flow object created successfully.")
 
     # --- The rest of the authentication logic remains the same ---
     authorization_code = st.query_params.get("code")
@@ -101,6 +111,7 @@ def authenticate():
         st.info("للبدء، يرجى ربط حسابك في جوجل.")
         st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
         st.stop()
+
 
 @st.cache_resource
 def get_gspread_client(user_id: str, _creds: Credentials):
