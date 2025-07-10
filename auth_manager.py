@@ -7,7 +7,7 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
-import socket # استيراد المكتبة الجديدة
+import socket # We still need this for robust environment detection
 
 # The scopes required by the application.
 SCOPES = [
@@ -19,41 +19,49 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email"
 ]
 
-def get_redirect_uri():
+def get_correct_uri():
     """
-    Determines the correct redirect URI using a more robust method.
+    Determines the single correct redirect URI based on the execution environment.
     """
     try:
-        # Get the hostname of the machine the script is running on.
         hostname = socket.gethostname()
-        # On Streamlit Cloud, the hostname will contain 'streamlit'.
         if 'streamlit' in hostname:
+            # This is the URI for the deployed Streamlit Cloud app.
             return "https://reading-marathon.streamlit.app"
         else:
-            # Otherwise, we assume it's a local environment.
+            # This is the URI for local development.
             return "http://localhost:8501"
     except Exception:
-        # Fallback for any unforeseen errors.
+        # A safe fallback for any unforeseen errors.
         return "http://localhost:8501"
 
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow using the corrected logic.
+    Handles the complete Google OAuth 2.0 flow by dynamically modifying the client configuration.
     """
     if "google_oauth_credentials" not in st.secrets:
         st.error("🔑 **خطأ في الإعدادات:** لم يتم العثور على `google_oauth_credentials` في ملف الأسرار.")
         st.stop()
 
-    creds_dict = dict(st.secrets["google_oauth_credentials"])
-    redirect_uri = get_redirect_uri()
+    # 1. Load the base credentials configuration from Streamlit Secrets.
+    client_config = dict(st.secrets["google_oauth_credentials"])
+    
+    # 2. Determine the single, correct redirect URI for the current environment.
+    correct_redirect_uri = get_correct_uri()
+    
+    # 3. CRITICAL CHANGE: Instead of passing a separate parameter, we modify the configuration
+    #    dictionary that the Flow object will use. This is a more forceful approach.
+    client_config['redirect_uris'] = [correct_redirect_uri]
 
+    # 4. Create the Flow instance using our dynamically modified configuration.
+    #    Note: We do not pass the 'redirect_uri' parameter separately anymore.
     flow = Flow.from_client_config(
-        client_config={'web': creds_dict},
+        client_config={'web': client_config},
         scopes=SCOPES,
-        redirect_uri=redirect_uri
     )
 
+    # --- The rest of the authentication logic remains the same ---
     authorization_code = st.query_params.get("code")
 
     if authorization_code:
@@ -94,9 +102,8 @@ def authenticate():
 
     else:
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
-        
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
-        st.info("للبدء، يرجى ربط حسابك في جوجل. سيقوم التطبيق بإنشاء مساحة عمل سحابية خاصة بك لإدارة تحديات القراءة بكل سهولة.")
+        st.info("للبدء، يرجى ربط حسابك في جوجل.")
         st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
         st.stop()
 
