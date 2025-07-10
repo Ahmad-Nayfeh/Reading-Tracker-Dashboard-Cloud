@@ -13,61 +13,53 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL layout and adds custom styles for the hero cards
+# === CSS محدث لجميع البطاقات والاتجاه ===
 st.markdown("""
     <style>
         /* Main app container */
         .stApp {
             direction: rtl;
         }
-        /* Sidebar */
         [data-testid="stSidebar"] {
             direction: rtl;
         }
-        /* Ensure text alignment is right for various elements */
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
         }
-        /* Fix for radio buttons label alignment */
-        .st-b8 label {
-            text-align: right !important;
-            display: block;
-        }
-        /* Fix for selectbox label alignment */
-        .st-ae label {
+        .st-b8 label, .st-ae label {
             text-align: right !important;
             display: block;
         }
 
         /* === بطاقات KPI الرئيسية (📊 مؤشرات الأداء الرئيسية) === */
         .main-kpi-card {
-            background-color: #ffffff;               /* خلفية نقية */
-            border-left: 5px solid #2980B9;          /* شريط جانبي بلون مميز */
-            border-radius: 8px;                      /* زوايا منحنية */
-            padding: 15px 10px;                      /* حشوة معتدلة */
+            background-color: #ffffff;
+            border-left: 5px solid #2980B9;
+            border-radius: 8px;
+            padding: 15px 10px;
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* ظل خفيف */
+            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
             transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 20px;                     /* مسافة أسفل البطاقة */
+            margin-bottom: 20px;
         }
         .main-kpi-card:hover {
             transform: translateY(-4px);
-            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
+            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
         }
         .main-kpi-card .label {
-            font-size: 1em;                          /* حجم معتدل للعناوين */
+            font-size: 1em;
             font-weight: 600;
             color: #34495E;
             margin-bottom: 5px;
         }
         .main-kpi-card .value {
-            font-size: 2.2em;                        /* قيمة بارزة دون زيادة */
+            font-size: 2.2em;
             font-weight: bold;
             color: #2980B9;
             line-height: 1.1;
         }
 
-        /* === تعديل خفيف على بطاقات “لوحة شرف الأبطال” لتكون أقل بروزاً مقارنةً بـ KPI === */
+        /* === بطاقات “لوحة شرف الأبطال” الأقل بروزاً === */
         .metric-card {
             background-color: #f9f9f9;
             border-radius: 8px;
@@ -75,8 +67,7 @@ st.markdown("""
             text-align: center;
             border: 1px solid #e0e0e0;
             margin-bottom: 10px;
-            height: auto;                            /* ارتفاع ديناميكي */
-            min-height: 110px;                       /* حد أدنى للارتفاع */
+            min-height: 110px;
             display: flex;
             flex-direction: column;
             justify-content: center;
@@ -98,109 +89,86 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-
-
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
 creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
-
 if not creds or not user_id:
     st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
     st.stop()
 # -----------------------------------------
 
-
-# --- Helper function for Dynamic Headline (Overall Dashboard) ---
+# --- دالة توليد العنوان الديناميكي (محدثة) ---
 def generate_headline(logs_df, achievements_df, members_df):
+    # حساب دقائق القراءة الكلية
     if 'common_book_minutes' in logs_df.columns and 'other_book_minutes' in logs_df.columns:
         logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
     else:
-        return "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
+        return "صفحة جديدة في ماراثوننا، الأسبوع الأول فارغة، حان وقت تدوين الإنجازات"
 
     today = date.today()
-    last_7_days_start = today - timedelta(days=6)
-    prev_7_days_start = today - timedelta(days=13)
-    prev_7_days_end = today - timedelta(days=7)
+    last_7_start = today - timedelta(days=6)
+    prev_7_start = today - timedelta(days=13)
+    prev_7_end = today - timedelta(days=7)
 
-    # Ensure 'submission_date_dt' is datetime before comparison
+    # تحويل التواريخ إلى datetime
     logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date_dt'])
-    last_7_days_logs = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_days_start]
-    prev_7_days_logs = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_days_start) & (logs_df['submission_date_dt'].dt.date <= prev_7_days_end)]
-    
-    last_7_total_minutes = last_7_days_logs['total_minutes'].sum()
-    prev_7_total_minutes = prev_7_days_logs['total_minutes'].sum()
+    last_week = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_start]
+    prev_week = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_start) &
+                        (logs_df['submission_date_dt'].dt.date <= prev_7_end)]
 
-    momentum_available = prev_7_total_minutes > 0
-    momentum_positive = None
-    percentage_change = 0
-    if momentum_available:
-        percentage_change = ((last_7_total_minutes - prev_7_total_minutes) / prev_7_total_minutes) * 100
-        momentum_positive = percentage_change >= 0
+    last_total = last_week['total_minutes'].sum()
+    prev_total = prev_week['total_minutes'].sum()
+    momentum_ok = prev_total > 0
+    pct_change = ((last_total - prev_total) / prev_total) * 100 if momentum_ok else 0
 
+    # تحضير أسماء الأبطال الذين أكملوا كتبهم
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date_dt'])
-    recent_achievements = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_days_start]
-    book_finishers = recent_achievements[recent_achievements['achievement_type'].isin(['FINISHED_COMMON_BOOK', 'FINISHED_OTHER_BOOK'])]
-    
-    recent_finishers_names = []
-    if not book_finishers.empty and 'member_id' in book_finishers.columns and not members_df.empty:
-        finisher_ids = book_finishers['member_id'].unique()
-        recent_finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
+    recent = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_start]
+    finished = recent[recent['achievement_type'].isin(['FINISHED_COMMON_BOOK','FINISHED_OTHER_BOOK'])]
 
-    achievement_available = len(recent_finishers_names) > 0
-    
-    highlight_style = "color: #2980b9; font-weight: bold;"
+    names = []
+    if not finished.empty and 'member_id' in finished.columns and not members_df.empty:
+        ids = finished['member_id'].unique()
+        names = members_df[members_df['members_id'].isin(ids)]['name'].tolist()
 
-    momentum_str = ""
-    if momentum_available:
-        if momentum_positive:
-            momentum_str = f"الفريق في أوج حماسه، ارتفع الأداء بنسبة <span style='{highlight_style}'>{percentage_change:.0f}%</span> هذا الأسبوع"
-        else:
-            momentum_str = f"هل أخذ الفريق استراحة محارب، تراجع الأداء بنسبة <span style='{highlight_style}'>{abs(percentage_change):.0f}%</span> هذا الأسبوع"
-    
-    achievement_str = ""
-    if achievement_available:
-        n = len(recent_finishers_names)
-        names = [f"<span style='{highlight_style}'>{name}</span>" for name in recent_finishers_names]
+    hl = "color: #2980b9; font-weight: bold;"
+    parts = []
+
+    # زخم الأداء
+    if momentum_ok:
+        icon = "🚀" if pct_change >= 0 else "⚠️"
+        direction = "تصاعد" if pct_change >= 0 else "تراجع"
+        parts.append(
+            f"{icon} <span style='{hl}'>أداء الفريق</span> {direction} بنسبة "
+            f"<span style='{hl}'>{abs(pct_change):.0f}%</span> هذا الأسبوع"
+        )
+
+    # إنجاز الأبطال
+    if names:
+        n = len(names)
+        highlighted = ", ".join(f"<span style='{hl}'>{name}</span>" for name in names)
         if n == 1:
-            achievement_detail = f"ونهنئ {names[0]} على إنهائه لكتاب خلال السبع أيام الماضية"
+            parts.append(f"📚 نهنئ {highlighted} لإتمام كتابه في 7 أيام")
         elif n == 2:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} على إنهاء كل واحد منهما لكتاب خلال السبع أيام الماضية"
-        elif n == 3:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و {names[2]} على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        elif n == 4:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} وعضوان آخران على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        elif 5 <= n <= 10:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و <span style='{highlight_style}'>{n-2}</span> أعضاء آخرين على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        else: # n >= 11
-            achievement_detail = f"ونحب أن نهنئ أكثر من <span style='{highlight_style}'>{n-1}</span> عضو على إنهائهم لكتاب خلال السبع أيام الماضية"
-        
-        if not momentum_available:
-            achievement_str = f"انطلقت شرارة التحدي، {achievement_detail}"
+            parts.append(f"📚👏 {highlighted} أكملا كتبهم في أسبوع واحد")
         else:
-            achievement_str = achievement_detail
-    
-    if momentum_str and achievement_str:
-        final_text = f"{momentum_str}، {achievement_str}"
-    elif momentum_str:
-        final_text = momentum_str
-    elif achievement_str:
-        final_text = achievement_str
-    else:
-        final_text = "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
+            parts.append(f"🏅 {highlighted} أتموا كتبهم خلال السبعة أيام الماضية")
 
-    return final_text
+    if not parts:
+        return "✨ بداية مشرقة في ماراثون القراءة، انطلقوا!"
 
+    return "<br>".join(parts)
 
-# --- Data Loading ---
+# --- تحميل البيانات ---
 @st.cache_data(ttl=300)
 def load_all_data(user_id):
     all_data = db.get_all_data_for_stats(user_id)
     members_df = pd.DataFrame(all_data.get('members', []))
     periods_df = pd.DataFrame(all_data.get('periods', []))
     logs_df = pd.DataFrame(all_data.get('logs', []))
-    achievements_df = pd.DataFrame(all_data.get('achievements', []))
-    member_stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
-    return members_df, periods_df, logs_df, achievements_df, member_stats_df
+    ach_df = pd.DataFrame(all_data.get('achievements', []))
+    stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
+    return members_df, periods_df, logs_df, ach_df, stats_df
 
 members_df, periods_df, logs_df, achievements_df, member_stats_df = load_all_data(user_id)
 
