@@ -384,7 +384,7 @@ if selected_period_id:
                     finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
                 
                 if not finishers_df.empty:
-                    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], on='member_id', how='left')
+                    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
                     finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'])
                     finishers_df.sort_values('achievement_date_dt', ascending=False, inplace=True)
                     finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
@@ -403,8 +403,8 @@ if selected_period_id:
 
             with race_col2:
                 st.markdown("##### 🏃‍♂️ سباق الصدارة اليومي")
-                period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], on='member_id', how='left')
-                
+                period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+
                 all_days = pd.to_datetime(period_logs_with_names['submission_date_dt'].unique()).sort_values()
                 if not all_days.empty:
                     selected_day = st.select_slider(
