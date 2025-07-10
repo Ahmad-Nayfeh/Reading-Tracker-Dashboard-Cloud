@@ -377,7 +377,10 @@ if selected_period_id:
                 hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
                 fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
                 fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-                fig_hours.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+                fig_hours.update_layout(
+                    yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                    xaxis_autorange='reversed'
+                )
                 st.plotly_chart(fig_hours, use_container_width=True)
 
             with col6:
@@ -385,7 +388,10 @@ if selected_period_id:
                 points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
                 fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
                 fig_points.update_traces(textposition='outside')
-                fig_points.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+                fig_points.update_layout(
+                    yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                    xaxis_autorange='reversed'
+                )
                 st.plotly_chart(fig_points, use_container_width=True)
 
     with tab2:
