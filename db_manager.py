@@ -4,7 +4,7 @@ from firebase_config import db # استيراد عميل قاعدة البيان
 # --- بنية قاعدة البيانات في Firestore ---
 # users (collection)
 #  └── {user_id} (document) - يمثل مساحة عمل كل مشرف
-#      ├── settings (document) - يحتوي على إعدادات المشرف مثل رابط الشيت
+#      ├── settings (document) - يحتوي على إعدادات المشرف مثل رابط الشيت و refresh_token
 #      ├── global_rules (document) - يحتوي على نظام النقاط الافتراضي للمشرف
 #      │
 #      ├── members (subcollection)
@@ -61,7 +61,8 @@ def create_new_user_workspace(user_id: str, user_email: str):
         'spreadsheet_url': '',
         'form_url': '',
         'form_id': '',
-        'member_question_id': ''
+        'member_question_id': '',
+        'refresh_token': None # حقل جديد لحفظ التوكن
     })
     
     # إنشاء مستند نظام النقاط الافتراضي
@@ -276,3 +277,32 @@ def delete_challenge(user_id: str, period_id: str):
             db.collection('users').document(user_id).collection('books').document(book_id).delete()
             
     return True
+
+# --- NEW FUNCTIONS FOR PERSISTENT AUTHENTICATION ---
+
+def save_refresh_token(user_id: str, refresh_token: str):
+    """
+    Saves the user's refresh_token to their settings document in Firestore.
+    """
+    try:
+        settings_ref = db.collection('users').document(user_id).collection('settings').document('config')
+        settings_ref.update({'refresh_token': refresh_token})
+        return True
+    except Exception as e:
+        # In a real app, you'd log this error
+        print(f"Error saving refresh token for user {user_id}: {e}")
+        return False
+
+def get_refresh_token(user_id: str):
+    """
+    Retrieves the user's refresh_token from their settings document in Firestore.
+    """
+    try:
+        settings_ref = db.collection('users').document(user_id).collection('settings').document('config')
+        doc = settings_ref.get()
+        if doc.exists:
+            return doc.to_dict().get('refresh_token')
+        return None
+    except Exception as e:
+        print(f"Error getting refresh token for user {user_id}: {e}")
+        return None
