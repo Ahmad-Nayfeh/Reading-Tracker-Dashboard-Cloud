@@ -18,19 +18,20 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email"
 ]
 
-CREDENTIALS_KEY = 'credentials_json'
+CREDENTIALS_KEY = 'credentials_json_persistent'
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow with robust session persistence
-    by ensuring a refresh_token is always present.
+    A diagnostic-heavy version of the authentication flow.
+    It rigorously checks for the refresh_token and provides clear feedback.
     """
+    st.warning("--- DEBUG: `authenticate()` function has been called. ---")
+
     if "google_oauth_credentials" not in st.secrets:
         st.error("Secrets block [google_oauth_credentials] not found!")
         st.stop()
 
     client_config_dict = dict(st.secrets["google_oauth_credentials"])
-    # This is the URL registered in your Google Cloud Console for the deployed app.
     cloud_redirect_uri = "https://reading-marathon.streamlit.app"
 
     flow = Flow.from_client_config(
@@ -39,91 +40,83 @@ def authenticate():
         redirect_uri=cloud_redirect_uri
     )
 
-    # Check for the authorization code from Google's redirect
     authorization_code = st.query_params.get("code")
 
     # Block A: Handle the redirect from Google with the authorization code.
     if authorization_code:
+        st.warning("--- DEBUG: Block A - Authorization code found in URL. ---")
         try:
-            # Exchange the code for credentials (access_token, refresh_token, etc.)
+            st.warning("--- DEBUG: Fetching token from Google... ---")
             flow.fetch_token(code=authorization_code)
             creds = flow.credentials
             creds_json = creds.to_json()
             creds_info = json.loads(creds_json)
 
-            # --- CRITICAL CHECK ---
-            # Google only provides a refresh_token on the *first* authorization.
-            # If it's missing, the session won't be persistent.
+            # --- CRITICAL DIAGNOSTIC CHECK ---
             if 'refresh_token' not in creds_info:
-                st.warning("⚠️ **إجراء مطلوب:** لم يتم استلام مفتاح التحديث اللازم للجلسة الدائمة.")
-                st.info("هذا يحدث عادةً لأنك منحت الأذونات لهذا التطبيق من قبل. لإصلاح ذلك، يرجى اتباع الخطوات التالية:")
+                st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة (Refresh Token)")
+                st.warning("هذا هو السبب الجذري للمشكلة. يحدث هذا عادةً لأنك منحت الأذونات لهذا التطبيق في الماضي.")
+                st.info("لإصلاح ذلك بشكل نهائي، يرجى اتباع الخطوات التالية بدقة:")
                 st.markdown("""
-                1.  **اذهب إلى [صفحة أذونات حساب جوجل](https://myaccount.google.com/permissions).**
-                2.  ابحث عن تطبيق **"ماراثون القراءة"** في القائمة واضغط عليه.
-                3.  اختر **"Remove Access"** (إزالة الدخول).
-                4.  **عد إلى هنا وقم بتحديث الصفحة** لتسجيل الدخول مرة أخرى.
+                1.  **اذهب إلى صفحة أذونات حساب جوجل عبر هذا الرابط: [https://myaccount.google.com/permissions](https://myaccount.google.com/permissions)**
+                2.  في قائمة "Third-party apps with account access"، ابحث عن تطبيق **"ماراثون القراءة"** واضغط عليه.
+                3.  اختر **"REMOVE ACCESS"** (إزالة الدخول) وقم بالتأكيد.
+                4.  بعد إزالة الوصول، **عد إلى هنا وقم بتحديث هذه الصفحة (F5)** للمحاولة مرة أخرى.
                 """)
                 st.stop()
 
-            # If we have the refresh token, store credentials and proceed.
+            st.warning("--- DEBUG: SUCCESS! Refresh token received. Storing credentials in session state. ---")
             st.session_state[CREDENTIALS_KEY] = creds_json
-            # Clear the now-used authorization code from the URL and rerun the script.
             st.query_params.clear()
+            st.warning("--- DEBUG: Rerunning script after storing credentials. ---")
             st.rerun()
 
         except Exception as e:
-            st.error(f"فشل في الحصول على التوكن: {e}")
+            st.error(f"--- DEBUG: Exception in Block A: {e} ---")
             st.stop()
 
     # Block B: Handle an existing session.
     elif CREDENTIALS_KEY in st.session_state:
+        st.warning(f"--- DEBUG: Block B - Found `{CREDENTIALS_KEY}` in session state. Processing existing session. ---")
         creds_info = json.loads(st.session_state[CREDENTIALS_KEY])
         
-        # This check is a safeguard. If credentials without a refresh token somehow
-        # get stored, this will clear them and force re-authentication.
         if 'refresh_token' not in creds_info:
+            st.warning("--- DEBUG: CRITICAL! Stored credentials are incomplete (missing refresh_token). Clearing session. ---")
             del st.session_state[CREDENTIALS_KEY]
             st.rerun()
 
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
 
-        # If the access token is expired, use the refresh token to get a new one.
         if creds.expired and creds.refresh_token:
+            st.warning("--- DEBUG: Credentials expired. Attempting to refresh... ---")
             try:
                 creds.refresh(Request())
-                # Update the stored credentials with the new access token.
                 st.session_state[CREDENTIALS_KEY] = creds.to_json()
+                st.warning("--- DEBUG: Refresh successful. ---")
             except Exception as e:
-                # If refresh fails, the refresh token might be revoked. Clear session.
-                st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
+                st.warning(f"--- DEBUG: Refresh token failed: {e}. Clearing session. ---")
                 del st.session_state[CREDENTIALS_KEY]
                 st.rerun()
         
-        # If credentials are valid (or have been successfully refreshed), proceed.
         if creds.valid:
-            # Ensure user info is in session state
+            st.warning("--- DEBUG: Credentials are valid. Authentication successful. ---")
             if 'user_id' not in st.session_state:
                 userinfo_service = build('oauth2', 'v2', credentials=creds)
                 user_info = userinfo_service.userinfo().get().execute()
                 st.session_state.user_id = user_info.get('id')
                 st.session_state.user_email = user_info.get('email')
-                
-                # Create a workspace for the user if it's their first time.
                 if not db.check_user_exists(st.session_state.user_id):
                     with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
                         db.create_new_user_workspace(st.session_state.user_id, st.session_state.user_email)
-            
             return creds
         else:
-            # If credentials are not valid for any other reason, clear session.
+            st.warning("--- DEBUG: Credentials are not valid for an unknown reason. Clearing session. ---")
             del st.session_state[CREDENTIALS_KEY]
             st.rerun()
 
     # Block C: No session and no authorization code. Show the login button.
     else:
-        # We request 'offline' access to get a refresh_token.
-        # 'consent' prompt forces the consent screen to appear, which is crucial
-        # for getting a refresh token after a user has revoked access.
+        st.warning("--- DEBUG: Block C - No credentials in session and no auth code in URL. Displaying login button. ---")
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
