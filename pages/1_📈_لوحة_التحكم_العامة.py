@@ -38,6 +38,26 @@ st.markdown("""
             text-align: right !important;
             display: block;
         }
+        /* Custom styles for the main KPI cards */
+        .main-kpi-card {
+            background-color: #FFFFFF;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+        .main-kpi-card .label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #5D6D7E;
+        }
+        .main-kpi-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2980B9;
+            margin: 10px 0;
+        }
         /* Custom styles for the hero metric cards */
         .metric-card {
             background-color: #f9f9f9;
@@ -201,28 +221,53 @@ else:
 st.markdown("---")
 
 
-# --- KPIs Section ---
+# --- Main KPIs Section ---
 st.subheader("📊 مؤشرات الأداء الرئيسية")
-kpi_col1, kpi_col2, kpi_col3, kpi_col4 = st.columns(4)
 
+def display_main_kpi(col, label, value):
+    with col:
+        st.markdown(f"""
+        <div class="main-kpi-card">
+            <div class="label">{label}</div>
+            <div class="value">{value}</div>
+        </div>
+        """, unsafe_allow_html=True)
+
+kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
+kpi_col4, kpi_col5, kpi_col6 = st.columns(3)
+
+# Calculate KPIs
 total_hours = 0
 total_books_finished = 0
 total_quotes = 0
 active_members_count = 0
+total_reading_days = 0
+completed_challenges_count = 0
 
 if not member_stats_df.empty:
     total_minutes = member_stats_df['total_reading_minutes_common'].sum() + member_stats_df['total_reading_minutes_other'].sum()
-    total_hours = int(total_minutes // 60)
-    total_books_finished = member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()
-    total_quotes = member_stats_df['total_quotes_submitted'].sum()
+    total_hours = f"{int(total_minutes // 60):,}"
+    total_books_finished = f"{int(member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()):,}"
+    total_quotes = f"{int(member_stats_df['total_quotes_submitted'].sum()):,}"
 
 if not members_df.empty:
-    active_members_count = len(members_df[members_df['is_active'] == True])
+    active_members_count = f"{len(members_df[members_df['is_active'] == True])}"
 
-kpi_col1.metric("⏳ إجمالي ساعات القراءة", f"{total_hours:,}")
-kpi_col2.metric("📚 إجمالي الكتب المنهَاة", f"{int(total_books_finished):,}")
-kpi_col3.metric("✍️ إجمالي الاقتباسات", f"{int(total_quotes):,}")
-kpi_col4.metric("👥 الأعضاء النشطون", f"{active_members_count}")
+if not logs_df.empty:
+    total_reading_days = f"{logs_df['submission_date_dt'].nunique()}"
+
+if not periods_df.empty:
+    today_date = date.today()
+    periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
+    completed_challenges_count = f"{len(periods_df[periods_df['end_date_dt'] < today_date])}"
+
+# Display KPIs
+display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours)
+display_main_kpi(kpi_col2, "📚 إجمالي الكتب المنهَاة", total_books_finished)
+display_main_kpi(kpi_col3, "✍️ إجمالي الاقتباسات", total_quotes)
+display_main_kpi(kpi_col4, "👥 الأعضاء النشطون", active_members_count)
+display_main_kpi(kpi_col5, "🗓️ إجمالي أيام القراءة", total_reading_days)
+display_main_kpi(kpi_col6, "🏁 التحديات المكتملة", completed_challenges_count)
 st.markdown("---")
 
 
@@ -243,7 +288,6 @@ heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
 
 # Prepare data for calculations
 if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df.columns:
-    # THE FIX IS HERE: Use left_on and right_on for the merge
     logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
 
     # 1. Mastermind (Points)
@@ -271,7 +315,7 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
-    if not daily_sum.empty:
+    if not daily_sum.empty and daily_sum['total_minutes'].max() > 0:
         hero_daily = daily_sum.loc[daily_sum['total_minutes'].idxmax()]
         display_hero(heroes_col2, "⚡ العدّاء السريع", hero_daily['name'], f"{hero_daily['total_minutes'] / 60:.1f} ساعة في يوم")
     else:
@@ -279,7 +323,7 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
 
     # 7. Star of the Week (Best Single Week)
     weekly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
-    if not weekly_sum.empty:
+    if not weekly_sum.empty and weekly_sum['total_minutes'].max() > 0:
         hero_weekly = weekly_sum.loc[weekly_sum['total_minutes'].idxmax()]
         display_hero(heroes_col3, "⭐ نجم الأسبوع", hero_weekly['name'], f"{hero_weekly['total_minutes'] / 60:.1f} ساعة في أسبوع")
     else:
@@ -287,25 +331,37 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
 
     # 8. Giant of the Month (Best Single Month)
     monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
-    if not monthly_sum.empty:
+    if not monthly_sum.empty and monthly_sum['total_minutes'].max() > 0:
         hero_monthly = monthly_sum.loc[monthly_sum['total_minutes'].idxmax()]
         display_hero(heroes_col4, "💪 عملاق الشهر", hero_monthly['name'], f"{hero_monthly['total_minutes'] / 60:.1f} ساعة في شهر")
     else:
         display_hero(heroes_col4, "💪 عملاق الشهر", "لا يوجد", "0 ساعة في شهر")
-
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
-
 st.markdown("---")
 
 
-# --- Charts Section ---
-st.subheader("📈 تحليلات ورسوم بيانية")
+# --- Analytical Charts Section ---
+st.subheader("📈 الرسوم البيانية التحليلية")
 charts_col1, charts_col2 = st.columns(2, gap="large")
 
-fig_rhythm, fig_donut = None, None
+fig_growth, fig_rhythm = None, None
 
 with charts_col1:
+    st.markdown("##### نمو القراءة التراكمي")
+    if not logs_df.empty:
+        daily_minutes = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index(name='minutes')
+        daily_minutes = daily_minutes.sort_values('submission_date_dt')
+        daily_minutes['cumulative_hours'] = daily_minutes['minutes'].cumsum() / 60
+        fig_growth = px.area(daily_minutes, x='submission_date_dt', y='cumulative_hours', 
+                             labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
+                             markers=False, color_discrete_sequence=['#2ECC71'])
+        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'})
+        st.plotly_chart(fig_growth, use_container_width=True)
+    else:
+        st.info("لا توجد بيانات لعرض المخطط.")
+
+with charts_col2:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
     if not logs_df.empty:
         daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index()
@@ -314,7 +370,7 @@ with charts_col1:
         
         fig_rhythm = px.line(daily_team_minutes, x='التاريخ', y='مجموع الساعات',
                              labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
-                             markers=True, color_discrete_sequence=['#2980b9'])
+                             markers=True, color_discrete_sequence=['#3498DB'])
         fig_rhythm.update_layout(
             title='', margin=dict(t=20, b=0, l=0, r=0), 
             yaxis={'side': 'right'},
@@ -324,24 +380,9 @@ with charts_col1:
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
-with charts_col2:
-    st.markdown("##### تركيز القراءة (الكتاب المشترك مقابل الكتب الأخرى)")
-    if not member_stats_df.empty:
-        total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
-        total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
-        if total_common_minutes > 0 or total_other_minutes > 0:
-            donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
-            donut_values = [total_common_minutes, total_other_minutes]
-            colors = ['#3498db', '#f1c40f']
-            fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.5, marker_colors=colors)])
-            fig_donut.update_layout(showlegend=True, legend=dict(x=0.5, y=-0.1, xanchor='center', orientation='h'), margin=dict(t=20, b=20, l=20, r=20), annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=14, showarrow=False)])
-            st.plotly_chart(fig_donut, use_container_width=True)
-        else:
-            st.info("لا توجد بيانات.")
-    else:
-        st.info("لا توجد بيانات.")
-
 st.markdown("---")
+
+
 # --- Leaderboards Section ---
 st.subheader("🏆 قوائم المتصدرين")
 leader_col1, leader_col2 = st.columns(2, gap="large")
@@ -390,13 +431,10 @@ st.markdown("---")
 with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
     st.info("اضغط على الزر أدناه لتصدير تقرير شامل للوحة التحكم العامة.")
     
-    # Note: PDF export logic needs to be updated to include the new heroes and charts.
-    # This is a placeholder for now.
     if st.button("🚀 إنشاء وتصدير تقرير لوحة التحكم", use_container_width=True, type="primary"):
         with st.spinner("جاري إنشاء التقرير..."):
             pdf = PDFReporter()
             
-            # This part needs refactoring to pass the new hero data to the PDF reporter
             champions_data = {}
             if not member_stats_df.empty and 'name' in member_stats_df.columns:
                 king_of_reading = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
@@ -408,35 +446,29 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 champions_data["📚 ملك الكتب"] = king_of_books.get('name', 'N/A')
                 champions_data["✍️ ملك الاقتباسات"] = king_of_quotes.get('name', 'N/A')
 
-            kpis_main = {
+            kpis_main_pdf = {
                 "⏳ إجمالي ساعات القراءة": f"{total_hours:,}",
-                "📚 إجمالي الكتب المنهَاة": f"{int(total_books_finished):,}",
-                "✍️ إجمالي الاقتباسات": f"{int(total_quotes):,}"
+                "📚 إجمالي الكتب المنهَاة": f"{total_books_finished:,}",
+                "✍️ إجمالي الاقتباسات": f"{total_quotes:,}"
             }
-            completed_challenges_count = 0
-            if not periods_df.empty:
-                today_date = date.today()
-                periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
-                completed_challenges_count = len(periods_df[periods_df['end_date_dt'] < today_date])
-            total_reading_days = len(logs_df['submission_date'].unique()) if not logs_df.empty else 0
-            kpis_secondary = {
+            kpis_secondary_pdf = {
                 "👥 الأعضاء النشطون": f"{active_members_count}",
                 "🏁 التحديات المكتملة": f"{completed_challenges_count}",
                 "🗓️ أيام القراءة": f"{total_reading_days}"
             }
             group_stats_for_pdf = {
                 "total": len(members_df),
-                "active": active_members_count,
-                "inactive": len(members_df) - active_members_count,
+                "active": int(active_members_count) if active_members_count else 0,
+                "inactive": len(members_df) - (int(active_members_count) if active_members_count else 0),
             }
 
-            # The old charts are no longer generated, so we pass None for now.
-            # This needs to be updated in the PDF class itself in a future step.
-            fig_growth, fig_bar_days = None, None
-
+            # The old bar_days chart is no longer generated, we can pass None
+            fig_bar_days = None
+            fig_donut = None # Donut chart is also removed from this page now
+            
             dashboard_data = {
-                "kpis_main": kpis_main,
-                "kpis_secondary": kpis_secondary,
+                "kpis_main": kpis_main_pdf,
+                "kpis_secondary": kpis_secondary_pdf,
                 "champions_data": champions_data,
                 "fig_growth": fig_growth, 
                 "fig_donut": fig_donut,
