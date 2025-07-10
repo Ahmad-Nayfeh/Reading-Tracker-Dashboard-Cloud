@@ -408,7 +408,7 @@ if selected_period_id:
                 period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
                 
 
-                all_days = (pd.to_datetime(period_logs_with_names['submission_date_dt']).sort_values().unique())
+                all_days = pd.DatetimeIndex(pd.to_datetime(period_logs_with_names['submission_date_dt'].unique())).sort_values()
                 if not all_days.empty:
                     selected_day = st.select_slider(
                         "اختر يوماً لعرض أبطاله:",
