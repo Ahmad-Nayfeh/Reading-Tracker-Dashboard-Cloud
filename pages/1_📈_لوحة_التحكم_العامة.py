@@ -5,7 +5,7 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
-import auth_manager # <-- استيراد مدير المصادقة
+import auth_manager  # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
@@ -13,78 +13,86 @@ st.set_page_config(
     layout="wide"
 )
 
-# === CSS محدث لجميع البطاقات والاتجاه ===
+# === Enhanced CSS for Unique & Dazzling KPI Cards ===
 st.markdown("""
     <style>
         /* Main app container */
         .stApp {
             direction: rtl;
         }
+        /* Sidebar */
         [data-testid="stSidebar"] {
             direction: rtl;
         }
+        /* Ensure text alignment is right for various elements */
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
         }
+        /* Fix for radio buttons & selectbox */
         .st-b8 label, .st-ae label {
             text-align: right !important;
             display: block;
         }
 
-        /* === بطاقات KPI الرئيسية (📊 مؤشرات الأداء الرئيسية) === */
+        /* === Elegant & Dazzling KPI Cards === */
         .main-kpi-card {
-            background-color: #ffffff;
-            border-left: 5px solid #2980B9;
-            border-radius: 8px;
-            padding: 15px 10px;
+            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
+            border-radius: 12px;
+            padding: 20px;
             text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.08);
-            transition: transform 0.2s ease, box-shadow 0.2s ease;
-            margin-bottom: 20px;
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
+            animation: float 6s ease-in-out infinite;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+            margin-bottom: 25px;
+        }
+        @keyframes float {
+            0% { transform: translateY(0px); }
+            50% { transform: translateY(-5px); }
+            100% { transform: translateY(0px); }
         }
         .main-kpi-card:hover {
-            transform: translateY(-4px);
-            box-shadow: 0 6px 14px rgba(0,0,0,0.12);
+            transform: scale(1.05);
+            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
         }
         .main-kpi-card .label {
-            font-size: 1em;
-            font-weight: 600;
-            color: #34495E;
-            margin-bottom: 5px;
+            font-size: 1.1em;
+            font-weight: 700;
+            color: #ffffff;
+            margin-bottom: 8px;
         }
         .main-kpi-card .value {
-            font-size: 2.2em;
-            font-weight: bold;
-            color: #2980B9;
+            font-size: 2.5em;
+            font-weight: 900;
+            color: #ffffff;
             line-height: 1.1;
         }
 
-        /* === بطاقات “لوحة شرف الأبطال” الأقل بروزاً === */
+        /* === Subtle Hero Metric Cards === */
         .metric-card {
-            background-color: #f9f9f9;
-            border-radius: 8px;
-            padding: 12px;
+            background-color: #f0f4f8;
+            border-radius: 10px;
+            padding: 15px;
             text-align: center;
-            border: 1px solid #e0e0e0;
-            margin-bottom: 10px;
-            min-height: 110px;
+            border: 1px solid #d0d7de;
+            margin-bottom: 15px;
+            min-height: 100px;
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
         .metric-card .label {
-            font-size: 1em;
+            font-size: 0.95em;
             font-weight: 600;
-            color: #566573;
+            color: #2c3e50;
         }
         .metric-card .value {
-            font-size: 1.3em;
-            color: #2C3E50;
-            margin: 4px 0;
+            font-size: 1.4em;
+            color: #1f2c3e;
+            margin: 5px 0;
         }
         .metric-card .sub-value {
-            font-size: 0.9em;
-            color: #7F8C8D;
+            font-size: 0.85em;
+            color: #6c7a89;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -95,7 +103,6 @@ user_id = st.session_state.get('user_id')
 if not creds or not user_id:
     st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
     st.stop()
-# -----------------------------------------
 
 # --- دالة توليد العنوان الديناميكي (محدثة) ---
 def generate_headline(logs_df, achievements_df, members_df):
@@ -110,7 +117,6 @@ def generate_headline(logs_df, achievements_df, members_df):
     prev_7_start = today - timedelta(days=13)
     prev_7_end = today - timedelta(days=7)
 
-    # تحويل التواريخ إلى datetime
     logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date_dt'])
     last_week = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_start]
     prev_week = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_start) &
@@ -121,7 +127,6 @@ def generate_headline(logs_df, achievements_df, members_df):
     momentum_ok = prev_total > 0
     pct_change = ((last_total - prev_total) / prev_total) * 100 if momentum_ok else 0
 
-    # تحضير أسماء الأبطال الذين أكملوا كتبهم
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date_dt'])
     recent = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_start]
     finished = recent[recent['achievement_type'].isin(['FINISHED_COMMON_BOOK','FINISHED_OTHER_BOOK'])]
@@ -134,7 +139,6 @@ def generate_headline(logs_df, achievements_df, members_df):
     hl = "color: #2980b9; font-weight: bold;"
     parts = []
 
-    # زخم الأداء
     if momentum_ok:
         icon = "🚀" if pct_change >= 0 else "⚠️"
         direction = "تصاعد" if pct_change >= 0 else "تراجع"
@@ -143,7 +147,6 @@ def generate_headline(logs_df, achievements_df, members_df):
             f"<span style='{hl}'>{abs(pct_change):.0f}%</span> هذا الأسبوع"
         )
 
-    # إنجاز الأبطال
     if names:
         n = len(names)
         highlighted = ", ".join(f"<span style='{hl}'>{name}</span>" for name in names)
@@ -185,16 +188,39 @@ if not member_stats_df.empty and not members_df.empty:
     member_stats_df = pd.merge(member_stats_df, members_df[['members_id', 'name']], on='members_id', how='left')
 
 
-# --- Page Rendering ---
+# --- عرض الصفحة ---
 st.header("📈 لوحة التحكم العامة")
-
-# --- Dynamic Headline ---
 st.markdown("---")
+
 if not logs_df.empty and not achievements_df.empty and not members_df.empty:
-    headline_html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
-    st.markdown(f"<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>{headline_html}</div>", unsafe_allow_html=True)
+    html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
+    st.markdown(f"""
+        <div style="
+            background: linear-gradient(90deg, #e8f4fd 0%, #ffffff 100%);
+            padding: 20px;
+            border-left: 6px solid #2980B9;
+            border-radius: 12px;
+            font-size: 1.15em;
+            line-height: 1.4;
+            text-align: center;
+        ">
+            {html}
+        </div>
+    """, unsafe_allow_html=True)
 else:
-    st.markdown("<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>انطلق الماراثون! أهلاً بكم</div>", unsafe_allow_html=True)
+    st.markdown(f"""
+        <div style="
+            background: #f9f9f9;
+            padding: 20px;
+            border-radius: 12px;
+            text-align: center;
+            font-size: 1.15em;
+            color: #7f8c8d;
+        ">
+            🌟 انطلق الماراثون! أسطر هذا الأسبوع بإنجازاتك.
+        </div>
+    """, unsafe_allow_html=True)
+
 st.markdown("---")
 
 
