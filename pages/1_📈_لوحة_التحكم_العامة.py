@@ -301,7 +301,12 @@ with col_points:
         fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
                                         text='النقاط', color_discrete_sequence=['#9b59b6'])
         fig_points_leaderboard.update_traces(textposition='outside')
-        fig_points_leaderboard.update_layout(title='', yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed', margin=dict(t=20, b=0, l=0, r=0))
+        fig_points_leaderboard.update_layout(
+            title='', 
+            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+            xaxis_autorange='reversed', 
+            margin=dict(t=20, b=0, l=0, r=0)
+        )
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
@@ -314,7 +319,12 @@ with col_hours:
         fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
                                        text='الساعات', color_discrete_sequence=['#e67e22'])
         fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-        fig_hours_leaderboard.update_layout(title='', yaxis={'side': 'right', 'autorange': 'reversed'}, margin=dict(t=20, b=0, l=0, r=0))
+        fig_hours_leaderboard.update_layout(
+            title='', 
+            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+            xaxis_autorange='reversed', 
+            margin=dict(t=20, b=0, l=0, r=0)
+        )
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
