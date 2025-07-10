@@ -38,57 +38,66 @@ st.markdown("""
             text-align: right !important;
             display: block;
         }
-        /* Custom styles for the main KPI cards */
+
+        /* === بطاقات KPI الرئيسية (📊 مؤشرات الأداء الرئيسية) === */
         .main-kpi-card {
-            background-color: #FFFFFF;
-            border-radius: 10px;
-            padding: 20px;
+            background-color: #ffffff;               /* خلفية نقية */
+            border-left: 5px solid #2980B9;          /* شريط جانبي بلون مميز */
+            border-radius: 8px;                      /* زوايا منحنية */
+            padding: 15px 10px;                      /* حشوة معتدلة */
             text-align: center;
-            border: 1px solid #e6e6e6;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            box-shadow: 0 4px 10px rgba(0, 0, 0, 0.08); /* ظل خفيف */
+            transition: transform 0.2s ease, box-shadow 0.2s ease;
+            margin-bottom: 20px;                     /* مسافة أسفل البطاقة */
+        }
+        .main-kpi-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 6px 14px rgba(0, 0, 0, 0.12);
         }
         .main-kpi-card .label {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #5D6D7E;
+            font-size: 1em;                          /* حجم معتدل للعناوين */
+            font-weight: 600;
+            color: #34495E;
+            margin-bottom: 5px;
         }
         .main-kpi-card .value {
-            font-size: 2.5em;
+            font-size: 2.2em;                        /* قيمة بارزة دون زيادة */
             font-weight: bold;
             color: #2980B9;
-            margin: 10px 0;
+            line-height: 1.1;
         }
-        /* Custom styles for the hero metric cards */
+
+        /* === تعديل خفيف على بطاقات “لوحة شرف الأبطال” لتكون أقل بروزاً مقارنةً بـ KPI === */
         .metric-card {
             background-color: #f9f9f9;
-            border-radius: 10px;
-            padding: 15px;
+            border-radius: 8px;
+            padding: 12px;
             text-align: center;
-            border: 1px solid #e6e6e6;
+            border: 1px solid #e0e0e0;
             margin-bottom: 10px;
-            height: 130px; /* Fixed height for alignment */
+            height: auto;                            /* ارتفاع ديناميكي */
+            min-height: 110px;                       /* حد أدنى للارتفاع */
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
         .metric-card .label {
-            font-size: 1.1em;
-            font-weight: bold;
-            color: #2980b9; /* Accent color for the title */
+            font-size: 1em;
+            font-weight: 600;
+            color: #566573;
         }
         .metric-card .value {
-            font-size: 1.5em;
-            color: #2c3e50; /* Darker color for the name */
-            white-space: nowrap;
-            overflow: hidden;
-            text-overflow: ellipsis;
+            font-size: 1.3em;
+            color: #2C3E50;
+            margin: 4px 0;
         }
         .metric-card .sub-value {
-            font-size: 1.0em;
-            color: #7f8c8d; /* Gray for the number */
+            font-size: 0.9em;
+            color: #7F8C8D;
         }
     </style>
 """, unsafe_allow_html=True)
+
 
 
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
