@@ -242,9 +242,9 @@ def display_hero(col, title, name, value_str):
 heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
 
 # Prepare data for calculations
-if not member_stats_df.empty and not logs_df.empty:
-    # Merge logs with member names for easier lookup
-    logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], on='member_id', how='left')
+if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df.columns:
+    # THE FIX IS HERE: Use left_on and right_on for the merge
+    logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
 
     # 1. Mastermind (Points)
     hero_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
@@ -350,7 +350,7 @@ fig_points_leaderboard, fig_hours_leaderboard = None, None
 
 with leader_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
-    if not member_stats_df.empty:
+    if not member_stats_df.empty and 'name' in member_stats_df.columns:
         points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
         fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
                                         text='النقاط', color_discrete_sequence=['#9b59b6'])
@@ -367,7 +367,7 @@ with leader_col1:
 
 with leader_col2:
     st.markdown("##### ⏳ المتصدرون بالساعات")
-    if not member_stats_df.empty:
+    if not member_stats_df.empty and 'name' in member_stats_df.columns:
         member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
         hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
         hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
@@ -398,7 +398,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
             
             # This part needs refactoring to pass the new hero data to the PDF reporter
             champions_data = {}
-            if not member_stats_df.empty:
+            if not member_stats_df.empty and 'name' in member_stats_df.columns:
                 king_of_reading = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
                 king_of_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
                 king_of_books = member_stats_df.loc[member_stats_df['total_books_read'].idxmax()]
