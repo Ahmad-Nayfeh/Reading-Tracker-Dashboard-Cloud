@@ -48,13 +48,9 @@ st.markdown("""
 # --- Main App Authentication and Setup ---
 creds = auth_manager.authenticate()
 
-# This part will only run after successful authentication.
-# auth_manager is now responsible for populating these session_state keys.
 user_id = st.session_state.get('user_id')
 user_email = st.session_state.get('user_email')
 
-# If authentication fails, auth_manager would have already stopped the app.
-# But as a safeguard:
 if not creds or not user_id:
     st.error("حدث خطأ في المصادقة. يرجى إعادة تحميل الصفحة.")
     st.stop()
@@ -66,6 +62,11 @@ forms_service = build('forms', 'v1', credentials=creds)
 # --- Sidebar ---
 st.sidebar.title("لوحة التحكم")
 st.sidebar.success(f"أهلاً بك! {user_email}")
+
+# Add the logout button
+if st.sidebar.button("🚪 تسجيل الخروج", use_container_width=True):
+    auth_manager.logout()
+
 st.sidebar.divider()
 
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
@@ -80,7 +81,6 @@ if 'update_log' in st.session_state:
     with st.sidebar.expander("عرض تفاصيل سجل التحديث"):
         for message in st.session_state.update_log:
             st.text(message)
-    # Clear the log after displaying it
     del st.session_state['update_log']
 
 
