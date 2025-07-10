@@ -237,37 +237,37 @@ kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
 kpi_col4, kpi_col5, kpi_col6 = st.columns(3)
 
 # Calculate KPIs
-total_hours = 0
-total_books_finished = 0
-total_quotes = 0
-active_members_count = 0
-total_reading_days = 0
-completed_challenges_count = 0
+total_hours_val = 0
+total_books_finished_val = 0
+total_quotes_val = 0
+active_members_count_val = 0
+total_reading_days_val = 0
+completed_challenges_count_val = 0
 
 if not member_stats_df.empty:
     total_minutes = member_stats_df['total_reading_minutes_common'].sum() + member_stats_df['total_reading_minutes_other'].sum()
-    total_hours = f"{int(total_minutes // 60):,}"
-    total_books_finished = f"{int(member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()):,}"
-    total_quotes = f"{int(member_stats_df['total_quotes_submitted'].sum()):,}"
+    total_hours_val = f"{int(total_minutes // 60):,}"
+    total_books_finished_val = f"{int(member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()):,}"
+    total_quotes_val = f"{int(member_stats_df['total_quotes_submitted'].sum()):,}"
 
 if not members_df.empty:
-    active_members_count = f"{len(members_df[members_df['is_active'] == True])}"
+    active_members_count_val = f"{len(members_df[members_df['is_active'] == True])}"
 
 if not logs_df.empty:
-    total_reading_days = f"{logs_df['submission_date_dt'].nunique()}"
+    total_reading_days_val = f"{logs_df['submission_date_dt'].nunique()}"
 
 if not periods_df.empty:
     today_date = date.today()
     periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
-    completed_challenges_count = f"{len(periods_df[periods_df['end_date_dt'] < today_date])}"
+    completed_challenges_count_val = f"{len(periods_df[periods_df['end_date_dt'] < today_date])}"
 
 # Display KPIs
-display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours)
-display_main_kpi(kpi_col2, "📚 إجمالي الكتب المنهَاة", total_books_finished)
-display_main_kpi(kpi_col3, "✍️ إجمالي الاقتباسات", total_quotes)
-display_main_kpi(kpi_col4, "👥 الأعضاء النشطون", active_members_count)
-display_main_kpi(kpi_col5, "🗓️ إجمالي أيام القراءة", total_reading_days)
-display_main_kpi(kpi_col6, "🏁 التحديات المكتملة", completed_challenges_count)
+display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours_val)
+display_main_kpi(kpi_col2, "📚 إجمالي الكتب المنهَاة", total_books_finished_val)
+display_main_kpi(kpi_col3, "✍️ إجمالي الاقتباسات", total_quotes_val)
+display_main_kpi(kpi_col4, "👥 الأعضاء النشطون", active_members_count_val)
+display_main_kpi(kpi_col5, "🗓️ إجمالي أيام القراءة", total_reading_days_val)
+display_main_kpi(kpi_col6, "🏁 التحديات المكتملة", completed_challenges_count_val)
 st.markdown("---")
 
 
@@ -286,32 +286,34 @@ def display_hero(col, title, name, value_str):
 
 heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
 
-# Prepare data for calculations
 if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df.columns:
     logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
 
     # 1. Mastermind (Points)
     hero_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
-    display_hero(heroes_col1, "🧠 العقل المدبّر", hero_points['name'], f"{int(hero_points['total_points'])} نقطة")
+    display_hero(heroes_col1, "🧠 العقل المدبّر", hero_points.get('name', 'N/A'), f"{int(hero_points.get('total_points', 0))} نقطة")
 
     # 2. Lord of the Hours (Total Reading Time)
     member_stats_df['total_reading_minutes'] = member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']
     hero_hours = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
-    display_hero(heroes_col2, "⏳ سيد الساعات", hero_hours['name'], f"{hero_hours['total_reading_minutes'] / 60:.1f} ساعة")
+    display_hero(heroes_col2, "⏳ سيد الساعات", hero_hours.get('name', 'N/A'), f"{hero_hours.get('total_reading_minutes', 0) / 60:.1f} ساعة")
 
     # 3. Bookworm (Total Books)
     member_stats_df['total_books_read'] = member_stats_df['total_common_books_read'] + member_stats_df['total_other_books_read']
     hero_books = member_stats_df.loc[member_stats_df['total_books_read'].idxmax()]
-    display_hero(heroes_col3, "📚 الديدان القارئ", hero_books['name'], f"{int(hero_books['total_books_read'])} كتب")
+    display_hero(heroes_col3, "📚 الديدان القارئ", hero_books.get('name', 'N/A'), f"{int(hero_books.get('total_books_read',0))} كتب")
 
     # 4. Pearl Hunter (Total Quotes)
     hero_quotes = member_stats_df.loc[member_stats_df['total_quotes_submitted'].idxmax()]
-    display_hero(heroes_col4, "💎 صائد الدرر", hero_quotes['name'], f"{int(hero_quotes['total_quotes_submitted'])} اقتباساً")
+    display_hero(heroes_col4, "💎 صائد الدرر", hero_quotes.get('name', 'N/A'), f"{int(hero_quotes.get('total_quotes_submitted',0))} اقتباساً")
 
     # 5. The Long-Hauler (Consistency)
     consistency = logs_with_names.groupby('name')['submission_date_dt'].nunique().reset_index()
-    hero_consistency = consistency.loc[consistency['submission_date_dt'].idxmax()]
-    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", hero_consistency['name'], f"{hero_consistency['submission_date_dt']} يوم قراءة")
+    if not consistency.empty:
+        hero_consistency = consistency.loc[consistency['submission_date_dt'].idxmax()]
+        display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", hero_consistency.get('name', 'N/A'), f"{hero_consistency.get('submission_date_dt', 0)} يوم قراءة")
+    else:
+        display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", "لا يوجد", "0 يوم")
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
@@ -350,10 +352,10 @@ fig_growth, fig_rhythm = None, None
 with charts_col1:
     st.markdown("##### نمو القراءة التراكمي")
     if not logs_df.empty:
-        daily_minutes = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index(name='minutes')
-        daily_minutes = daily_minutes.sort_values('submission_date_dt')
-        daily_minutes['cumulative_hours'] = daily_minutes['minutes'].cumsum() / 60
-        fig_growth = px.area(daily_minutes, x='submission_date_dt', y='cumulative_hours', 
+        daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index(name='minutes')
+        daily_minutes_growth = daily_minutes_growth.sort_values('submission_date_dt')
+        daily_minutes_growth['cumulative_hours'] = daily_minutes_growth['minutes'].cumsum() / 60
+        fig_growth = px.area(daily_minutes_growth, x='submission_date_dt', y='cumulative_hours', 
                              labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
                              markers=False, color_discrete_sequence=['#2ECC71'])
         fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'})
@@ -379,15 +381,14 @@ with charts_col2:
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
-
 st.markdown("---")
 
 
-# --- Leaderboards Section ---
-st.subheader("🏆 قوائم المتصدرين")
-leader_col1, leader_col2 = st.columns(2, gap="large")
+# --- Leaderboards & Focus Section ---
+st.subheader("🏆 قوائم المتصدرين وتركيز القراءة")
+leader_col1, leader_col2, leader_col3 = st.columns([2, 1, 2], gap="large")
 
-fig_points_leaderboard, fig_hours_leaderboard = None, None
+fig_points_leaderboard, fig_donut, fig_hours_leaderboard = None, None, None
 
 with leader_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
@@ -407,6 +408,23 @@ with leader_col1:
         st.info("لا توجد بيانات.")
 
 with leader_col2:
+    st.markdown("##### 🎯 تركيز القراءة")
+    if not member_stats_df.empty:
+        total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
+        total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
+        if total_common_minutes > 0 or total_other_minutes > 0:
+            donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
+            donut_values = [total_common_minutes, total_other_minutes]
+            colors = ['#3498db', '#f1c40f']
+            fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.5, marker_colors=colors)])
+            fig_donut.update_layout(showlegend=True, legend=dict(x=0.5, y=-0.2, xanchor='center', yanchor='bottom', orientation='h'), margin=dict(t=20, b=20, l=20, r=20), annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=14, showarrow=False)])
+            st.plotly_chart(fig_donut, use_container_width=True)
+        else:
+            st.info("لا توجد بيانات.")
+    else:
+        st.info("لا توجد بيانات.")
+
+with leader_col3:
     st.markdown("##### ⏳ المتصدرون بالساعات")
     if not member_stats_df.empty and 'name' in member_stats_df.columns:
         member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
@@ -447,24 +465,20 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 champions_data["✍️ ملك الاقتباسات"] = king_of_quotes.get('name', 'N/A')
 
             kpis_main_pdf = {
-                "⏳ إجمالي ساعات القراءة": f"{total_hours:,}",
-                "📚 إجمالي الكتب المنهَاة": f"{total_books_finished:,}",
-                "✍️ إجمالي الاقتباسات": f"{total_quotes:,}"
+                "⏳ إجمالي ساعات القراءة": total_hours_val,
+                "📚 إجمالي الكتب المنهَاة": total_books_finished_val,
+                "✍️ إجمالي الاقتباسات": total_quotes_val
             }
             kpis_secondary_pdf = {
-                "👥 الأعضاء النشطون": f"{active_members_count}",
-                "🏁 التحديات المكتملة": f"{completed_challenges_count}",
-                "🗓️ أيام القراءة": f"{total_reading_days}"
+                "👥 الأعضاء النشطون": active_members_count_val,
+                "🏁 التحديات المكتملة": completed_challenges_count_val,
+                "🗓️ أيام القراءة": total_reading_days_val
             }
             group_stats_for_pdf = {
                 "total": len(members_df),
-                "active": int(active_members_count) if active_members_count else 0,
-                "inactive": len(members_df) - (int(active_members_count) if active_members_count else 0),
+                "active": int(active_members_count_val) if active_members_count_val else 0,
+                "inactive": len(members_df) - (int(active_members_count_val) if active_members_count_val else 0),
             }
-
-            # The old bar_days chart is no longer generated, we can pass None
-            fig_bar_days = None
-            fig_donut = None # Donut chart is also removed from this page now
             
             dashboard_data = {
                 "kpis_main": kpis_main_pdf,
@@ -472,7 +486,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 "champions_data": champions_data,
                 "fig_growth": fig_growth, 
                 "fig_donut": fig_donut,
-                "fig_bar_days": fig_bar_days,
+                "fig_bar_days": None, # This chart was removed
                 "fig_points_leaderboard": fig_points_leaderboard,
                 "fig_hours_leaderboard": fig_hours_leaderboard,
                 "group_stats": group_stats_for_pdf,
