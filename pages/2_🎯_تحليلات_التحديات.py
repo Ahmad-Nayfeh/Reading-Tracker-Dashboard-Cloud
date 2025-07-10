@@ -386,8 +386,10 @@ if selected_period_id:
                 if not finishers_df.empty:
                     finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
                     finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'])
-                    finishers_df.sort_values('achievement_date_dt', ascending=False, inplace=True)
+
+                    # --- Start of moved code ---
                     finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
+                    finishers_df.sort_values('days_to_finish', ascending=False, inplace=True)
 
                     fig_finish_line = px.bar(finishers_df, 
                                              x='days_to_finish', y='name', 
