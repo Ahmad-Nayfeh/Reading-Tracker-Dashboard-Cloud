@@ -1,5 +1,6 @@
 import streamlit as st
 import db_manager as db
+import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="عن التطبيق",
@@ -36,12 +37,12 @@ st.markdown("""
 """, unsafe_allow_html=True)
 
 
-# --- Check if user is logged in ---
-if 'user_id' not in st.session_state or not st.session_state.user_id:
-    st.error("يرجى تسجيل الدخول أولاً للوصول إلى هذه الصفحة.")
-    st.stop()
+# --- 1. UNIFIED AUTHENTICATION BLOCK ---
+# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
+creds = auth_manager.authenticate()
+user_id = st.session_state.get('user_id')
+# -----------------------------------------
 
-user_id = st.session_state.user_id
 
 st.header("❓ عن التطبيق")
 st.markdown("---")

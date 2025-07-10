@@ -2,7 +2,7 @@ import streamlit as st
 import pandas as pd
 from datetime import date, timedelta, datetime
 import db_manager as db
-import auth_manager
+import auth_manager # <-- استيراد مدير المصادقة
 from main import run_data_update
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
@@ -42,6 +42,13 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
+
+# --- 1. UNIFIED AUTHENTICATION BLOCK ---
+# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
+creds = auth_manager.authenticate()
+user_id = st.session_state.get('user_id')
+# -----------------------------------------
 
 
 # --- Helper function to update Google Form ---
@@ -85,15 +92,8 @@ def update_form_members(forms_service, form_id, question_id, active_member_names
         st.error(f"حدث خطأ غير متوقع أثناء تحديث النموذج: {e}")
         return False
 
-# --- Check if user is logged in ---
-if 'user_id' not in st.session_state or not st.session_state.user_id:
-    st.error("يرجى تسجيل الدخول أولاً للوصول إلى هذه الصفحة.")
-    st.stop()
 
-user_id = st.session_state.user_id
-creds = st.session_state.get('credentials')
-
-# Re-initialize services if needed (though they should be cached)
+# Initialize Google clients once and cache them
 gc = auth_manager.get_gspread_client(user_id, creds)
 forms_service = build('forms', 'v1', credentials=creds)
 

@@ -5,6 +5,7 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
+import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="تحليلات التحديات",
@@ -39,6 +40,13 @@ st.markdown("""
         }
     </style>
 """, unsafe_allow_html=True)
+
+
+# --- 1. UNIFIED AUTHENTICATION BLOCK ---
+# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
+creds = auth_manager.authenticate()
+user_id = st.session_state.get('user_id')
+# -----------------------------------------
 
 
 # --- Helper Functions ---
@@ -169,13 +177,6 @@ def generate_challenge_headline(podium_df, period_achievements_df, members_df, e
     
     style = "background-color: #eaf2f8; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;"
     return f"<div style='{style}'>{final_text}</div>"
-
-# --- Check if user is logged in ---
-if 'user_id' not in st.session_state or not st.session_state.user_id:
-    st.error("يرجى تسجيل الدخول أولاً للوصول إلى هذه الصفحة.")
-    st.stop()
-
-user_id = st.session_state.user_id
 
 # --- Data Loading ---
 @st.cache_data(ttl=300)

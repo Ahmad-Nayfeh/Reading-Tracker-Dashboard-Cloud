@@ -5,12 +5,12 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
+import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
     page_icon="📈"
 )
-
 
 # This CSS snippet enforces RTL layout across the app
 st.markdown("""
@@ -40,6 +40,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+
+# --- 1. UNIFIED AUTHENTICATION BLOCK ---
+# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
+# إنه يضمن أن المصادقة تتم بشكل صحيح في كل مرة يتم فيها تحميل الصفحة.
+creds = auth_manager.authenticate()
+user_id = st.session_state.get('user_id')
+# ستتوقف الدالة أعلاه إذا فشلت المصادقة، لذلك الكود أدناه آمن.
+# -----------------------------------------
 
 
 # --- Helper function for Dynamic Headline (Overall Dashboard) ---
@@ -119,12 +127,6 @@ def generate_headline(logs_df, achievements_df, members_df):
 
     return final_text
 
-# --- Check if user is logged in ---
-if 'user_id' not in st.session_state or not st.session_state.user_id:
-    st.error("يرجى تسجيل الدخول أولاً للوصول إلى هذه الصفحة.")
-    st.stop()
-
-user_id = st.session_state.user_id
 
 # --- Data Loading ---
 @st.cache_data(ttl=300) # Cache data for 5 minutes
