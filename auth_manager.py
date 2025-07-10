@@ -42,9 +42,20 @@ def authenticate():
 
     # Block A: Handle the authorization code from Google
     if authorization_code:
+        st.warning("--- DEBUG (auth_manager.py): Block A - Authorization code found in URL. Fetching token...")
         try:
             flow.fetch_token(code=authorization_code)
-            st.session_state[CREDENTIALS_KEY] = flow.credentials.to_json()
+            creds_json = flow.credentials.to_json()
+            st.session_state[CREDENTIALS_KEY] = creds_json
+            
+            # --- DIAGNOSTIC ---
+            creds_info_for_debug = json.loads(creds_json)
+            if 'refresh_token' in creds_info_for_debug:
+                st.warning("--- DEBUG (auth_manager.py): SUCCESS! Refresh token received and stored.")
+            else:
+                st.warning("--- DEBUG (auth_manager.py): CRITICAL! Refresh token NOT received from Google.")
+            # --- END DIAGNOSTIC ---
+
             st.query_params.clear()
             st.rerun()
         except Exception as e:
@@ -53,30 +64,31 @@ def authenticate():
 
     # Block B: Handle existing credentials in session state
     elif CREDENTIALS_KEY in st.session_state:
+        st.warning("--- DEBUG (auth_manager.py): Block B - Found credentials in session_state. Processing...")
         creds_info = json.loads(st.session_state[CREDENTIALS_KEY])
 
         # --- ROBUST CREDENTIALS HANDLING ---
-        # This is the critical fix. We check for the refresh token BEFORE
-        # trying to create the Credentials object, preventing the crash.
         if 'refresh_token' not in creds_info:
-            # If the refresh token is missing, the stored credentials are not useful
-            # for persistent sessions. We must clear them and force re-authentication.
-            st.warning("جلسة غير مكتملة، يرجى إعادة تسجيل الدخول للحصول على جلسة دائمة.")
+            st.warning("--- DEBUG (auth_manager.py): CRITICAL! No refresh_token in stored credentials. Forcing re-authentication.")
             del st.session_state[CREDENTIALS_KEY]
             st.rerun()
 
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
 
         if creds.expired and creds.refresh_token:
+            st.warning("--- DEBUG (auth_manager.py): Credentials expired. Attempting to refresh...")
             try:
                 creds.refresh(Request())
                 st.session_state[CREDENTIALS_KEY] = creds.to_json()
+                st.warning("--- DEBUG (auth_manager.py): Refresh successful.")
             except Exception as e:
                 st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
+                st.warning(f"--- DEBUG (auth_manager.py): Refresh failed: {e}")
                 del st.session_state[CREDENTIALS_KEY]
                 st.rerun()
         
         if creds.valid:
+            st.warning("--- DEBUG (auth_manager.py): Credentials are valid. Proceeding with app.")
             if 'user_id' not in st.session_state:
                 userinfo_service = build('oauth2', 'v2', credentials=creds)
                 user_info = userinfo_service.userinfo().get().execute()
@@ -89,15 +101,13 @@ def authenticate():
             
             return creds
         else:
-            # This case should be rare now, but it's good practice to handle it.
-            st.error("بيانات الاعتماد غير صالحة. يرجى تسجيل الدخول مرة أخرى.")
+            st.warning("--- DEBUG (auth_manager.py): Credentials are NOT valid. Forcing re-authentication.")
             del st.session_state[CREDENTIALS_KEY]
             st.rerun()
 
     # Block C: Show login button if no code and no credentials
     else:
-        # We use both 'access_type' and 'prompt' to maximize the chance
-        # of getting a refresh token on the first login after revoking access.
+        st.warning("--- DEBUG (auth_manager.py): Block C - No code and no credentials. Displaying login button.")
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
