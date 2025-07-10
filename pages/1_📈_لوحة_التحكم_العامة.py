@@ -13,295 +13,79 @@ st.set_page_config(
     layout="wide"
 )
 
-# Enhanced CSS for stunning professional dashboard
+# This CSS snippet enforces RTL layout and adds custom styles for the hero cards
 st.markdown("""
     <style>
-        /* Import Google Fonts */
-        @import url('https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&display=swap');
-        
         /* Main app container */
         .stApp {
             direction: rtl;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            font-family: 'Inter', sans-serif;
         }
-        
-        /* Main content styling */
-        .main .block-container {
-            padding-top: 2rem;
-            padding-bottom: 2rem;
-            background: rgba(255, 255, 255, 0.02);
-            border-radius: 20px;
-            backdrop-filter: blur(10px);
-            box-shadow: 0 8px 32px rgba(0, 0, 0, 0.1);
-            margin: 1rem;
-        }
-        
         /* Sidebar */
         [data-testid="stSidebar"] {
             direction: rtl;
-            background: linear-gradient(180deg, #1e3c72 0%, #2a5298 100%);
         }
-        
-        /* Header styling */
-        h1, h2, h3, h4, h5, h6 {
-            color: #ffffff !important;
-            font-weight: 600 !important;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.2);
-        }
-        
-        /* Subheader styling */
-        .stSubheader {
-            background: linear-gradient(90deg, #ff6b6b, #4ecdc4);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            font-weight: 700 !important;
-            font-size: 1.8rem !important;
-            margin-bottom: 1.5rem !important;
-        }
-        
-        /* Text alignment */
+        /* Ensure text alignment is right for various elements */
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
         }
-        
-        /* Fix for form controls */
-        .st-b8 label, .st-ae label {
+        /* Fix for radio buttons label alignment */
+        .st-b8 label {
             text-align: right !important;
             display: block;
-            color: #ffffff !important;
         }
-        
-        /* Enhanced main KPI cards */
+        /* Fix for selectbox label alignment */
+        .st-ae label {
+            text-align: right !important;
+            display: block;
+        }
+        /* Custom styles for the main KPI cards */
         .main-kpi-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 20px;
-            padding: 2rem;
+            background-color: #FFFFFF;
+            border-radius: 10px;
+            padding: 20px;
             text-align: center;
-            border: none;
-            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.1);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
         }
-        
-        .main-kpi-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #ff6b6b, #4ecdc4, #45b7d1);
-            border-radius: 20px 20px 0 0;
-        }
-        
-        .main-kpi-card:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 15px 40px rgba(0, 0, 0, 0.15);
-        }
-        
         .main-kpi-card .label {
-            font-size: 1.1rem;
-            font-weight: 500;
-            color: #6c757d;
-            margin-bottom: 0.5rem;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #5D6D7E;
         }
-        
         .main-kpi-card .value {
-            font-size: 2.8rem;
-            font-weight: 700;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            margin: 0.5rem 0;
-            text-shadow: none;
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2980B9;
+            margin: 10px 0;
         }
-        
-        /* Enhanced hero metric cards */
+        /* Custom styles for the hero metric cards */
         .metric-card {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border-radius: 16px;
-            padding: 1.5rem;
+            background-color: #f9f9f9;
+            border-radius: 10px;
+            padding: 15px;
             text-align: center;
-            border: none;
-            margin-bottom: 1rem;
-            height: 140px;
+            border: 1px solid #e6e6e6;
+            margin-bottom: 10px;
+            height: 130px; /* Fixed height for alignment */
             display: flex;
             flex-direction: column;
             justify-content: center;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-            transition: all 0.3s ease;
-            position: relative;
-            overflow: hidden;
         }
-        
-        .metric-card::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 0;
-            right: 0;
-            height: 3px;
-            background: linear-gradient(90deg, #ff9a9e, #fecfef, #fecfef);
-        }
-        
-        .metric-card:hover {
-            transform: translateY(-3px);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.12);
-        }
-        
         .metric-card .label {
-            font-size: 1rem;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 0.5rem;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2980b9; /* Accent color for the title */
         }
-        
         .metric-card .value {
-            font-size: 1.3rem;
-            font-weight: 600;
-            color: #212529;
-            margin-bottom: 0.25rem;
+            font-size: 1.5em;
+            color: #2c3e50; /* Darker color for the name */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
         }
-        
         .metric-card .sub-value {
-            font-size: 0.9rem;
-            color: #6c757d;
-            font-weight: 500;
-        }
-        
-        /* Dynamic headline styling */
-        .dynamic-headline {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            padding: 2rem;
-            border-radius: 16px;
-            text-align: center;
-            font-size: 1.2rem;
-            font-weight: 500;
-            margin: 2rem 0;
-            box-shadow: 0 8px 25px rgba(102, 126, 234, 0.3);
-            border: 1px solid rgba(255, 255, 255, 0.2);
-        }
-        
-        .dynamic-headline span {
-            font-weight: 700;
-            color: #ffd700 !important;
-        }
-        
-        /* Section dividers */
-        .section-divider {
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #ff6b6b, #4ecdc4, transparent);
-            margin: 3rem 0;
-            border-radius: 1px;
-        }
-        
-        /* Chart containers */
-        .chart-container {
-            background: rgba(255, 255, 255, 0.95);
-            padding: 1.5rem;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.08);
-            margin-bottom: 1rem;
-        }
-        
-        .chart-title {
-            font-size: 1.1rem;
-            font-weight: 600;
-            color: #495057;
-            margin-bottom: 1rem;
-            text-align: center;
-        }
-        
-        /* Info messages */
-        .stInfo {
-            background: linear-gradient(135deg, #74b9ff 0%, #0984e3 100%);
-            color: white;
-            border-radius: 12px;
-            border: none;
-        }
-        
-        /* Buttons */
-        .stButton > button {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            padding: 0.75rem 2rem;
-            transition: all 0.3s ease;
-            box-shadow: 0 4px 15px rgba(102, 126, 234, 0.3);
-        }
-        
-        .stButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.4);
-        }
-        
-        /* Expander */
-        .streamlit-expanderHeader {
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            color: white !important;
-            border-radius: 12px;
-            font-weight: 600;
-        }
-        
-        .streamlit-expanderContent {
-            background: rgba(255, 255, 255, 0.95);
-            border-radius: 0 0 12px 12px;
-            box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
-        }
-        
-        /* Spinner */
-        .stSpinner {
-            color: #667eea !important;
-        }
-        
-        /* Download button */
-        .stDownloadButton > button {
-            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
-            color: white;
-            border: none;
-            border-radius: 12px;
-            font-weight: 600;
-            transition: all 0.3s ease;
-        }
-        
-        .stDownloadButton > button:hover {
-            transform: translateY(-2px);
-            box-shadow: 0 6px 20px rgba(0, 184, 148, 0.4);
-        }
-        
-        /* Toast messages */
-        .stToast {
-            background: linear-gradient(135deg, #00b894 0%, #00a085 100%);
-            border-radius: 12px;
-        }
-        
-        /* Responsive design */
-        @media (max-width: 768px) {
-            .main-kpi-card {
-                padding: 1.5rem;
-            }
-            
-            .main-kpi-card .value {
-                font-size: 2.2rem;
-            }
-            
-            .metric-card {
-                height: 120px;
-                padding: 1rem;
-            }
-            
-            .dynamic-headline {
-                font-size: 1rem;
-                padding: 1.5rem;
-            }
+            font-size: 1.0em;
+            color: #7f8c8d; /* Gray for the number */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -355,7 +139,7 @@ def generate_headline(logs_df, achievements_df, members_df):
 
     achievement_available = len(recent_finishers_names) > 0
     
-    highlight_style = "color: #ffd700; font-weight: bold; text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);"
+    highlight_style = "color: #2980b9; font-weight: bold;"
 
     momentum_str = ""
     if momentum_available:
@@ -425,20 +209,20 @@ if not member_stats_df.empty and not members_df.empty:
 
 
 # --- Page Rendering ---
-st.markdown("<h1 style='text-align: center; font-size: 3rem; margin-bottom: 2rem;'>📈 لوحة التحكم العامة</h1>", unsafe_allow_html=True)
+st.header("📈 لوحة التحكم العامة")
 
 # --- Dynamic Headline ---
-st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+st.markdown("---")
 if not logs_df.empty and not achievements_df.empty and not members_df.empty:
     headline_html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
-    st.markdown(f"<div class='dynamic-headline'>{headline_html}</div>", unsafe_allow_html=True)
+    st.markdown(f"<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>{headline_html}</div>", unsafe_allow_html=True)
 else:
-    st.markdown("<div class='dynamic-headline'>انطلق الماراثون! أهلاً بكم</div>", unsafe_allow_html=True)
-st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+    st.markdown("<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>انطلق الماراثون! أهلاً بكم</div>", unsafe_allow_html=True)
+st.markdown("---")
 
 
 # --- Main KPIs Section ---
-st.markdown("<h2 style='text-align: center; margin-bottom: 2rem;'>📊 مؤشرات الأداء الرئيسية</h2>", unsafe_allow_html=True)
+st.subheader("📊 مؤشرات الأداء الرئيسية")
 
 def display_main_kpi(col, label, value):
     with col:
@@ -484,11 +268,11 @@ display_main_kpi(kpi_col3, "✍️ إجمالي الاقتباسات", total_quo
 display_main_kpi(kpi_col4, "👥 الأعضاء النشطون", active_members_count_val)
 display_main_kpi(kpi_col5, "🗓️ إجمالي أيام القراءة", total_reading_days_val)
 display_main_kpi(kpi_col6, "🏁 التحديات المكتملة", completed_challenges_count_val)
-st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+st.markdown("---")
 
 
 # --- Hall of Fame Section ---
-st.markdown("<h2 style='text-align: center; margin-bottom: 2rem;'>🌟 لوحة شرف الأبطال</h2>", unsafe_allow_html=True)
+st.subheader("🌟 لوحة شرف الأبطال")
 
 def display_hero(col, title, name, value_str):
     with col:
@@ -556,7 +340,8 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
         display_hero(heroes_col4, "💪 عملاق الشهر", "لا يوجد", "0 ساعة في شهر")
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
-st.markdown('<div class="section-divider"></div>', unsafe_allow_html=True)
+st.markdown("---")
+
 
 # --- Analytical Charts Section ---
 st.subheader("📈 الرسوم البيانية التحليلية")
