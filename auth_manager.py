@@ -7,7 +7,7 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
-import socket
+# We no longer need the 'socket' library
 
 # The scopes required by the application.
 SCOPES = [
@@ -19,97 +19,102 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email"
 ]
 
-def get_correct_uri():
-    """
-    Determines the single correct redirect URI based on the execution environment's hostname.
-    """
-    st.warning("--- DEBUG: Executing get_correct_uri() ---")
-    try:
-        hostname = socket.gethostname()
-        st.warning(f"DEBUG: Detected hostname: {hostname}")
-        if 'streamlit' in hostname:
-            st.warning("DEBUG: 'streamlit' in hostname. Selecting CLOUD URI.")
-            return "https://reading-marathon.streamlit.app"
-        else:
-            st.warning("DEBUG: 'streamlit' not in hostname. Selecting LOCAL URI.")
-            return "http://localhost:8501"
-    except Exception as e:
-        st.error(f"Error detecting hostname: {e}")
-        return "http://localhost:8501"
-
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow by loading a unified configuration
-    and explicitly setting the redirect URI.
+    Handles the complete Google OAuth 2.0 flow with extensive debugging messages.
+    This version is for diagnostic purposes.
     """
-    st.warning("--- DEBUG: Starting authenticate() function ---")
+    st.warning("--- DEBUG: (1) Starting authenticate() function ---")
 
     if "google_oauth_credentials" not in st.secrets:
         st.error("Secrets block [google_oauth_credentials] not found!")
         st.stop()
 
-    # Load the unified credentials block.
     client_config_dict = dict(st.secrets["google_oauth_credentials"])
-    st.warning("DEBUG: Loaded [google_oauth_credentials] from secrets.")
+    st.warning("DEBUG: (2) Loaded [google_oauth_credentials] from secrets.")
     
-    # Determine the correct URI to pass to the Flow object.
-    correct_redirect_uri = get_correct_uri()
-    st.warning(f"DEBUG: Determined correct redirect_uri to be passed to Flow: {correct_redirect_uri}")
+    # HARDCODED REDIRECT URI FOR THE CLOUD ENVIRONMENT
+    cloud_redirect_uri = "https://reading-marathon.streamlit.app"
+    st.warning(f"DEBUG: (3) Forcing redirect_uri to be: {cloud_redirect_uri}")
 
-    # Create the Flow instance, explicitly passing the redirect_uri.
-    # Since the config from secrets no longer contains 'redirect_uris',
-    # the library is forced to use the one we provide here.
+    # Create the Flow instance
     flow = Flow.from_client_config(
         client_config={'web': client_config_dict},
         scopes=SCOPES,
-        redirect_uri=correct_redirect_uri
+        redirect_uri=cloud_redirect_uri
     )
-    st.warning("DEBUG: Flow object created successfully.")
+    st.warning("DEBUG: (4) Flow object created successfully.")
 
-    # --- The rest of the authentication logic remains the same ---
+    # Check for the authorization code in the URL
     authorization_code = st.query_params.get("code")
+    st.warning(f"DEBUG: (5) Checking for authorization_code in URL. Found: {authorization_code}")
 
+    # --- Authentication Flow Logic ---
+
+    # Block A: Handle the authorization code from Google
     if authorization_code:
+        st.warning("DEBUG: (A.1) `authorization_code` FOUND. Entering Block A.")
         try:
+            st.warning("DEBUG: (A.2) Attempting to fetch token...")
             flow.fetch_token(code=authorization_code)
+            st.warning("DEBUG: (A.3) Token fetched successfully.")
             st.session_state.credentials_json = flow.credentials.to_json()
+            st.warning("DEBUG: (A.4) Credentials saved to session_state.")
             st.query_params.clear()
+            st.warning("DEBUG: (A.5) Query params cleared. About to st.rerun().")
             st.rerun()
         except Exception as e:
             st.error(f"فشل في الحصول على التوكن: {e}")
+            st.warning(f"DEBUG: (A.6) Exception during token fetch: {e}")
             st.stop()
 
+    # Block B: Handle existing credentials in session state
     elif 'credentials_json' in st.session_state:
+        st.warning("DEBUG: (B.1) `credentials_json` FOUND in session_state. Entering Block B.")
         creds_info = json.loads(st.session_state.credentials_json)
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
+        st.warning(f"DEBUG: (B.2) Credentials loaded. Expired? -> {creds.expired}")
 
         if creds.expired and creds.refresh_token:
+            st.warning("DEBUG: (B.3) Credentials expired. Attempting to refresh...")
             try:
                 creds.refresh(Request())
                 st.session_state.credentials_json = creds.to_json()
+                st.warning("DEBUG: (B.4) Credentials refreshed successfully.")
             except Exception as e:
                 st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
+                st.warning(f"DEBUG: (B.5) Exception during refresh: {e}. Deleting creds and rerunning.")
                 del st.session_state.credentials_json
                 st.rerun()
         
+        st.warning(f"DEBUG: (B.6) Checking if credentials are valid. Valid? -> {creds.valid}")
         if creds.valid:
+            st.warning("DEBUG: (B.7) Credentials are valid. Checking for user_id in session_state.")
             if 'user_id' not in st.session_state:
+                st.warning("DEBUG: (B.8) `user_id` NOT FOUND. Fetching user info from Google.")
                 userinfo_service = build('oauth2', 'v2', credentials=creds)
                 user_info = userinfo_service.userinfo().get().execute()
                 st.session_state.user_id = user_info.get('id')
                 st.session_state.user_email = user_info.get('email')
+                st.warning(f"DEBUG: (B.9) User info fetched: {st.session_state.user_email}")
                 
                 if not db.check_user_exists(st.session_state.user_id):
+                    st.warning("DEBUG: (B.10) New user detected. Creating workspace...")
                     with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
                         db.create_new_user_workspace(st.session_state.user_id, st.session_state.user_email)
             
+            st.warning("DEBUG: (B.11) Authentication successful. Returning credentials.")
             return creds
 
+    # Block C: Show login button if no code and no credentials
     else:
+        st.warning("DEBUG: (C.1) No code and no credentials. Entering Block C to show login button.")
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
+        st.warning(f"DEBUG: (C.2) Generated auth_url. It contains redirect_uri: {cloud_redirect_uri}")
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
         st.info("للبدء، يرجى ربط حسابك في جوجل.")
         st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
+        st.warning("DEBUG: (C.3) Login button displayed. About to st.stop().")
         st.stop()
 
 
