@@ -45,6 +45,14 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
+# --- NEW DIAGNOSTIC BLOCK ---
+st.warning("--- DEBUG (app.py): Script has re-run. Checking session state... ---")
+if 'credentials_json' in st.session_state:
+    st.warning("--- DEBUG (app.py): 'credentials_json' FOUND in session_state before calling authenticate().")
+else:
+    st.warning("--- DEBUG (app.py): 'credentials_json' NOT FOUND in session_state before calling authenticate().")
+# --- END OF DIAGNOSTIC BLOCK ---
+
 
 # --- Main App Authentication and Setup ---
 creds = auth_manager.authenticate()
@@ -57,7 +65,7 @@ user_email = st.session_state.get('user_email')
 # But as a safeguard:
 if not user_id:
     st.error("حدث خطأ في المصادقة. يرجى إعادة تحميل الصفحة.")
-    st.stop() # This is one of the few acceptable uses of st.stop()
+    st.stop()
 
 # Initialize Google clients once and cache them
 gc = auth_manager.get_gspread_client(user_id, creds)
@@ -80,6 +88,7 @@ if 'update_log' in st.session_state:
     with st.sidebar.expander("عرض تفاصيل سجل التحديث"):
         for message in st.session_state.update_log:
             st.text(message)
+    # Clear the log after displaying it
     del st.session_state['update_log']
 
 
@@ -97,7 +106,6 @@ setup_complete = (
 )
 
 # --- Main Page Content ---
-# This is the crucial change: using if/else instead of st.stop()
 if not setup_complete:
     # --- SETUP WIZARD ---
     st.title("🚀 مرحباً بك في ماراثون القراءة!")
@@ -130,7 +138,6 @@ if not setup_complete:
         st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
 
         if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
-            # ... (The rest of the form creation code is identical to before)
             with st.spinner("جاري إنشاء جدول البيانات..."):
                 try:
                     spreadsheet = gc.create(st.session_state.sheet_title)
