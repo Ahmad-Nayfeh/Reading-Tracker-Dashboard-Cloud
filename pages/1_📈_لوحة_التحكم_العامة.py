@@ -9,7 +9,8 @@ import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
-    page_icon="📈"
+    page_icon="📈",
+    layout="wide" # Use wide layout for better dashboard display
 )
 
 # This CSS snippet enforces RTL layout across the app
@@ -42,11 +43,15 @@ st.markdown("""
 
 
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
-# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
-# إنه يضمن أن المصادقة تتم بشكل صحيح في كل مرة يتم فيها تحميل الصفحة.
+# This is the new, robust authentication block that will be used on all pages.
 creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
-# ستتوقف الدالة أعلاه إذا فشلت المصادقة، لذلك الكود أدناه آمن.
+
+# If authentication fails, auth_manager would have already stopped the app.
+# But as a safeguard:
+if not creds or not user_id:
+    st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
+    st.stop()
 # -----------------------------------------
 
 
@@ -62,8 +67,9 @@ def generate_headline(logs_df, achievements_df, members_df):
     prev_7_days_start = today - timedelta(days=13)
     prev_7_days_end = today - timedelta(days=7)
 
-    last_7_days_logs = logs_df[logs_df['submission_date_dt'] >= last_7_days_start]
-    prev_7_days_logs = logs_df[(logs_df['submission_date_dt'] >= prev_7_days_start) & (logs_df['submission_date_dt'] <= prev_7_days_end)]
+    logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date_dt'])
+    last_7_days_logs = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_days_start]
+    prev_7_days_logs = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_days_start) & (logs_df['submission_date_dt'].dt.date <= prev_7_days_end)]
     
     last_7_total_minutes = last_7_days_logs['total_minutes'].sum()
     prev_7_total_minutes = prev_7_days_logs['total_minutes'].sum()
@@ -75,7 +81,8 @@ def generate_headline(logs_df, achievements_df, members_df):
         percentage_change = ((last_7_total_minutes - prev_7_total_minutes) / prev_7_total_minutes) * 100
         momentum_positive = percentage_change >= 0
 
-    recent_achievements = achievements_df[achievements_df['achievement_date_dt'] >= last_7_days_start]
+    achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date_dt'])
+    recent_achievements = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_days_start]
     book_finishers = recent_achievements[recent_achievements['achievement_type'].isin(['FINISHED_COMMON_BOOK', 'FINISHED_OTHER_BOOK'])]
     
     recent_finishers_names = []
