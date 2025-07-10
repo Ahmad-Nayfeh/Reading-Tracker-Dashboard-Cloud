@@ -70,6 +70,7 @@
 [![Open App](https://img.shields.io/badge/🔗_افتح_التطبيق-الآن-success?style=for-the-badge)](https://your-app-url.streamlit.app)
 
 </div>
+
 ---
 
 ## 🖥️ صفحات التطبيق
