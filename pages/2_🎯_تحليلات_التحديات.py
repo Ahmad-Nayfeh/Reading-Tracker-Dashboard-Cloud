@@ -199,7 +199,6 @@ members_df, periods_df, logs_df, achievements_df = load_all_data(user_id)
 
 # --- Data Processing ---
 if not logs_df.empty:
-    # THE FIX IS HERE: Ensure the column is a proper datetime object first.
     logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date'], format='%d/%m/%Y', errors='coerce')
     logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
 
@@ -264,7 +263,6 @@ if selected_period_id:
     
     period_logs_df = pd.DataFrame()
     if not logs_df.empty:
-        # This line will now work correctly because submission_date_dt is a proper datetime series
         period_logs_df = logs_df[(logs_df['submission_date_dt'].notna()) & (logs_df['submission_date_dt'].dt.date >= start_date_obj) & (logs_df['submission_date_dt'].dt.date <= end_date_obj)].copy()
     
     period_achievements_df = pd.DataFrame()
@@ -385,9 +383,12 @@ if selected_period_id:
                 
                 if not finishers_df.empty:
                     finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+                    
+                    # --- THE FIX IS HERE ---
+                    # Ensure the date column is a datetime object before calculations
                     finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'])
-
-                    # --- Start of moved code ---
+                    finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
+                    
                     finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
                     finishers_df.sort_values('days_to_finish', ascending=False, inplace=True)
 
@@ -406,7 +407,7 @@ if selected_period_id:
             with race_col2:
                 st.markdown("##### 🏃‍♂️ سباق الصدارة اليومي")
                 period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
-
+                
                 all_days = pd.to_datetime(period_logs_with_names['submission_date_dt'].unique()).sort_values()
                 if not all_days.empty:
                     selected_day = st.select_slider(
@@ -418,7 +419,7 @@ if selected_period_id:
                     daily_leaders = period_logs_with_names[period_logs_with_names['submission_date_dt'].dt.strftime('%Y-%m-%d') == selected_day]
                     daily_summary = daily_leaders.groupby('name')['total_minutes'].sum().sort_values(ascending=False).head(5).reset_index()
 
-                    if not daily_summary.empty:
+                    if not daily_summary.empty and daily_summary['total_minutes'].sum() > 0:
                         fig_daily_race = px.bar(daily_summary.sort_values('total_minutes', ascending=True),
                                                 x='total_minutes', y='name',
                                                 orientation='h',
@@ -496,7 +497,7 @@ if selected_period_id:
                     if not member_achievements.empty:
                         finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
                         if not finish_common_ach.empty:
-                            finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date']).date()
+                            finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date_dt']).date()
                             if (finish_date_dt - start_date_obj).days <= 7: badges_unlocked.append("🏃‍♂️ **وسام العدّاء:** إنهاء الكتاب في الأسبوع الأول.")
                     if not member_logs.empty:
                         log_dates = sorted(member_logs['submission_date_dt'].unique())
