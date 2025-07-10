@@ -45,27 +45,19 @@ st.markdown("""
     </style>
 """, unsafe_allow_html=True)
 
-# --- NEW DIAGNOSTIC BLOCK ---
-st.warning("--- DEBUG (app.py): Script has re-run. Checking session state... ---")
-if 'credentials_json' in st.session_state:
-    st.warning("--- DEBUG (app.py): 'credentials_json' FOUND in session_state before calling authenticate().")
-else:
-    st.warning("--- DEBUG (app.py): 'credentials_json' NOT FOUND in session_state before calling authenticate().")
-# --- END OF DIAGNOSTIC BLOCK ---
-
-
 # --- Main App Authentication and Setup ---
+# Remove debug messages for production
 creds = auth_manager.authenticate()
 
 # This part will only run after successful authentication
-user_id = st.session_state.get('user_id')
-user_email = st.session_state.get('user_email')
+user_info = auth_manager.get_current_user_info()
 
-# If authentication fails, auth_manager would have already stopped the app.
-# But as a safeguard:
-if not user_id:
+if not user_info['authenticated']:
     st.error("حدث خطأ في المصادقة. يرجى إعادة تحميل الصفحة.")
     st.stop()
+
+user_id = user_info['user_id']
+user_email = user_info['user_email']
 
 # Initialize Google clients once and cache them
 gc = auth_manager.get_gspread_client(user_id, creds)
@@ -74,23 +66,33 @@ forms_service = build('forms', 'v1', credentials=creds)
 # --- Sidebar ---
 st.sidebar.title("لوحة التحكم")
 st.sidebar.success(f"أهلاً بك! {user_email}")
+
+# Add logout button to sidebar
+if st.sidebar.button("🚪 تسجيل الخروج", type="secondary", use_container_width=True):
+    auth_manager.logout()
+
 st.sidebar.divider()
 
 if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
     with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
-        update_log = run_data_update(gc, user_id)
-        st.session_state['update_log'] = update_log
-    st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
-
+        try:
+            update_log = run_data_update(gc, user_id)
+            st.session_state['update_log'] = update_log
+            st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
+        except Exception as e:
+            st.error(f"حدث خطأ أثناء المزامنة: {e}")
+            st.toast("فشلت عملية المزامنة!", icon="❌")
 
 if 'update_log' in st.session_state:
     st.sidebar.info("اكتملت عملية المزامنة الأخيرة.")
     with st.sidebar.expander("عرض تفاصيل سجل التحديث"):
         for message in st.session_state.update_log:
             st.text(message)
-    # Clear the log after displaying it
-    del st.session_state['update_log']
-
+    
+    # Add button to clear the log
+    if st.sidebar.button("مسح سجل التحديث", type="secondary"):
+        del st.session_state['update_log']
+        st.rerun()
 
 # --- Check if setup is complete ---
 user_settings = db.get_user_settings(user_id)
@@ -121,11 +123,14 @@ if not setup_complete:
                 names = [name.strip() for name in names_str.split('\n') if name.strip()]
                 if names:
                     with st.spinner("جاري إضافة الأعضاء..."):
-                        db.add_members(user_id, names)
-                    st.success("تمت إضافة الأعضاء بنجاح! سيتم تحديث الصفحة للمتابعة إلى الخطوة التالية.")
-                    st.balloons()
-                    time.sleep(2)
-                    st.rerun()
+                        try:
+                            db.add_members(user_id, names)
+                            st.success("تمت إضافة الأعضاء بنجاح! سيتم تحديث الصفحة للمتابعة إلى الخطوة التالية.")
+                            st.balloons()
+                            time.sleep(2)
+                            st.rerun()
+                        except Exception as e:
+                            st.error(f"حدث خطأ أثناء إضافة الأعضاء: {e}")
                 else:
                     st.error("يرجى إدخال اسم واحد على الأقل.")
 
@@ -133,8 +138,10 @@ if not setup_complete:
     elif not user_settings.get("spreadsheet_url") or not user_settings.get("form_url"):
         st.header("الخطوة 2: إنشاء أدوات جوجل")
         st.info("سيقوم التطبيق الآن بإنشاء جدول بيانات (Google Sheet) ونموذج تسجيل (Google Form) في حسابك.")
+        
         if 'sheet_title' not in st.session_state:
             st.session_state.sheet_title = f"بيانات ماراثون القراءة - {user_email.split('@')[0]}"
+        
         st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
 
         if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
@@ -217,22 +224,34 @@ if not setup_complete:
             st.number_input("سنة النشر", key="pub_year", value=date.today().year, step=1)
             st.date_input("تاريخ بداية التحدي", key="start_date", value=date.today())
             st.date_input("تاريخ نهاية التحدي", key="end_date", value=date.today() + timedelta(days=30))
+            
             if st.form_submit_button("بدء التحدي الأول!", use_container_width=True, type="primary"):
                 if st.session_state.book_title and st.session_state.book_author:
-                    book_info = {'title': st.session_state.book_title, 'author': st.session_state.book_author, 'year': st.session_state.pub_year}
-                    challenge_info = {'start_date': str(st.session_state.start_date), 'end_date': str(st.session_state.end_date)}
-                    default_rules = db.load_user_global_rules(user_id)
-                    if default_rules:
-                        success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
-                        if success:
-                            st.success("🎉 اكتمل الإعداد! تم إنشاء أول تحدي بنجاح.")
-                            st.balloons()
-                            time.sleep(2)
-                            st.rerun()
+                    try:
+                        book_info = {
+                            'title': st.session_state.book_title, 
+                            'author': st.session_state.book_author, 
+                            'year': st.session_state.pub_year
+                        }
+                        challenge_info = {
+                            'start_date': str(st.session_state.start_date), 
+                            'end_date': str(st.session_state.end_date)
+                        }
+                        default_rules = db.load_user_global_rules(user_id)
+                        
+                        if default_rules:
+                            success, message = db.add_book_and_challenge(user_id, book_info, challenge_info, default_rules)
+                            if success:
+                                st.success("🎉 اكتمل الإعداد! تم إنشاء أول تحدي بنجاح.")
+                                st.balloons()
+                                time.sleep(2)
+                                st.rerun()
+                            else:
+                                st.error(f"❌ فشلت العملية: {message}")
                         else:
-                            st.error(f"❌ فشلت العملية: {message}")
-                    else:
-                        st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
+                            st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
+                    except Exception as e:
+                        st.error(f"حدث خطأ أثناء إنشاء التحدي: {e}")
                 else:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
