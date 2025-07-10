@@ -20,10 +20,9 @@ SCOPES = [
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow with persistent sessions.
-    This is the final, production-ready version.
+    Handles the complete Google OAuth 2.0 flow with robust session persistence
+    and error handling for missing refresh tokens. This is the final version.
     """
-    # Use a consistent key for credentials in session state
     CREDENTIALS_KEY = 'credentials_json'
 
     if "google_oauth_credentials" not in st.secrets:
@@ -55,6 +54,17 @@ def authenticate():
     # Block B: Handle existing credentials in session state
     elif CREDENTIALS_KEY in st.session_state:
         creds_info = json.loads(st.session_state[CREDENTIALS_KEY])
+
+        # --- ROBUST CREDENTIALS HANDLING ---
+        # This is the critical fix. We check for the refresh token BEFORE
+        # trying to create the Credentials object, preventing the crash.
+        if 'refresh_token' not in creds_info:
+            # If the refresh token is missing, the stored credentials are not useful
+            # for persistent sessions. We must clear them and force re-authentication.
+            st.warning("جلسة غير مكتملة، يرجى إعادة تسجيل الدخول للحصول على جلسة دائمة.")
+            del st.session_state[CREDENTIALS_KEY]
+            st.rerun()
+
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
 
         if creds.expired and creds.refresh_token:
@@ -62,13 +72,11 @@ def authenticate():
                 creds.refresh(Request())
                 st.session_state[CREDENTIALS_KEY] = creds.to_json()
             except Exception as e:
-                # If refresh fails, clear credentials and force re-login
                 st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
                 del st.session_state[CREDENTIALS_KEY]
                 st.rerun()
         
         if creds.valid:
-            # Populate user info if it's the first time in the session
             if 'user_id' not in st.session_state:
                 userinfo_service = build('oauth2', 'v2', credentials=creds)
                 user_info = userinfo_service.userinfo().get().execute()
@@ -81,16 +89,16 @@ def authenticate():
             
             return creds
         else:
-            # Credentials exist but are invalid and cannot be refreshed.
+            # This case should be rare now, but it's good practice to handle it.
             st.error("بيانات الاعتماد غير صالحة. يرجى تسجيل الدخول مرة أخرى.")
             del st.session_state[CREDENTIALS_KEY]
             st.rerun()
 
-
     # Block C: Show login button if no code and no credentials
     else:
-        # We removed 'prompt='consent'' for a smoother login experience for returning users.
-        auth_url, _ = flow.authorization_url(access_type='offline')
+        # We use both 'access_type' and 'prompt' to maximize the chance
+        # of getting a refresh token on the first login after revoking access.
+        auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
         st.info("للبدء، يرجى ربط حسابك في جوجل.")
