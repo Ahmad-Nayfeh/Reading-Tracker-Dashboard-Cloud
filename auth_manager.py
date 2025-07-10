@@ -6,6 +6,7 @@ from google.auth.transport.requests import Request
 import db_manager as db
 from googleapiclient.discovery import build
 import json
+import time
 
 # --- Configuration ---
 SCOPES = [
@@ -60,25 +61,20 @@ def authenticate():
     and self-healing URL parameters to survive page refreshes and navigation.
     """
     # Priority 1: Check for valid credentials in the current session state.
-    # This handles multi-page navigation without needing to hit the database.
     if SESSION_STATE_KEY in st.session_state:
         creds = Credentials.from_authorized_user_info(json.loads(st.session_state[SESSION_STATE_KEY]))
         if creds.valid:
-            # --- Self-Healing URL Logic ---
-            # Ensure the user_id is always in the query params for F5 survival.
-            if 'user_id' not in st.query_params:
+            if 'user_id' not in st.query_params and 'user_id' in st.session_state:
                 st.query_params['user_id'] = st.session_state.get('user_id')
             return creds
-        # If expired, try to refresh.
         elif creds.expired and creds.refresh_token:
             try:
                 creds.refresh(Request())
                 st.session_state[SESSION_STATE_KEY] = creds.to_json()
-                if 'user_id' not in st.query_params:
+                if 'user_id' not in st.query_params and 'user_id' in st.session_state:
                     st.query_params['user_id'] = st.session_state.get('user_id')
                 return creds
             except Exception:
-                # If refresh fails, clear the session and proceed to other methods.
                 del st.session_state[SESSION_STATE_KEY]
 
     # Priority 2: Handle the redirect from Google's login screen (has `code`).
@@ -138,3 +134,21 @@ def get_gspread_client(user_id: str, _creds: Credentials):
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
     return gspread.authorize(_creds)
+
+def logout():
+    """
+    Clears all session information, logs the user out, and clears URL params.
+    """
+    keys_to_delete = [SESSION_STATE_KEY, 'user_id', 'user_email']
+    for key in keys_to_delete:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+    # Use a loop to clear all query params, especially user_id
+    query_params = st.query_params.to_dict()
+    if query_params:
+        st.query_params.clear()
+
+    st.success("تم تسجيل الخروج بنجاح. جارٍ إعادة التوجيه...")
+    time.sleep(2)
+    st.rerun()
