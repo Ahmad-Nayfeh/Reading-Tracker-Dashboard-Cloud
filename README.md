@@ -65,6 +65,8 @@
 
 التطبيق متاح الآن على الإنترنت! لا حاجة لتثبيت أي شيء.
 
+<div align="center">
+
 [![Open App](https://img.shields.io/badge/🔗_افتح_التطبيق-الآن-success?style=for-the-badge)](https://your-app-url.streamlit.app)
 
 ---
@@ -111,21 +113,12 @@
 ### 🐛 **الإبلاغ عن الأخطاء**
 إذا واجهت أي مشكلة، يرجى [إنشاء issue](https://github.com/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud/issues).
 
-### 💡 **اقتراح تحسينات**
-لديك فكرة لتحسين التطبيق؟ [شاركها معنا](https://github.com/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud/discussions)!
-
 ---
 
 ## 📞 التواصل
 
 [![GitHub](https://img.shields.io/badge/GitHub-Ahmad--Nayfeh-black?style=for-the-badge&logo=github)](https://github.com/Ahmad-Nayfeh)
-[![Email](https://img.shields.io/badge/Email-Contact-red?style=for-the-badge&logo=gmail)](mailto:your-email@example.com)
-
----
-
-## 📄 الترخيص
-
-هذا المشروع مرخص تحت [MIT License](LICENSE).
+[![Email](https://img.shields.io/badge/Email-Contact-red?style=for-the-badge&logo=gmail)](mailto:ahmadnayfeh2000@gmail.com)
 
 ---
 
@@ -133,7 +126,5 @@
 
 **صُنع بـ ❤️ لمحبي القراءة**
 
-[![Stars](https://img.shields.io/github/stars/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud?style=social)](https://github.com/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud/stargazers)
-[![Forks](https://img.shields.io/github/forks/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud?style=social)](https://github.com/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud/network/members)
 
 </div>
