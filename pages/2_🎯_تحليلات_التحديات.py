@@ -199,11 +199,12 @@ members_df, periods_df, logs_df, achievements_df = load_all_data(user_id)
 
 # --- Data Processing ---
 if not logs_df.empty:
-    logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date'], format='%d/%m/%Y', errors='coerce').dt.date
+    # THE FIX IS HERE: Ensure the column is a proper datetime object first.
+    logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date'], format='%d/%m/%Y', errors='coerce')
     logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
 
 if not achievements_df.empty:
-    achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date'], errors='coerce').dt.date
+    achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date'], errors='coerce')
 
 # --- Page Rendering ---
 st.header("🎯 تحليلات التحديات")
@@ -263,6 +264,7 @@ if selected_period_id:
     
     period_logs_df = pd.DataFrame()
     if not logs_df.empty:
+        # This line will now work correctly because submission_date_dt is a proper datetime series
         period_logs_df = logs_df[(logs_df['submission_date_dt'].notna()) & (logs_df['submission_date_dt'].dt.date >= start_date_obj) & (logs_df['submission_date_dt'].dt.date <= end_date_obj)].copy()
     
     period_achievements_df = pd.DataFrame()
@@ -435,25 +437,31 @@ if selected_period_id:
             col5, col6 = st.columns(2, gap="large")
             with col5:
                 st.markdown("##### ⏳ المتصدرون بالساعات")
-                hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
-                fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
-                fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-                fig_hours.update_layout(
-                    yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                    xaxis_autorange='reversed'
-                )
-                st.plotly_chart(fig_hours, use_container_width=True)
+                if not podium_df.empty:
+                    hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
+                    fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
+                    fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+                    fig_hours.update_layout(
+                        yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                        xaxis_autorange='reversed'
+                    )
+                    st.plotly_chart(fig_hours, use_container_width=True)
+                else:
+                    st.info("لا توجد بيانات.")
 
             with col6:
                 st.markdown("##### ⭐ المتصدرون بالنقاط")
-                points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
-                fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
-                fig_points.update_traces(textposition='outside')
-                fig_points.update_layout(
-                    yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                    xaxis_autorange='reversed'
-                )
-                st.plotly_chart(fig_points, use_container_width=True)
+                if not podium_df.empty:
+                    points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
+                    fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
+                    fig_points.update_traces(textposition='outside')
+                    fig_points.update_layout(
+                        yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                        xaxis_autorange='reversed'
+                    )
+                    st.plotly_chart(fig_points, use_container_width=True)
+                else:
+                    st.info("لا توجد بيانات.")
 
     with tab2:
         if podium_df.empty:
@@ -486,8 +494,8 @@ if selected_period_id:
                     if not member_achievements.empty:
                         finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
                         if not finish_common_ach.empty:
-                            finish_date = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date']).date()
-                            if (finish_date - start_date_obj).days <= 7: badges_unlocked.append("🏃‍♂️ **وسام العدّاء:** إنهاء الكتاب في الأسبوع الأول.")
+                            finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date']).date()
+                            if (finish_date_dt - start_date_obj).days <= 7: badges_unlocked.append("🏃‍♂️ **وسام العدّاء:** إنهاء الكتاب في الأسبوع الأول.")
                     if not member_logs.empty:
                         log_dates = sorted(member_logs['submission_date_dt'].unique())
                         if len(log_dates) >= 7:
