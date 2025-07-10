@@ -119,8 +119,12 @@
 
 ## 📞 التواصل
 
+<div align="center">
+
 [![GitHub](https://img.shields.io/badge/GitHub-Ahmad--Nayfeh-black?style=for-the-badge&logo=github)](https://github.com/Ahmad-Nayfeh)
 [![Email](https://img.shields.io/badge/Email-Contact-red?style=for-the-badge&logo=gmail)](mailto:ahmadnayfeh2000@gmail.com)
+
+</div>
 
 ---
 
