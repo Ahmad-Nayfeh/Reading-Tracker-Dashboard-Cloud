@@ -5,10 +5,9 @@ from google_auth_oauthlib.flow import Flow
 from google.auth.transport.requests import Request
 import db_manager as db
 from googleapiclient.discovery import build
-import os
 import json
 
-# The scopes required by the application.
+# --- Configuration ---
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
     "https://www.googleapis.com/auth/drive.file",
@@ -17,116 +16,125 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.profile",
     "https://www.googleapis.com/auth/userinfo.email"
 ]
+SESSION_STATE_KEY = 'google_credentials'
 
-CREDENTIALS_KEY = 'credentials_json_persistent'
+def _get_flow():
+    """Creates and returns a Google OAuth Flow object."""
+    client_config_dict = dict(st.secrets["google_oauth_credentials"])
+    return Flow.from_client_config(
+        client_config={'web': client_config_dict},
+        scopes=SCOPES,
+        redirect_uri="https://reading-marathon.streamlit.app"
+    )
+
+def _rebuild_credentials_from_db(user_id):
+    """
+    Attempts to rebuild a valid credential object using the refresh token
+    stored in Firestore. This is the core of the F5-proof logic.
+    """
+    st.warning("--- DEBUG: Attempting to restore session from DB... ---")
+    refresh_token = db.get_refresh_token(user_id)
+
+    if not refresh_token:
+        st.warning("--- DEBUG: No refresh token found in DB for this user. ---")
+        return None
+
+    st.warning("--- DEBUG: Refresh token found in DB. Attempting to refresh... ---")
+    client_config = dict(st.secrets["google_oauth_credentials"])
+    try:
+        creds = Credentials(
+            token=None,  # No access token yet
+            refresh_token=refresh_token,
+            token_uri='https://oauth2.googleapis.com/token',
+            client_id=client_config.get("client_id"),
+            client_secret=client_config.get("client_secret"),
+            scopes=SCOPES
+        )
+        creds.refresh(Request())
+        st.warning("--- DEBUG: DB session restore successful! ---")
+        return creds
+    except Exception as e:
+        st.warning(f"--- DEBUG: Failed to refresh token from DB: {e} ---")
+        # This could mean the user revoked access. The token is now invalid.
+        return None
 
 def authenticate():
     """
-    A diagnostic-heavy version of the authentication flow.
-    It rigorously checks for the refresh_token and provides clear feedback.
+    Handles the complete Google OAuth 2.0 flow with Firestore-backed persistence.
     """
-    st.warning("--- DEBUG: `authenticate()` function has been called. ---")
+    st.warning("--- DEBUG: `authenticate()` called. ---")
 
-    if "google_oauth_credentials" not in st.secrets:
-        st.error("Secrets block [google_oauth_credentials] not found!")
-        st.stop()
-
-    client_config_dict = dict(st.secrets["google_oauth_credentials"])
-    cloud_redirect_uri = "https://reading-marathon.streamlit.app"
-
-    flow = Flow.from_client_config(
-        client_config={'web': client_config_dict},
-        scopes=SCOPES,
-        redirect_uri=cloud_redirect_uri
-    )
-
-    authorization_code = st.query_params.get("code")
-
-    # Block A: Handle the redirect from Google with the authorization code.
-    if authorization_code:
-        st.warning("--- DEBUG: Block A - Authorization code found in URL. ---")
-        try:
-            st.warning("--- DEBUG: Fetching token from Google... ---")
-            flow.fetch_token(code=authorization_code)
-            creds = flow.credentials
-            creds_json = creds.to_json()
-            creds_info = json.loads(creds_json)
-
-            # --- CRITICAL DIAGNOSTIC CHECK ---
-            if 'refresh_token' not in creds_info:
-                st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة (Refresh Token)")
-                st.warning("هذا هو السبب الجذري للمشكلة. يحدث هذا عادةً لأنك منحت الأذونات لهذا التطبيق في الماضي.")
-                st.info("لإصلاح ذلك بشكل نهائي، يرجى اتباع الخطوات التالية بدقة:")
-                st.markdown("""
-                1.  **اذهب إلى صفحة أذونات حساب جوجل عبر هذا الرابط: [https://myaccount.google.com/permissions](https://myaccount.google.com/permissions)**
-                2.  في قائمة "Third-party apps with account access"، ابحث عن تطبيق **"ماراثون القراءة"** واضغط عليه.
-                3.  اختر **"REMOVE ACCESS"** (إزالة الدخول) وقم بالتأكيد.
-                4.  بعد إزالة الوصول، **عد إلى هنا وقم بتحديث هذه الصفحة (F5)** للمحاولة مرة أخرى.
-                """)
-                st.stop()
-
-            st.warning("--- DEBUG: SUCCESS! Refresh token received. Storing credentials in session state. ---")
-            st.session_state[CREDENTIALS_KEY] = creds_json
-            st.query_params.clear()
-            st.warning("--- DEBUG: Rerunning script after storing credentials. ---")
-            st.rerun()
-
-        except Exception as e:
-            st.error(f"--- DEBUG: Exception in Block A: {e} ---")
-            st.stop()
-
-    # Block B: Handle an existing session.
-    elif CREDENTIALS_KEY in st.session_state:
-        st.warning(f"--- DEBUG: Block B - Found `{CREDENTIALS_KEY}` in session state. Processing existing session. ---")
-        creds_info = json.loads(st.session_state[CREDENTIALS_KEY])
-        
-        if 'refresh_token' not in creds_info:
-            st.warning("--- DEBUG: CRITICAL! Stored credentials are incomplete (missing refresh_token). Clearing session. ---")
-            del st.session_state[CREDENTIALS_KEY]
-            st.rerun()
-
-        creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
-
-        if creds.expired and creds.refresh_token:
-            st.warning("--- DEBUG: Credentials expired. Attempting to refresh... ---")
-            try:
-                creds.refresh(Request())
-                st.session_state[CREDENTIALS_KEY] = creds.to_json()
-                st.warning("--- DEBUG: Refresh successful. ---")
-            except Exception as e:
-                st.warning(f"--- DEBUG: Refresh token failed: {e}. Clearing session. ---")
-                del st.session_state[CREDENTIALS_KEY]
-                st.rerun()
-        
+    # Priority 1: Check for a valid session in st.session_state (for multi-page navigation)
+    if SESSION_STATE_KEY in st.session_state:
+        creds = Credentials.from_authorized_user_info(json.loads(st.session_state[SESSION_STATE_KEY]))
         if creds.valid:
-            st.warning("--- DEBUG: Credentials are valid. Authentication successful. ---")
-            if 'user_id' not in st.session_state:
-                userinfo_service = build('oauth2', 'v2', credentials=creds)
-                user_info = userinfo_service.userinfo().get().execute()
-                st.session_state.user_id = user_info.get('id')
-                st.session_state.user_email = user_info.get('email')
-                if not db.check_user_exists(st.session_state.user_id):
-                    with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
-                        db.create_new_user_workspace(st.session_state.user_id, st.session_state.user_email)
+            st.warning("--- DEBUG: Found valid credentials in st.session_state. ---")
             return creds
-        else:
-            st.warning("--- DEBUG: Credentials are not valid for an unknown reason. Clearing session. ---")
-            del st.session_state[CREDENTIALS_KEY]
+        elif creds.expired and creds.refresh_token:
+            st.warning("--- DEBUG: Credentials in session expired. Refreshing... ---")
+            creds.refresh(Request())
+            st.session_state[SESSION_STATE_KEY] = creds.to_json()
+            return creds
+
+    # Priority 2: Handle the redirect from Google's login screen
+    authorization_code = st.query_params.get("code")
+    if authorization_code:
+        st.warning("--- DEBUG: Auth code found in URL. ---")
+        flow = _get_flow()
+        flow.fetch_token(code=authorization_code)
+        creds = flow.credentials
+
+        if not creds.refresh_token:
+            st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة (Refresh Token)")
+            st.info("لإصلاح ذلك، يرجى إلغاء وصول التطبيق من إعدادات حسابك في جوجل ثم المحاولة مرة أخرى.")
+            st.markdown("[رابط صفحة أذونات حساب جوجل](https://myaccount.google.com/permissions)")
+            st.stop()
+        
+        st.warning("--- DEBUG: Refresh token received successfully! ---")
+        userinfo_service = build('oauth2', 'v2', credentials=creds)
+        user_info = userinfo_service.userinfo().get().execute()
+        user_id = user_info.get('id')
+        user_email = user_info.get('email')
+
+        if not db.check_user_exists(user_id):
+            db.create_new_user_workspace(user_id, user_email)
+        
+        st.warning("--- DEBUG: Saving refresh token to Firestore... ---")
+        db.save_refresh_token(user_id, creds.refresh_token)
+
+        st.session_state.user_id = user_id
+        st.session_state.user_email = user_email
+        st.session_state[SESSION_STATE_KEY] = creds.to_json()
+        
+        st.query_params.clear()
+        st.query_params['user_id'] = user_id # Add user_id to URL for F5 recovery
+        st.rerun()
+
+    # Priority 3: Handle F5 refresh by checking for user_id in URL
+    user_id_from_params = st.query_params.get("user_id")
+    if user_id_from_params:
+        st.warning(f"--- DEBUG: Found user_id '{user_id_from_params}' in URL. Attempting DB restore. ---")
+        creds = _rebuild_credentials_from_db(user_id_from_params)
+        if creds and creds.valid:
+            userinfo_service = build('oauth2', 'v2', credentials=creds)
+            user_info = userinfo_service.userinfo().get().execute()
+            st.session_state.user_id = user_info.get('id')
+            st.session_state.user_email = user_info.get('email')
+            st.session_state[SESSION_STATE_KEY] = creds.to_json()
             st.rerun()
 
-    # Block C: No session and no authorization code. Show the login button.
-    else:
-        st.warning("--- DEBUG: Block C - No credentials in session and no auth code in URL. Displaying login button. ---")
-        auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
-        
-        st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
-        st.info("للبدء، يرجى ربط حسابك في جوجل.")
-        st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
-        st.stop()
+    # Priority 4: If all else fails, show the login button
+    st.warning("--- DEBUG: No valid session found. Displaying login button. ---")
+    flow = _get_flow()
+    auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
+    st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
+    st.info("للبدء، يرجى ربط حسابك في جوجل.")
+    st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
+    st.stop()
+
 
 @st.cache_resource
 def get_gspread_client(user_id: str, _creds: Credentials):
-    """Create and cache gspread client."""
     if not _creds or not _creds.valid:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
