@@ -41,10 +41,10 @@ def get_redirect_uri():
     return next((uri for uri in redirect_uris if 'localhost' in uri), None)
 
 
+# The updated authenticate function
 def authenticate():
     """
-    Handles the complete authentication flow using st.session_state for persistence
-    and requesting a refresh token for long-term access.
+    Handles the complete authentication flow using st.session_state for persistence.
     """
     # Check if secrets are configured
     if "google_oauth_credentials" not in st.secrets:
@@ -68,8 +68,22 @@ def authenticate():
     # Check for authorization code in URL
     authorization_code = st.query_params.get("code")
 
-    # If credentials are in the session state, use them
-    if 'credentials_json' in st.session_state:
+    # This is the correct logical order:
+    # 1. Handle the authorization code from Google first.
+    if authorization_code:
+        try:
+            flow.fetch_token(code=authorization_code)
+            creds = flow.credentials
+            st.session_state.credentials_json = creds.to_json()
+            # Clear the query params from the URL and rerun the script.
+            st.query_params.clear()
+            st.rerun()
+        except Exception as e:
+            st.error(f"فشل في الحصول على التوكن: {e}")
+            st.stop()
+
+    # 2. If no code, check if credentials are in the session state.
+    elif 'credentials_json' in st.session_state:
         creds_info = json.loads(st.session_state.credentials_json)
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
 
@@ -97,21 +111,8 @@ def authenticate():
             st.session_state.credentials = creds
             return creds
 
-    # If code is in the URL, this is the callback from Google
-    elif authorization_code:
-        try:
-            flow.fetch_token(code=authorization_code)
-            creds = flow.credentials
-            st.session_state.credentials_json = creds.to_json()
-            st.query_params.clear()
-            st.rerun()
-        except Exception as e:
-            st.error(f"فشل في الحصول على التوكن: {e}")
-            st.stop()
-
-    # If no credentials and no code, show the login button
+    # 3. If no code and no credentials, show the login button.
     else:
-        # **CRITICAL CHANGE**: Request offline access to get a refresh token
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
