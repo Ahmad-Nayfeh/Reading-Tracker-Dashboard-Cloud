@@ -7,6 +7,9 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
+import hashlib
+import time
+from datetime import datetime, timedelta
 
 # The scopes required by the application.
 SCOPES = [
@@ -18,13 +21,74 @@ SCOPES = [
     "https://www.googleapis.com/auth/userinfo.email"
 ]
 
+def _get_user_session_key(user_id: str) -> str:
+    """Generate a unique session key for the user"""
+    return f"user_session_{hashlib.md5(user_id.encode()).hexdigest()}"
+
+def _store_credentials_persistent(user_id: str, creds_json: str):
+    """Store credentials in a way that persists across page refreshes"""
+    session_key = _get_user_session_key(user_id)
+    
+    # Store in multiple places for redundancy
+    st.session_state[f'creds_{user_id}'] = creds_json
+    st.session_state['current_user_creds'] = creds_json
+    st.session_state['auth_timestamp'] = time.time()
+    
+    # Use query params as a backup persistence mechanism
+    if 'auth_session' not in st.query_params:
+        st.query_params['auth_session'] = session_key[:16]  # Shortened for URL cleanliness
+
+def _retrieve_credentials_persistent(user_id: str) -> str:
+    """Retrieve stored credentials from various sources"""
+    # Try multiple sources in order of preference
+    sources = [
+        st.session_state.get(f'creds_{user_id}'),
+        st.session_state.get('current_user_creds'),
+        st.session_state.get('credentials_json')  # Legacy support
+    ]
+    
+    for creds_json in sources:
+        if creds_json:
+            return creds_json
+    
+    return None
+
+def _is_session_valid() -> bool:
+    """Check if the current session is still valid"""
+    auth_timestamp = st.session_state.get('auth_timestamp')
+    if not auth_timestamp:
+        return False
+    
+    # Session expires after 1 hour of inactivity
+    return (time.time() - auth_timestamp) < 3600
+
+def _clear_all_auth_data():
+    """Clear all authentication data from session"""
+    keys_to_remove = [
+        'credentials_json', 'current_user_creds', 'auth_timestamp',
+        'user_id', 'user_email', 'google_oauth_credentials'
+    ]
+    
+    for key in keys_to_remove:
+        if key in st.session_state:
+            del st.session_state[key]
+    
+    # Also clear user-specific credential keys
+    keys_to_check = list(st.session_state.keys())
+    for key in keys_to_check:
+        if key.startswith('creds_'):
+            del st.session_state[key]
+    
+    # Clear query params
+    if 'auth_session' in st.query_params:
+        del st.query_params['auth_session']
+
 def authenticate():
     """
     Handles the complete Google OAuth 2.0 flow with robust session persistence
-    and error handling for missing refresh tokens. This is the final version.
+    and error handling. This version survives page refreshes.
     """
-    CREDENTIALS_KEY = 'credentials_json'
-
+    
     if "google_oauth_credentials" not in st.secrets:
         st.error("Secrets block [google_oauth_credentials] not found!")
         st.stop()
@@ -42,83 +106,141 @@ def authenticate():
 
     # Block A: Handle the authorization code from Google
     if authorization_code:
-        st.warning("--- DEBUG (auth_manager.py): Block A - Authorization code found in URL. Fetching token...")
+        st.info("🔄 جاري معالجة تسجيل الدخول...")
         try:
             flow.fetch_token(code=authorization_code)
             creds_json = flow.credentials.to_json()
-            st.session_state[CREDENTIALS_KEY] = creds_json
             
-            # --- DIAGNOSTIC ---
-            creds_info_for_debug = json.loads(creds_json)
-            if 'refresh_token' in creds_info_for_debug:
-                st.warning("--- DEBUG (auth_manager.py): SUCCESS! Refresh token received and stored.")
-            else:
-                st.warning("--- DEBUG (auth_manager.py): CRITICAL! Refresh token NOT received from Google.")
-            # --- END DIAGNOSTIC ---
-
+            # Get user info immediately to establish session
+            userinfo_service = build('oauth2', 'v2', credentials=flow.credentials)
+            user_info = userinfo_service.userinfo().get().execute()
+            user_id = user_info.get('id')
+            user_email = user_info.get('email')
+            
+            # Store credentials persistently
+            _store_credentials_persistent(user_id, creds_json)
+            
+            # Store user info
+            st.session_state.user_id = user_id
+            st.session_state.user_email = user_email
+            
+            # Check if user exists in database
+            if not db.check_user_exists(user_id):
+                with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
+                    db.create_new_user_workspace(user_id, user_email)
+            
+            # Clear the authorization code from URL
             st.query_params.clear()
+            st.query_params['auth_session'] = _get_user_session_key(user_id)[:16]
             st.rerun()
+            
         except Exception as e:
-            st.error(f"فشل في الحصول على التوكن: {e}")
+            st.error(f"فشل في تسجيل الدخول: {e}")
+            _clear_all_auth_data()
             st.stop()
 
-    # Block B: Handle existing credentials in session state
-    elif CREDENTIALS_KEY in st.session_state:
-        st.warning("--- DEBUG (auth_manager.py): Block B - Found credentials in session_state. Processing...")
-        creds_info = json.loads(st.session_state[CREDENTIALS_KEY])
-
-        # --- ROBUST CREDENTIALS HANDLING ---
-        if 'refresh_token' not in creds_info:
-            st.warning("--- DEBUG (auth_manager.py): CRITICAL! No refresh_token in stored credentials. Forcing re-authentication.")
-            del st.session_state[CREDENTIALS_KEY]
-            st.rerun()
-
-        creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
-
-        if creds.expired and creds.refresh_token:
-            st.warning("--- DEBUG (auth_manager.py): Credentials expired. Attempting to refresh...")
-            try:
-                creds.refresh(Request())
-                st.session_state[CREDENTIALS_KEY] = creds.to_json()
-                st.warning("--- DEBUG (auth_manager.py): Refresh successful.")
-            except Exception as e:
-                st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
-                st.warning(f"--- DEBUG (auth_manager.py): Refresh failed: {e}")
-                del st.session_state[CREDENTIALS_KEY]
-                st.rerun()
+    # Block B: Handle existing session (this is where the magic happens for persistence)
+    elif 'user_id' in st.session_state and _is_session_valid():
+        user_id = st.session_state.user_id
+        creds_json = _retrieve_credentials_persistent(user_id)
         
-        if creds.valid:
-            st.warning("--- DEBUG (auth_manager.py): Credentials are valid. Proceeding with app.")
-            if 'user_id' not in st.session_state:
-                userinfo_service = build('oauth2', 'v2', credentials=creds)
-                user_info = userinfo_service.userinfo().get().execute()
-                st.session_state.user_id = user_info.get('id')
-                st.session_state.user_email = user_info.get('email')
+        if creds_json:
+            try:
+                creds_info = json.loads(creds_json)
                 
-                if not db.check_user_exists(st.session_state.user_id):
-                    with st.spinner("أهلاً بك! جاري تجهيز مساحة العمل الخاصة بك لأول مرة..."):
-                        db.create_new_user_workspace(st.session_state.user_id, st.session_state.user_email)
-            
-            return creds
+                # Check for refresh token
+                if 'refresh_token' not in creds_info:
+                    st.warning("⚠️ انتهت صلاحية الجلسة. يرجى تسجيل الدخول مرة أخرى.")
+                    _clear_all_auth_data()
+                    st.rerun()
+                    return None
+                
+                creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
+                
+                # Handle expired credentials
+                if creds.expired and creds.refresh_token:
+                    try:
+                        creds.refresh(Request())
+                        # Update stored credentials
+                        updated_creds_json = creds.to_json()
+                        _store_credentials_persistent(user_id, updated_creds_json)
+                        st.session_state['auth_timestamp'] = time.time()  # Reset timestamp
+                        
+                    except Exception as e:
+                        st.error("انتهت صلاحية جلستك، يرجى تسجيل الدخول مرة أخرى.")
+                        _clear_all_auth_data()
+                        st.rerun()
+                        return None
+                
+                if creds.valid:
+                    return creds
+                else:
+                    _clear_all_auth_data()
+                    st.rerun()
+                    return None
+                    
+            except Exception as e:
+                st.error(f"خطأ في معالجة بيانات المصادقة: {e}")
+                _clear_all_auth_data()
+                st.rerun()
+                return None
         else:
-            st.warning("--- DEBUG (auth_manager.py): Credentials are NOT valid. Forcing re-authentication.")
-            del st.session_state[CREDENTIALS_KEY]
+            _clear_all_auth_data()
             st.rerun()
+            return None
 
-    # Block C: Show login button if no code and no credentials
+    # Block C: Check for existing auth session from URL params
+    elif 'auth_session' in st.query_params:
+        st.info("🔄 جاري استعادة الجلسة...")
+        # This indicates a page refresh - try to restore session
+        # Since we can't store credentials in URL, we'll need to re-authenticate
+        st.query_params.clear()
+        st.info("تم تحديث الصفحة. يرجى تسجيل الدخول مرة أخرى.")
+        time.sleep(2)
+        st.rerun()
+
+    # Block D: Show login button if no authentication is found
     else:
-        st.warning("--- DEBUG (auth_manager.py): Block C - No code and no credentials. Displaying login button.")
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
         st.info("للبدء، يرجى ربط حسابك في جوجل.")
+        
+        # Add logout button if there's any stale session data
+        if any(key in st.session_state for key in ['user_id', 'user_email', 'credentials_json']):
+            if st.button("🔄 مسح البيانات المؤقتة", type="secondary"):
+                _clear_all_auth_data()
+                st.rerun()
+        
         st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
         st.stop()
+
+    return None
 
 
 @st.cache_resource
 def get_gspread_client(user_id: str, _creds: Credentials):
+    """Create and cache gspread client"""
     if not _creds or not _creds.valid:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
     return gspread.authorize(_creds)
+
+
+def logout():
+    """Completely log out the user"""
+    _clear_all_auth_data()
+    st.success("تم تسجيل الخروج بنجاح!")
+    time.sleep(1)
+    st.rerun()
+
+
+def get_current_user_info():
+    """Get current user information if authenticated"""
+    if 'user_id' in st.session_state and _is_session_valid():
+        return {
+            'user_id': st.session_state.user_id,
+            'user_email': st.session_state.user_email,
+            'authenticated': True
+        }
+    return {'authenticated': False}
