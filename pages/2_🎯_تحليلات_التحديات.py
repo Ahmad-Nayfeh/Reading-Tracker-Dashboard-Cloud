@@ -387,8 +387,8 @@ if selected_period_id:
                     finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'], errors='coerce')
                     finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
                     
-                    finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).apply(lambda x: x.days)
-
+                    finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
+                    
                     finishers_df.sort_values('days_to_finish', ascending=False, inplace=True)
 
                     fig_finish_line = px.bar(finishers_df, 
