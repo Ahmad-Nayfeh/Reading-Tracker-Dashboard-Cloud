@@ -7,7 +7,6 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
-# We no longer need the 'socket' library
 
 # The scopes required by the application.
 SCOPES = [
@@ -21,8 +20,7 @@ SCOPES = [
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow with extensive debugging messages.
-    This version is for diagnostic purposes.
+    Handles the complete Google OAuth 2.0 flow with extensive session state debugging.
     """
     st.warning("--- DEBUG: (1) Starting authenticate() function ---")
 
@@ -72,8 +70,13 @@ def authenticate():
     elif 'credentials_json' in st.session_state:
         st.warning("DEBUG: (B.1) `credentials_json` FOUND in session_state. Entering Block B.")
         creds_info = json.loads(st.session_state.credentials_json)
+        # NEW DIAGNOSTIC: Let's see what keys Google returned (is 'refresh_token' one of them?)
+        st.warning(f"DEBUG: (B.1.1) Keys in loaded credentials_json: {list(creds_info.keys())}")
+
         creds = Credentials.from_authorized_user_info(creds_info, SCOPES)
         st.warning(f"DEBUG: (B.2) Credentials loaded. Expired? -> {creds.expired}")
+        # NEW DIAGNOSTIC: This is the most important check.
+        st.warning(f"DEBUG: (B.2.1) Refresh token exists in creds object? -> {bool(creds.refresh_token)}")
 
         if creds.expired and creds.refresh_token:
             st.warning("DEBUG: (B.3) Credentials expired. Attempting to refresh...")
@@ -109,6 +112,8 @@ def authenticate():
     # Block C: Show login button if no code and no credentials
     else:
         st.warning("DEBUG: (C.1) No code and no credentials. Entering Block C to show login button.")
+        # 'access_type='offline'' is crucial to get a refresh token.
+        # 'prompt='consent'' forces the consent screen to appear, which helps in debugging to ensure a refresh token is issued.
         auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
         st.warning(f"DEBUG: (C.2) Generated auth_url. It contains redirect_uri: {cloud_redirect_uri}")
         st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
