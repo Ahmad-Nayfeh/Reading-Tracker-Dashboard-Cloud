@@ -7,7 +7,7 @@ import db_manager as db
 from googleapiclient.discovery import build
 import os
 import json
-import socket # We still need this for robust environment detection
+import socket # Keep this new library for robust detection
 
 # The scopes required by the application.
 SCOPES = [
@@ -21,7 +21,7 @@ SCOPES = [
 
 def get_correct_uri():
     """
-    Determines the single correct redirect URI based on the execution environment.
+    Determines the single correct redirect URI based on the execution environment's hostname.
     """
     try:
         hostname = socket.gethostname()
@@ -35,30 +35,25 @@ def get_correct_uri():
         # A safe fallback for any unforeseen errors.
         return "http://localhost:8501"
 
-
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow by dynamically modifying the client configuration.
+    Handles the complete Google OAuth 2.0 flow using the final corrected logic.
     """
     if "google_oauth_credentials" not in st.secrets:
         st.error("🔑 **خطأ في الإعدادات:** لم يتم العثور على `google_oauth_credentials` في ملف الأسرار.")
         st.stop()
 
-    # 1. Load the base credentials configuration from Streamlit Secrets.
-    client_config = dict(st.secrets["google_oauth_credentials"])
+    client_config_dict = dict(st.secrets["google_oauth_credentials"])
     
-    # 2. Determine the single, correct redirect URI for the current environment.
+    # Determine the correct URI using our robust function.
     correct_redirect_uri = get_correct_uri()
     
-    # 3. CRITICAL CHANGE: Instead of passing a separate parameter, we modify the configuration
-    #    dictionary that the Flow object will use. This is a more forceful approach.
-    client_config['redirect_uris'] = [correct_redirect_uri]
-
-    # 4. Create the Flow instance using our dynamically modified configuration.
-    #    Note: We do not pass the 'redirect_uri' parameter separately anymore.
+    # Create the Flow instance by passing the client config AND the explicit redirect_uri.
+    # This combines the lessons learned from all previous errors.
     flow = Flow.from_client_config(
-        client_config={'web': client_config},
+        client_config={'web': client_config_dict},
         scopes=SCOPES,
+        redirect_uri=correct_redirect_uri  # This is the correct way
     )
 
     # --- The rest of the authentication logic remains the same ---
