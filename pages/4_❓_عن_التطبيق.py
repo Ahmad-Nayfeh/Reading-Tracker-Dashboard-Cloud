@@ -4,7 +4,8 @@ import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="عن التطبيق",
-    page_icon="❓"
+    page_icon="❓",
+    layout="wide"
 )
 
 
@@ -38,9 +39,15 @@ st.markdown("""
 
 
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
-# هذا هو الجزء الجديد الذي يحل محل الكود القديم.
+# This is the new, robust authentication block that will be used on all pages.
 creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
+
+# If authentication fails, auth_manager would have already stopped the app.
+# But as a safeguard:
+if not creds or not user_id:
+    st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
+    st.stop()
 # -----------------------------------------
 
 
