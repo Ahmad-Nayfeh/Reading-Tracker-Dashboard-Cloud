@@ -20,6 +20,9 @@ SESSION_STATE_KEY = 'google_credentials'
 
 def _get_flow():
     """Creates and returns a Google OAuth Flow object."""
+    if "google_oauth_credentials" not in st.secrets:
+        st.error("Secrets block [google_oauth_credentials] not found!")
+        st.stop()
     client_config_dict = dict(st.secrets["google_oauth_credentials"])
     return Flow.from_client_config(
         client_config={'web': client_config_dict},
@@ -32,18 +35,14 @@ def _rebuild_credentials_from_db(user_id):
     Attempts to rebuild a valid credential object using the refresh token
     stored in Firestore. This is the core of the F5-proof logic.
     """
-    st.warning("--- DEBUG: Attempting to restore session from DB... ---")
     refresh_token = db.get_refresh_token(user_id)
-
     if not refresh_token:
-        st.warning("--- DEBUG: No refresh token found in DB for this user. ---")
         return None
 
-    st.warning("--- DEBUG: Refresh token found in DB. Attempting to refresh... ---")
     client_config = dict(st.secrets["google_oauth_credentials"])
     try:
         creds = Credentials(
-            token=None,  # No access token yet
+            token=None,
             refresh_token=refresh_token,
             token_uri='https://oauth2.googleapis.com/token',
             client_id=client_config.get("client_id"),
@@ -51,46 +50,50 @@ def _rebuild_credentials_from_db(user_id):
             scopes=SCOPES
         )
         creds.refresh(Request())
-        st.warning("--- DEBUG: DB session restore successful! ---")
         return creds
-    except Exception as e:
-        st.warning(f"--- DEBUG: Failed to refresh token from DB: {e} ---")
-        # This could mean the user revoked access. The token is now invalid.
+    except Exception:
         return None
 
 def authenticate():
     """
-    Handles the complete Google OAuth 2.0 flow with Firestore-backed persistence.
+    Handles the complete Google OAuth 2.0 flow with Firestore-backed persistence
+    and self-healing URL parameters to survive page refreshes and navigation.
     """
-    st.warning("--- DEBUG: `authenticate()` called. ---")
-
-    # Priority 1: Check for a valid session in st.session_state (for multi-page navigation)
+    # Priority 1: Check for valid credentials in the current session state.
+    # This handles multi-page navigation without needing to hit the database.
     if SESSION_STATE_KEY in st.session_state:
         creds = Credentials.from_authorized_user_info(json.loads(st.session_state[SESSION_STATE_KEY]))
         if creds.valid:
-            st.warning("--- DEBUG: Found valid credentials in st.session_state. ---")
+            # --- Self-Healing URL Logic ---
+            # Ensure the user_id is always in the query params for F5 survival.
+            if 'user_id' not in st.query_params:
+                st.query_params['user_id'] = st.session_state.get('user_id')
             return creds
+        # If expired, try to refresh.
         elif creds.expired and creds.refresh_token:
-            st.warning("--- DEBUG: Credentials in session expired. Refreshing... ---")
-            creds.refresh(Request())
-            st.session_state[SESSION_STATE_KEY] = creds.to_json()
-            return creds
+            try:
+                creds.refresh(Request())
+                st.session_state[SESSION_STATE_KEY] = creds.to_json()
+                if 'user_id' not in st.query_params:
+                    st.query_params['user_id'] = st.session_state.get('user_id')
+                return creds
+            except Exception:
+                # If refresh fails, clear the session and proceed to other methods.
+                del st.session_state[SESSION_STATE_KEY]
 
-    # Priority 2: Handle the redirect from Google's login screen
+    # Priority 2: Handle the redirect from Google's login screen (has `code`).
     authorization_code = st.query_params.get("code")
     if authorization_code:
-        st.warning("--- DEBUG: Auth code found in URL. ---")
         flow = _get_flow()
         flow.fetch_token(code=authorization_code)
         creds = flow.credentials
 
         if not creds.refresh_token:
-            st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة (Refresh Token)")
+            st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة")
             st.info("لإصلاح ذلك، يرجى إلغاء وصول التطبيق من إعدادات حسابك في جوجل ثم المحاولة مرة أخرى.")
             st.markdown("[رابط صفحة أذونات حساب جوجل](https://myaccount.google.com/permissions)")
             st.stop()
         
-        st.warning("--- DEBUG: Refresh token received successfully! ---")
         userinfo_service = build('oauth2', 'v2', credentials=creds)
         user_info = userinfo_service.userinfo().get().execute()
         user_id = user_info.get('id')
@@ -99,7 +102,6 @@ def authenticate():
         if not db.check_user_exists(user_id):
             db.create_new_user_workspace(user_id, user_email)
         
-        st.warning("--- DEBUG: Saving refresh token to Firestore... ---")
         db.save_refresh_token(user_id, creds.refresh_token)
 
         st.session_state.user_id = user_id
@@ -107,13 +109,12 @@ def authenticate():
         st.session_state[SESSION_STATE_KEY] = creds.to_json()
         
         st.query_params.clear()
-        st.query_params['user_id'] = user_id # Add user_id to URL for F5 recovery
+        st.query_params['user_id'] = user_id
         st.rerun()
 
-    # Priority 3: Handle F5 refresh by checking for user_id in URL
+    # Priority 3: Handle F5 refresh by checking for `user_id` in URL params.
     user_id_from_params = st.query_params.get("user_id")
     if user_id_from_params:
-        st.warning(f"--- DEBUG: Found user_id '{user_id_from_params}' in URL. Attempting DB restore. ---")
         creds = _rebuild_credentials_from_db(user_id_from_params)
         if creds and creds.valid:
             userinfo_service = build('oauth2', 'v2', credentials=creds)
@@ -123,15 +124,13 @@ def authenticate():
             st.session_state[SESSION_STATE_KEY] = creds.to_json()
             st.rerun()
 
-    # Priority 4: If all else fails, show the login button
-    st.warning("--- DEBUG: No valid session found. Displaying login button. ---")
+    # Priority 4: If all else fails, show the login button.
     flow = _get_flow()
     auth_url, _ = flow.authorization_url(access_type='offline', prompt='consent')
     st.title("🚀 أهلاً بك في \"ماراثون القراءة\"")
     st.info("للبدء، يرجى ربط حسابك في جوجل.")
     st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
     st.stop()
-
 
 @st.cache_resource
 def get_gspread_client(user_id: str, _creds: Credentials):
