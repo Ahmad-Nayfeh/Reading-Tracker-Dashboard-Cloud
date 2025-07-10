@@ -386,7 +386,7 @@ if selected_period_id:
                     
                     # --- THE FIX IS HERE ---
                     # Ensure the date column is a datetime object before calculations
-                    finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'])
+                    finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'], errors='coerce')
                     finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
                     
                     finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
@@ -500,7 +500,7 @@ if selected_period_id:
                             finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date_dt']).date()
                             if (finish_date_dt - start_date_obj).days <= 7: badges_unlocked.append("🏃‍♂️ **وسام العدّاء:** إنهاء الكتاب في الأسبوع الأول.")
                     if not member_logs.empty:
-                        log_dates = sorted(member_logs['submission_date_dt'].unique())
+                        log_dates = sorted(pd.to_datetime(member_logs['submission_date_dt'].unique()))
                         if len(log_dates) >= 7:
                             max_streak, current_streak = 0, 0
                             if log_dates:
