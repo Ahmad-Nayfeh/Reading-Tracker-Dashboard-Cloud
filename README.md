@@ -65,10 +65,11 @@
 
 التطبيق متاح الآن على الإنترنت! لا حاجة لتثبيت أي شيء.
 
-<div align="center">
+<div align="right">
 
 [![Open App](https://img.shields.io/badge/🔗_افتح_التطبيق-الآن-success?style=for-the-badge)](https://your-app-url.streamlit.app)
 
+</div>
 ---
 
 ## 🖥️ صفحات التطبيق
@@ -125,6 +126,5 @@
 <div align="center">
 
 **صُنع بـ ❤️ لمحبي القراءة**
-
 
 </div>
