@@ -48,13 +48,14 @@ st.markdown("""
 # --- Main App Authentication and Setup ---
 creds = auth_manager.authenticate()
 
-# This part will only run after successful authentication
+# This part will only run after successful authentication.
+# auth_manager is now responsible for populating these session_state keys.
 user_id = st.session_state.get('user_id')
 user_email = st.session_state.get('user_email')
 
 # If authentication fails, auth_manager would have already stopped the app.
 # But as a safeguard:
-if not user_id:
+if not creds or not user_id:
     st.error("حدث خطأ في المصادقة. يرجى إعادة تحميل الصفحة.")
     st.stop()
 
