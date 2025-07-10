@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, datetime
+from datetime import date, datetime, timedelta
 import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
@@ -132,7 +132,7 @@ def generate_challenge_headline(podium_df, period_achievements_df, members_df, e
         finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].sort_values(by='achievement_date')
         if not finishers_df.empty:
             finisher_ids = finishers_df['member_id'].tolist()
-            finisher_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in finisher_ids]
+            finisher_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in finisher_ids if mid in members_df['members_id'].values]
             n = len(finisher_names)
             names_hl = [f"<span style='{highlight_style}'>{name}</span>" for name in finisher_names]
             
@@ -150,7 +150,7 @@ def generate_challenge_headline(podium_df, period_achievements_df, members_df, e
         if not period_achievements_df.empty:
             attendees_df = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION']
             attendee_ids = attendees_df['member_id'].tolist()
-            attendee_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in attendee_ids]
+            attendee_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in attendee_ids if mid in members_df['members_id'].values]
             n_attendees = len(attendee_names)
             names_hl = [f"<span style='{highlight_style}'>{name}</span>" for name in attendee_names]
 
@@ -263,7 +263,7 @@ if selected_period_id:
     
     period_logs_df = pd.DataFrame()
     if not logs_df.empty:
-        period_logs_df = logs_df[(logs_df['submission_date_dt'].notna()) & (logs_df['submission_date_dt'] >= start_date_obj) & (logs_df['submission_date_dt'] <= end_date_obj)].copy()
+        period_logs_df = logs_df[(logs_df['submission_date_dt'].notna()) & (logs_df['submission_date_dt'].dt.date >= start_date_obj) & (logs_df['submission_date_dt'].dt.date <= end_date_obj)].copy()
     
     period_achievements_df = pd.DataFrame()
     if not achievements_df.empty:
@@ -370,10 +370,71 @@ if selected_period_id:
                 heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
                 st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
             st.markdown("---")
+            
+            # --- NEW SECTION: Daily Race and Finish Line ---
+            st.subheader("🏁 تحليلات المنافسة اليومية")
+            race_col1, race_col2 = st.columns(2, gap="large")
 
+            with race_col1:
+                st.markdown("##### 🏁 خط النهاية")
+                finishers_df = pd.DataFrame()
+                if not period_achievements_df.empty:
+                    finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
+                
+                if not finishers_df.empty:
+                    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], on='member_id', how='left')
+                    finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'])
+                    finishers_df.sort_values('achievement_date_dt', ascending=False, inplace=True)
+                    finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).dt.days
+
+                    fig_finish_line = px.bar(finishers_df, 
+                                             x='days_to_finish', y='name', 
+                                             orientation='h',
+                                             text='days_to_finish',
+                                             labels={'days_to_finish': 'الأيام المستغرقة لإنهاء الكتاب', 'name': ''},
+                                             color_discrete_sequence=['#3498db'])
+                    fig_finish_line.update_traces(texttemplate='بعد %{text} يوم', textposition='inside')
+                    fig_finish_line.update_layout(yaxis={'side': 'right'}, xaxis_title="الأيام المستغرقة")
+                    st.plotly_chart(fig_finish_line, use_container_width=True)
+                else:
+                    st.info("لم يقم أي عضو بإنهاء الكتاب المشترك بعد.")
+
+            with race_col2:
+                st.markdown("##### 🏃‍♂️ سباق الصدارة اليومي")
+                period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], on='member_id', how='left')
+                
+                all_days = pd.to_datetime(period_logs_with_names['submission_date_dt'].unique()).sort_values()
+                if not all_days.empty:
+                    selected_day = st.select_slider(
+                        "اختر يوماً لعرض أبطاله:",
+                        options=[d.strftime('%Y-%m-%d') for d in all_days],
+                        value=all_days[-1].strftime('%Y-%m-%d') # Default to the last day with logs
+                    )
+                    
+                    daily_leaders = period_logs_with_names[period_logs_with_names['submission_date_dt'].dt.strftime('%Y-%m-%d') == selected_day]
+                    daily_summary = daily_leaders.groupby('name')['total_minutes'].sum().sort_values(ascending=False).head(5).reset_index()
+
+                    if not daily_summary.empty:
+                        fig_daily_race = px.bar(daily_summary.sort_values('total_minutes', ascending=True),
+                                                x='total_minutes', y='name',
+                                                orientation='h',
+                                                text='total_minutes',
+                                                labels={'total_minutes': 'دقائق القراءة', 'name': ''},
+                                                color_discrete_sequence=['#F39C12'])
+                        fig_daily_race.update_traces(texttemplate='%{text} دقيقة', textposition='outside')
+                        fig_daily_race.update_layout(yaxis={'side': 'right'}, xaxis_title="الدقائق")
+                        st.plotly_chart(fig_daily_race, use_container_width=True)
+                    else:
+                        st.info(f"لا توجد سجلات قراءة في يوم {selected_day}.")
+                else:
+                    st.info("لا توجد أيام مسجلة لعرضها.")
+            st.markdown("---")
+
+
+            st.subheader("🏆 قوائم المتصدرين في التحدي")
             col5, col6 = st.columns(2, gap="large")
             with col5:
-                st.subheader("ساعات قراءة الأعضاء")
+                st.markdown("##### ⏳ المتصدرون بالساعات")
                 hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
                 fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
                 fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
@@ -384,7 +445,7 @@ if selected_period_id:
                 st.plotly_chart(fig_hours, use_container_width=True)
 
             with col6:
-                st.subheader("نقاط الأعضاء")
+                st.markdown("##### ⭐ المتصدرون بالنقاط")
                 points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
                 fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
                 fig_points.update_traces(textposition='outside')
