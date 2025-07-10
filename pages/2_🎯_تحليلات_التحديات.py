@@ -384,7 +384,6 @@ if selected_period_id:
                 if not finishers_df.empty:
                     finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
                     
-                    # --- THE FINAL FIX ---
                     finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'], errors='coerce')
                     finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
                     
