@@ -501,8 +501,8 @@ with charts_col2:
         fig_rhythm.update_layout(
             title='', margin=dict(t=20, b=0, l=0, r=0), 
             yaxis={'side': 'right'},
-            xaxis_title="", yaxis_title="الساعات",
-            xaxis_autorange='reversed' # <-- السطر المضاف
+            xaxis_title="التاريخ", yaxis_title="الساعات", # <-- هنا تم الإصلاح
+            xaxis_autorange='reversed'
         )
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
