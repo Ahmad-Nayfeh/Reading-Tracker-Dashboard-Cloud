@@ -17,21 +17,12 @@ st.set_page_config(
 # This CSS snippet enforces RTL layout and adds custom styles
 st.markdown("""
     <style>
-        /* Main app container */
+        /* --- Base RTL and Font Fixes --- */
         .stApp { direction: rtl; }
         [data-testid="stSidebar"] { direction: rtl; }
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae { text-align: right !important; }
         .st-b8 label, .st-ae label { text-align: right !important; display: block; }
         
-        /* --- Custom styles for the main KPI cards --- */
-        .main-kpi-card {
-            background-color: #FFFFFF; border-radius: 10px; padding: 20px;
-            text-align: center; border: 1px solid #e6e6e6;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-        }
-        .main-kpi-card .label { font-size: 1.2em; font-weight: bold; color: #5D6D7E; }
-        .main-kpi-card .value { font-size: 2.5em; font-weight: bold; color: #2980B9; margin: 10px 0; }
-
         /* --- Professional News Ticker Styles --- */
         .news-container {
             background-color: #ffffff; border-radius: 12px; padding: 0;
@@ -46,83 +37,80 @@ st.markdown("""
         .news-body li b { color: #2c3e50; }
         .news-body .no-news { color: #7f8c8d; font-style: italic; }
 
-        /* --- NEW: Reader Profile Card Styles --- */
-        .reader-card-container {
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
+        /* --- NEW: Challenge Summary Card Styles --- */
+        .summary-card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
             border-radius: 15px;
             padding: 25px;
             box-shadow: 0 8px 16px rgba(0,0,0,0.05);
-            margin-top: 20px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
         }
-
-        .reader-kpi-box {
-            background-color: #ffffff;
-            border-radius: 12px;
-            padding: 20px;
+        .summary-card-title {
+            font-size: 1.4em;
+            font-weight: 700;
+            color: #34495e;
+            margin-bottom: 20px;
+            padding-bottom: 10px;
+            border-bottom: 2px solid #3498db;
+        }
+        .summary-kpi-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 15px;
+            flex-grow: 1;
+        }
+        .summary-kpi-item {
+            background-color: #f8f9fa;
+            border-radius: 10px;
+            padding: 15px;
             text-align: center;
-            border: 1px solid #e9ecef;
-            transition: all 0.3s ease-in-out;
         }
-        .reader-kpi-box:hover {
-            transform: translateY(-5px);
-            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
-        }
-        .reader-kpi-box .icon {
-            font-size: 2.5em;
-            margin-bottom: 10px;
-        }
-        .reader-kpi-box .label {
-            font-size: 1.1em;
+        .summary-kpi-item .label {
+            font-size: 1em;
             font-weight: 600;
             color: #6c757d;
         }
-        .reader-kpi-box .value {
-            font-size: 2em;
+        .summary-kpi-item .value {
+            font-size: 2.2em;
             font-weight: 700;
-            color: #343a40;
+            color: #2980B9;
         }
-        
-        .card-subheader {
-            font-size: 1.5em;
-            font-weight: 700;
-            color: #34495e;
-            margin-top: 25px;
-            margin-bottom: 15px;
-            padding-bottom: 10px;
-            border-bottom: 3px solid #3498db;
-            display: inline-block;
+        .summary-kpi-item .unit {
+            font-size: 0.8em;
+            color: #6c757d;
         }
 
+        /* --- Reader Profile Card Styles --- */
+        .reader-card-container {
+            background-color: #f8f9fa; border: 1px solid #dee2e6;
+            border-radius: 15px; padding: 25px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05); margin-top: 20px;
+        }
+        .reader-kpi-box {
+            background-color: #ffffff; border-radius: 12px; padding: 20px; text-align: center;
+            border: 1px solid #e9ecef; transition: all 0.3s ease-in-out;
+        }
+        .reader-kpi-box:hover { transform: translateY(-5px); box-shadow: 0 6px 12px rgba(0,0,0,0.08); }
+        .reader-kpi-box .icon { font-size: 2.5em; margin-bottom: 10px; }
+        .reader-kpi-box .label { font-size: 1.1em; font-weight: 600; color: #6c757d; }
+        .reader-kpi-box .value { font-size: 2em; font-weight: 700; color: #343a40; }
+        .card-subheader {
+            font-size: 1.5em; font-weight: 700; color: #34495e;
+            margin-top: 25px; margin-bottom: 15px; padding-bottom: 10px;
+            border-bottom: 3px solid #3498db; display: inline-block;
+        }
         .badge-container {
-            display: flex;
-            align-items: center;
-            background-color: #eafaf1;
-            border-right: 5px solid #2ecc71;
-            border-radius: 8px;
-            padding: 15px;
-            margin-bottom: 12px;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
+            display: flex; align-items: center; background-color: #eafaf1;
+            border-right: 5px solid #2ecc71; border-radius: 8px;
+            padding: 15px; margin-bottom: 12px; box-shadow: 0 2px 4px rgba(0,0,0,0.04);
         }
-        .badge-icon {
-            font-size: 1.8em;
-            margin-left: 15px;
-            color: #2ecc71;
-        }
-        .badge-text {
-            font-size: 1.1em;
-            color: #2c3e50;
-        }
-        
-        .achievement-item {
-            font-size: 1.1em;
-            padding: 8px 0;
-            color: #34495e;
-        }
-        .achievement-item::before {
-            content: "🎯";
-            margin-left: 10px;
-        }
+        .badge-icon { font-size: 1.8em; margin-left: 15px; color: #2ecc71; }
+        .badge-text { font-size: 1.1em; color: #2c3e50; }
+        .achievement-item { font-size: 1.1em; padding: 8px 0; color: #34495e; }
+        .achievement-item::before { content: "🎯"; margin-left: 10px; }
 
     </style>
 """, unsafe_allow_html=True)
@@ -396,7 +384,7 @@ if selected_period_id:
     tab1, tab2 = st.tabs(["📝 ملخص التحدي", "🧑‍💻 بطاقة القارئ"])
 
     with tab1:
-        # --- NEW News Ticker Section ---
+        # --- News Ticker Section ---
         news_items = generate_challenge_news(period_achievements_df, members_df, start_date_obj, end_date_obj, book_title)
         news_html = '<div class="news-container">'
         news_html += f'<div class="news-header">🎯 آخر أخبار تحدي "{book_title}"</div>'
@@ -410,119 +398,121 @@ if selected_period_id:
             news_html += '<p class="no-news">لا توجد أخبار جديدة حالياً لهذا التحدي.</p>'
         news_html += '</div></div>'
         st.markdown(news_html, unsafe_allow_html=True)
-        # --- End of News Ticker Section ---
 
         if period_logs_df.empty and today >= start_date_obj:
             st.info("لا توجد بيانات مسجلة لهذا التحدي بعد.")
         elif today < start_date_obj:
             st.info(f"هذا التحدي لم يبدأ بعد. موعد الانطلاق: {start_date_obj.strftime('%Y-%m-%d')}")
         else:
-            st.markdown("---")
+            # --- Redesigned Summary Layout ---
             col1, col2 = st.columns([1, 1.5], gap="large")
             with col1:
-                st.subheader("مؤشر التقدم")
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">مؤشر التقدم</div>', unsafe_allow_html=True)
                 total_days = (end_date_obj - start_date_obj).days if end_date_obj > start_date_obj else 1
                 days_passed = (today - start_date_obj).days if today >= start_date_obj else 0
                 progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
                 
                 fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number",
-                    value=progress,
-                    number={'suffix': '%'},
-                    title={'text': f"انقضى {days_passed} من {total_days} يوم"},
-                    gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}
-                ))
-                fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
+                    mode="gauge+number", value=progress, number={'suffix': '%'},
+                    title={'text': f"انقضى {days_passed} من {total_days} يوم", 'font': {'size': 16}},
+                    gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
+                fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
                 st.plotly_chart(fig_gauge, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with col2:
-                st.subheader("مؤشرات الأداء الرئيسية")
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">مؤشرات الأداء الرئيسية</div>', unsafe_allow_html=True)
                 total_period_minutes = period_logs_df['total_minutes'].sum()
                 total_period_hours = int(total_period_minutes // 60)
                 active_participants = period_logs_df['member_id'].nunique()
                 avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
                 total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
-                # Helper function to display KPI cards
-                def display_main_kpi(label, value):
-                    st.markdown(f"""
-                    <div class="main-kpi-card" style="margin-bottom: 15px; height: 115px; display: flex; flex-direction: column; justify-content: center;">
-                        <div class="label">{label}</div>
-                        <div class="value">{value}</div>
+                st.markdown(f"""
+                <div class="summary-kpi-grid">
+                    <div class="summary-kpi-item">
+                        <div class="label">⏳ مجموع ساعات القراءة</div>
+                        <div class="value">{total_period_hours:,}</div>
                     </div>
-                    """, unsafe_allow_html=True)
-
-                kpi1, kpi2 = st.columns(2)
-                with kpi1:
-                    display_main_kpi("⏳ مجموع ساعات القراءة", f"{total_period_hours:,}")
-                with kpi2:
-                    display_main_kpi("👥 المشاركون الفعليون", f"{active_participants}")
-                
-                kpi3, kpi4 = st.columns(2)
-                with kpi3:
-                    display_main_kpi("✍️ الاقتباسات المرسلة", f"{int(total_period_quotes)}")
-                with kpi4:
-                    display_main_kpi("📊 متوسط القراءة/عضو", f"{avg_daily_reading:.1f} دقيقة")
+                    <div class="summary-kpi-item">
+                        <div class="label">👥 المشاركون الفعليون</div>
+                        <div class="value">{active_participants}</div>
+                    </div>
+                    <div class="summary-kpi-item">
+                        <div class="label">✍️ الاقتباسات المرسلة</div>
+                        <div class="value">{int(total_period_quotes)}</div>
+                    </div>
+                    <div class="summary-kpi-item">
+                        <div class="label">📊 متوسط القراءة/عضو</div>
+                        <div class="value">{avg_daily_reading:.1f}</div>
+                        <div class="unit">دقيقة/يوم</div>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+            
             st.markdown("---")
 
             col3, col4 = st.columns(2, gap="large")
             with col3:
-                st.subheader("مجموع ساعات القراءة التراكمي")
-                # Determine the end date for the chart (today or challenge end date)
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">مجموع ساعات القراءة التراكمي</div>', unsafe_allow_html=True)
                 chart_end_date = min(date.today(), end_date_obj)
-                
-                # Create a full date range for the challenge period up to the chart end date
                 all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
                 full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
-                
-                # Calculate minutes per day from logs
                 daily_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().reset_index()
-                
-                # Merge with the full challenge range and fill empty days with 0
                 merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
-                
-                # Calculate cumulative sum AFTER filling zeros
                 merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
                 
                 fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
-                fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'})
+                fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0))
                 st.plotly_chart(fig_area, use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with col4:
-                st.subheader("خريطة الالتزام الحرارية")
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">خريطة الالتزام الحرارية</div>', unsafe_allow_html=True)
                 heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
+                heatmap_fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
                 st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
+                st.markdown('</div>', unsafe_allow_html=True)
+
             st.markdown("---")
 
-            st.subheader("🏆 قوائم المتصدرين في التحدي")
             col5, col6 = st.columns(2, gap="large")
             with col5:
-                st.markdown("##### ⏳ المتصدرون بالساعات")
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">🏆 المتصدرون بالساعات</div>', unsafe_allow_html=True)
                 if not podium_df.empty:
                     hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
                     fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
                     fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
                     fig_hours.update_layout(
                         yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                        xaxis_autorange='reversed'
+                        xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0)
                     )
                     st.plotly_chart(fig_hours, use_container_width=True)
                 else:
                     st.info("لا توجد بيانات.")
+                st.markdown('</div>', unsafe_allow_html=True)
 
             with col6:
-                st.markdown("##### ⭐ المتصدرون بالنقاط")
+                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
+                st.markdown('<div class="summary-card-title">⭐ المتصدرون بالنقاط</div>', unsafe_allow_html=True)
                 if not podium_df.empty:
                     points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
                     fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
                     fig_points.update_traces(textposition='outside')
                     fig_points.update_layout(
                         yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                        xaxis_autorange='reversed'
+                        xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0)
                     )
                     st.plotly_chart(fig_points, use_container_width=True)
                 else:
                     st.info("لا توجد بيانات.")
+                st.markdown('</div>', unsafe_allow_html=True)
 
     with tab2:
         if podium_df.empty:
