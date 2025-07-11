@@ -94,6 +94,18 @@ st.markdown("""
         .contact-links a:hover {
             text-decoration: underline;
         }
+
+        /* --- Two-column layout for Hall of Fame --- */
+        .two-column-container {
+            display: flex;
+            flex-wrap: wrap;
+            width: 100%;
+        }
+        .column {
+            flex: 50%;
+            padding: 0 15px;
+            box-sizing: border-box;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -112,6 +124,7 @@ if not creds or not user_id:
 st.title("❓ عن تطبيق ماراثون القراءة")
 st.markdown("<p style='font-size: 1.1em; text-align: center; color: #5D6D7E;'>أهلاً بك في الدليل الشامل! هنا، ستجد كل ما تحتاج لمعرفته حول كيفية عمل التطبيق.</p>", unsafe_allow_html=True)
 st.divider()
+
 
 # --- Section 1: Philosophy of Points ---
 st.markdown("""
@@ -147,32 +160,27 @@ st.markdown("""
     </div>
     <div class="section-content">
         <p>لوحة شرف الأبطال هي احتفاء بالإنجازات المتميزة في الماراثون. إليك معنى كل لقب:</p>
+        <div class="two-column-container">
+            <div class="column">
+                <ul>
+                    <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
+                    <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
+                    <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
+                    <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
+                </ul>
+            </div>
+            <div class="column">
+                <ul>
+                    <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
+                    <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
+                    <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
+                    <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
+                </ul>
+            </div>
+        </div>
     </div>
 </div>
 """, unsafe_allow_html=True)
-col1, col2 = st.columns(2)
-with col1:
-    st.markdown("""
-    <div class="section-content" style="padding: 0 20px 20px 20px;">
-        <ul>
-            <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
-            <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
-            <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
-            <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
-with col2:
-    st.markdown("""
-    <div class="section-content" style="padding: 0 20px 20px 20px;">
-        <ul>
-            <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
-            <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
-            <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
-            <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
-        </ul>
-    </div>
-    """, unsafe_allow_html=True)
 
 
 # --- Section 3: News Ticker Explained ---
