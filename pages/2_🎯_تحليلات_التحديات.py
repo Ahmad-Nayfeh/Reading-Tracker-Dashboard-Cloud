@@ -5,7 +5,8 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
-import auth_manager # <-- استيراد مدير المصادقة
+import auth_manager
+from utils import apply_chart_theme, CHART_COLORS # <-- استيراد الدالة والألوان
 
 st.set_page_config(
     page_title="تحليلات التحديات",
@@ -123,7 +124,9 @@ if not creds or not user_id:
 def create_activity_heatmap(df, start_date, end_date, title_text=''):
     df = df.copy()
     if df.empty:
-        return go.Figure().update_layout(title="لا توجد بيانات قراءة لعرضها في الخريطة")
+        fig = go.Figure()
+        fig.update_layout(title="لا توجد بيانات قراءة لعرضها في الخريطة")
+        return apply_chart_theme(fig)
 
     df['date'] = pd.to_datetime(df['submission_date_dt'])
     
@@ -163,9 +166,11 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         hoverongaps=False,
         customdata=hover_pivot,
         hovertemplate='%{customdata}<extra></extra>',
-        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15)
+        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15, tickfont=dict(color=CHART_COLORS['text_light']))
     ))
 
+    fig = apply_chart_theme(fig) # Apply the base theme
+    
     fig.update_layout(
         title=title_text,
         xaxis_title='أسابيع التحدي',
@@ -173,9 +178,7 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         xaxis_autorange='reversed',
         yaxis={'side': 'right'},
         xaxis=dict(tickmode='array', tickvals=list(month_positions.week_of_year), ticktext=list(month_positions.index)),
-        plot_bgcolor='rgba(0,0,0,0)',
-        paper_bgcolor='rgba(0,0,0,0)',
-        font_color='#1E2A78',
+        font_color='#1E2A78', # Override font color for this specific design
         margin=dict(l=80)
     )
     return fig
@@ -411,7 +414,7 @@ if selected_period_id:
                     fig_gauge = go.Figure(go.Indicator(
                         mode="gauge+number", value=progress, number={'suffix': '%', 'font': {'color': "#1E2A78"}},
                         title={'text': f"انقضى {days_passed} من {total_days} يوم", 'font': {'size': 16, 'color': '#1E2A78'}},
-                        gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
+                        gauge={'axis': {'range': [None, 100]}, 'bar': {'color': CHART_COLORS['primary']}}))
                     fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_gauge, use_container_width=True)
 
@@ -465,14 +468,14 @@ if selected_period_id:
                     merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
                     merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
                     
-                    fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
-                    fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78')
+                    fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'})
+                    fig_area = apply_chart_theme(fig_area, 'area')
+                    fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, font_color='#1E2A78')
                     st.plotly_chart(fig_area, use_container_width=True)
 
                 with r1c2:
                     st.markdown('<h4>خريطة الالتزام الحرارية</h4>', unsafe_allow_html=True)
                     heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
-                    heatmap_fig.update_layout(margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78')
                     st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
 
                 r2c1, r2c2 = st.columns(2, gap="large")
@@ -480,11 +483,12 @@ if selected_period_id:
                     st.markdown('<h4>🏆 المتصدرون بالساعات</h4>', unsafe_allow_html=True)
                     if not podium_df.empty:
                         hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
-                        fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
+                        fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=[CHART_COLORS['accent_2']])
+                        fig_hours = apply_chart_theme(fig_hours, 'bar')
                         fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
                         fig_hours.update_layout(
                             yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                            xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78'
+                            xaxis_autorange='reversed', font_color='#1E2A78'
                         )
                         st.plotly_chart(fig_hours, use_container_width=True)
                     else:
@@ -494,11 +498,12 @@ if selected_period_id:
                     st.markdown('<h4>⭐ المتصدرون بالنقاط</h4>', unsafe_allow_html=True)
                     if not podium_df.empty:
                         points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
-                        fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
+                        fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=[CHART_COLORS['secondary']])
+                        fig_points = apply_chart_theme(fig_points, 'bar')
                         fig_points.update_traces(textposition='outside')
                         fig_points.update_layout(
                             yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                            xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78'
+                            xaxis_autorange='reversed', font_color='#1E2A78'
                         )
                         st.plotly_chart(fig_points, use_container_width=True)
                     else:
@@ -625,21 +630,23 @@ if selected_period_id:
                         points_source_filtered = {k: v for k, v in points_source.items() if v > 0}
                         if points_source_filtered:
                             color_map = {
-                                'قراءة الكتاب المشترك': '#3498db', 'قراءة كتب أخرى': '#f1c40f',
-                                'اقتباسات (الكتاب المشترك)': '#2ecc71', 'اقتباسات (كتب أخرى)': '#e67e22',
-                                'إنهاء الكتاب المشترك': '#9b59b6', 'حضور النقاش': '#e74c3c',
-                                'إنهاء كتب أخرى': '#1abc9c'
+                                'قراءة الكتاب المشترك': CHART_COLORS['primary'], 'قراءة كتب أخرى': CHART_COLORS['accent_2'],
+                                'اقتباسات (الكتاب المشترك)': CHART_COLORS['accent_1'], 'اقتباسات (كتب أخرى)': '#f39c12',
+                                'إنهاء الكتاب المشترك': CHART_COLORS['secondary'], 'حضور النقاش': CHART_COLORS['accent_3'],
+                                'إنهاء كتب أخرى': '#16a085'
                             }
                             chart_labels = list(points_source_filtered.keys())
                             chart_colors = [color_map.get(label, '#bdc3c7') for label in chart_labels]
 
                             fig_donut = go.Figure(data=[go.Pie(
                                 labels=chart_labels, values=list(points_source_filtered.values()), 
-                                hole=.5, textinfo='percent+label', insidetextorientation='radial',
+                                hole=.6, textinfo='percent', insidetextorientation='radial',
                                 marker_colors=chart_colors
                             )])
+                            fig_donut = apply_chart_theme(fig_donut, 'pie')
                             fig_donut.update_layout(
-                                showlegend=False,
+                                showlegend=True,
+                                legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'),
                                 margin=dict(t=20, b=20, l=20, r=20)
                             )
                             st.plotly_chart(fig_donut, use_container_width=True)
