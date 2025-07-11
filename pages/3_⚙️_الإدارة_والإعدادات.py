@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL and adds custom styles for the new container-based layout
+# This CSS snippet enforces RTL and adds the final custom styles for the admin dashboard
 st.markdown("""
     <style>
         /* --- Base RTL Fixes --- */
@@ -25,13 +25,12 @@ st.markdown("""
         .st-b8 label, .st-ae label { text-align: right !important; display: block; }
 
         /* --- Main Container Styling (using st.container(border=True)) --- */
-        /* Targets the wrapper of the bordered container */
         [data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 15px;
             border: 1px solid #e9ecef;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-            padding: 1.5rem 1.75rem; /* Add padding to the container itself */
+            padding: 1.5rem 1.75rem;
         }
 
         /* --- Custom Header for sections inside containers --- */
@@ -92,16 +91,39 @@ st.markdown("""
             height: 32px;
         }
 
-        /* --- Challenge Card Info --- */
-        .challenge-card-info h5 {
+        /* --- NEW: Challenge Entry Styling (List-like) --- */
+        .challenge-entry {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 1.25rem 1rem;
+            border-bottom: 1px solid #e9ecef;
+        }
+        /* Remove border from the last challenge entry */
+        .challenges-container > div:last-child .challenge-entry {
+            border-bottom: none;
+        }
+        .challenge-info h5 {
             margin: 0 0 5px 0;
             color: #2c3e50;
             font-size: 1.1em;
         }
-        .challenge-card-info p {
+        .challenge-info p {
             margin: 0;
             font-size: 0.9em;
             color: #6c757d;
+        }
+        .challenge-actions .stButton button {
+            background-color: transparent;
+            border: 1px solid #ced4da;
+            color: #6c757d;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+        }
+        .challenge-actions .stButton button:hover {
+            background-color: #e9ecef;
+            border-color: #adb5bd;
         }
 
         /* --- Styling for Tabs inside the Settings Card --- */
@@ -241,21 +263,29 @@ with st.container(border=True):
     today_str = str(date.today())
     if not periods_df.empty:
         sorted_periods = periods_df.sort_values(by='start_date', ascending=False)
+        st.markdown('<div class="challenges-container">', unsafe_allow_html=True)
         for _, period in sorted_periods.iterrows():
-            with st.container(border=True):
-                is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
-                c1, c2 = st.columns([4, 1])
-                with c1:
-                    st.markdown(f"""
-                        <div class="challenge-card-info">
-                            <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
-                            <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
-                        </div>
-                    """, unsafe_allow_html=True)
-                with c2:
-                    btn_c1, btn_c2 = st.columns(2)
-                    btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
-                    btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
+            is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
+            
+            # Use columns to structure each challenge entry
+            st.markdown('<div class="challenge-entry">', unsafe_allow_html=True)
+            c1, c2 = st.columns([4, 1])
+            with c1:
+                st.markdown(f"""
+                    <div class="challenge-info">
+                        <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
+                        <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                    </div>
+                """, unsafe_allow_html=True)
+            with c2:
+                st.markdown('<div class="challenge-actions">', unsafe_allow_html=True)
+                btn_c1, btn_c2 = st.columns(2)
+                btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
+                st.markdown('</div>', unsafe_allow_html=True)
+            st.markdown('</div>', unsafe_allow_html=True)
+
+        st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("لا توجد تحديات لعرضها.")
 
@@ -536,7 +566,7 @@ if 'show_rules_choice' in st.session_state and st.session_state.show_rules_choic
         if c1.button("📈 استخدام النظام الافتراضي", use_container_width=True):
             default_rules = db.load_user_global_rules(user_id)
             success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], default_rules)
-            if success: st.toast(f"✅ {message}", icon="🎉")
+            if success: st.toast(f"✅ {message}", icon="�")
             else: st.error(f"❌ {message}")
             del st.session_state.show_rules_choice, st.session_state.new_challenge_data
             st.cache_data.clear()
@@ -564,7 +594,7 @@ if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom
             rules['attend_discussion_points'] = st.number_input("نقاط حضور جلسة النقاش:", value=default_settings['attend_discussion_points'], min_value=0)
             if st.form_submit_button("حفظ التحدي بالقوانين المخصصة", type="primary"):
                 success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], rules)
-                if success: st.toast(f"✅ {message}", icon="�")
+                if success: st.toast(f"✅ {message}", icon="🎉")
                 else: st.error(f"❌ {message}")
                 del st.session_state.show_custom_rules_form, st.session_state.new_challenge_data
                 st.cache_data.clear()
