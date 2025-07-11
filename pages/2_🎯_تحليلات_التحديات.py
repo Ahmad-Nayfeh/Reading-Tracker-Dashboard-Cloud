@@ -443,9 +443,23 @@ if selected_period_id:
             col3, col4 = st.columns(2, gap="large")
             with col3:
                 st.subheader("مجموع ساعات القراءة التراكمي")
-                daily_cumulative_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().cumsum().reset_index()
-                daily_cumulative_minutes['total_hours'] = daily_cumulative_minutes['total_minutes'] / 60
-                fig_area = px.area(daily_cumulative_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
+                # Determine the end date for the chart (today or challenge end date)
+                chart_end_date = min(date.today(), end_date_obj)
+                
+                # Create a full date range for the challenge period up to the chart end date
+                all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
+                full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
+                
+                # Calculate minutes per day from logs
+                daily_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().reset_index()
+                
+                # Merge with the full challenge range and fill empty days with 0
+                merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
+                
+                # Calculate cumulative sum AFTER filling zeros
+                merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
+                
+                fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
                 fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'})
                 st.plotly_chart(fig_area, use_container_width=True)
 
