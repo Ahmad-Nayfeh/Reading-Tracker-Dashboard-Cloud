@@ -5,7 +5,8 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
-import auth_manager # <-- استيراد مدير المصادقة
+import auth_manager
+from utils import apply_chart_theme # <-- استيراد الدالة الجديدة
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
@@ -13,7 +14,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL layout and adds custom styles for the hero cards
+# This CSS snippet enforces RTL layout and adds custom styles
 st.markdown("""
     <style>
         /* Main app container */
@@ -39,7 +40,7 @@ st.markdown("""
             display: block;
         }
 
-        /* --- NEW KPI Card Styles --- */
+        /* --- KPI Card Styles --- */
         .kpi-card {
             background-color: #ffffff;
             border-radius: 15px;
@@ -104,7 +105,7 @@ st.markdown("""
             color: #7f8c8d; /* Gray for the number */
         }
         
-        /* --- NEW Professional News Ticker Styles --- */
+        /* --- Professional News Ticker Styles --- */
         .news-container {
             background-color: #ffffff;
             border-radius: 12px;
@@ -518,9 +519,12 @@ with charts_col1:
         merged_growth['cumulative_hours'] = merged_growth['minutes'].cumsum() / 60
         
         fig_growth = px.area(merged_growth, x='submission_date_dt', y='cumulative_hours', 
-                             labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
-                             markers=False, color_discrete_sequence=['#2ECC71'])
-        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'}, xaxis_autorange='reversed')
+                             labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'})
+        
+        # Apply the new theme
+        fig_growth = apply_chart_theme(fig_growth, 'area')
+        fig_growth.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+        
         st.plotly_chart(fig_growth, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
@@ -539,13 +543,12 @@ with charts_col2:
         
         fig_rhythm = px.line(merged_team_minutes, x='التاريخ', y='مجموع الساعات',
                              labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
-                             markers=True, color_discrete_sequence=['#3498DB'])
-        fig_rhythm.update_layout(
-            title='', margin=dict(t=20, b=0, l=0, r=0), 
-            yaxis={'side': 'right'},
-            xaxis_title="التاريخ", yaxis_title="الساعات",
-            xaxis_autorange='reversed'
-        )
+                             markers=True)
+        
+        # Apply the new theme
+        fig_rhythm = apply_chart_theme(fig_rhythm, 'line')
+        fig_rhythm.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
@@ -563,13 +566,14 @@ with leader_col1:
     if not member_stats_df.empty and 'name' in member_stats_df.columns:
         points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
         fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
-                                        text='النقاط', color_discrete_sequence=['#9b59b6'])
+                                        text='النقاط', color_discrete_sequence=['#8E44AD']) # Using secondary color
+        
+        # Apply the new theme
+        fig_points_leaderboard = apply_chart_theme(fig_points_leaderboard, 'bar')
         fig_points_leaderboard.update_traces(textposition='outside')
         fig_points_leaderboard.update_layout(
-            title='', 
             yaxis={'side': 'right', 'autorange': 'reversed'}, 
-            xaxis_autorange='reversed', 
-            margin=dict(t=20, b=0, l=0, r=0)
+            xaxis_autorange='reversed'
         )
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
@@ -583,9 +587,17 @@ with leader_col2:
         if total_common_minutes > 0 or total_other_minutes > 0:
             donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
             donut_values = [total_common_minutes, total_other_minutes]
-            colors = ['#3498db', '#f1c40f']
-            fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.5, marker_colors=colors)])
-            fig_donut.update_layout(showlegend=True, legend=dict(x=0.5, y=-0.2, xanchor='center', yanchor='bottom', orientation='h'), margin=dict(t=20, b=20, l=20, r=20), annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=14, showarrow=False)])
+            
+            fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.6)])
+            
+            # Apply the new theme
+            fig_donut = apply_chart_theme(fig_donut, 'pie')
+            fig_donut.update_layout(
+                showlegend=True, 
+                legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'), 
+                margin=dict(t=20, b=20, l=20, r=20), 
+                annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=16, showarrow=False)]
+            )
             st.plotly_chart(fig_donut, use_container_width=True)
         else:
             st.info("لا توجد بيانات.")
@@ -599,13 +611,14 @@ with leader_col3:
         hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
         hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
         fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
-                                       text='الساعات', color_discrete_sequence=['#e67e22'])
+                                       text='الساعات', color_discrete_sequence=['#F39C12']) # Using accent color
+        
+        # Apply the new theme
+        fig_hours_leaderboard = apply_chart_theme(fig_hours_leaderboard, 'bar')
         fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
         fig_hours_leaderboard.update_layout(
-            title='', 
             yaxis={'side': 'right', 'autorange': 'reversed'}, 
-            xaxis_autorange='reversed', 
-            margin=dict(t=20, b=0, l=0, r=0)
+            xaxis_autorange='reversed'
         )
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
     else:
