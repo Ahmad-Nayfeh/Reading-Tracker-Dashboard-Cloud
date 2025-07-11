@@ -375,9 +375,9 @@ if not logs_df.empty:
     total_reading_days_val = f"{logs_df['submission_date_dt'].nunique()}"
 
 if not periods_df.empty:
-    today_date = date.today()
+    today_date_obj = date.today()
     periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
-    completed_challenges_count_val = f"{len(periods_df[periods_df['end_date_dt'] < today_date])}"
+    completed_challenges_count_val = f"{len(periods_df[periods_df['end_date_dt'] < today_date_obj])}"
 
 # Display KPIs
 display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours_val)
@@ -475,14 +475,14 @@ charts_col1, charts_col2 = st.columns(2, gap="large")
 fig_growth, fig_rhythm = None, None
 
 # --- NEW LOGIC TO EXTEND DATES ---
-today_date = pd.to_datetime(date.today())
+today_date_obj = pd.to_datetime(date.today())
 full_date_range_df = pd.DataFrame()
 
 if not logs_df.empty:
     min_date = logs_df['submission_date_dt'].min()
     if pd.notna(min_date):
         # Create a full date range from the first log entry to today
-        all_days = pd.date_range(start=min_date, end=today_date, freq='D')
+        all_days = pd.date_range(start=min_date, end=today_date_obj, freq='D')
         full_date_range_df = pd.DataFrame(all_days, columns=['submission_date_dt'])
 
 with charts_col1:
