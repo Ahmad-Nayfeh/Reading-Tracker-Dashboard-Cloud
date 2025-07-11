@@ -1,6 +1,6 @@
 import streamlit as st
 
-def apply_enhanced_styles():
+def apply_sidebar_styles():
     """
     Applies enhanced styles for the sidebar and main content,
     adapting colors for both light and dark themes.
