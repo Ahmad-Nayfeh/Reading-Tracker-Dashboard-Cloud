@@ -42,8 +42,8 @@ st.markdown("""
             background-image: linear-gradient(120deg, #f0ecfc 0%, #c2e9fb 100%);
         }
 
-        /* --- THE FIX: Target ONLY the top-level containers in columns --- */
-        div[data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {
+        /* --- THE FIX: Target ONLY the top-level containers in our custom div --- */
+        .summary-tab-content > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {
             background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -52,12 +52,12 @@ st.markdown("""
             padding: 25px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             color: #1E2A78;
-            margin-bottom: 20px;
+            margin-top: 20px;
         }
 
         .card-title {
             font-weight: 700;
-            font-size: 1.6em;
+            font-size: 1.8em;
             color: #1E2A78;
             padding-bottom: 10px;
             border-bottom: 2px solid rgba(255, 255, 255, 0.5);
@@ -69,6 +69,10 @@ st.markdown("""
             padding: 15px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 15px;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .kpi-metric .icon { font-size: 2.5em; }
@@ -77,7 +81,6 @@ st.markdown("""
         .kpi-metric .unit { font-size: 0.9em; }
 
         /* --- Reader Profile Card Styles (Applied to its own container) --- */
-        /* This container uses a different background, so it's not affected by the glass style */
         .reader-kpi-box {
             background-color: #ffffff; border-radius: 12px; padding: 20px; text-align: center;
             border: 1px solid #e9ecef; transition: all 0.3s ease-in-out;
@@ -172,7 +175,7 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         xaxis=dict(tickmode='array', tickvals=list(month_positions.week_of_year), ticktext=list(month_positions.index)),
         plot_bgcolor='rgba(0,0,0,0)',
         paper_bgcolor='rgba(0,0,0,0)',
-        font_color='#FFFFFF',
+        font_color='#1E2A78',
         margin=dict(l=80)
     )
     return fig
@@ -373,6 +376,8 @@ if selected_period_id:
     tab1, tab2 = st.tabs(["📝 ملخص التحدي", "🧑‍💻 بطاقة القارئ"])
 
     with tab1:
+        st.markdown('<div class="summary-tab-content">', unsafe_allow_html=True)
+        
         # --- News Ticker Section ---
         news_items = generate_challenge_news(period_achievements_df, members_df, start_date_obj, end_date_obj, book_title)
         news_html = '<div class="news-container">'
@@ -393,11 +398,12 @@ if selected_period_id:
         elif today < start_date_obj:
             st.info(f"هذا التحدي لم يبدأ بعد. موعد الانطلاق: {start_date_obj.strftime('%Y-%m-%d')}")
         else:
-            # --- Glassmorphism Layout using st.container ---
-            col1, col2 = st.columns([1, 1.5], gap="large")
-            with col1:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">مؤشر التقدم</p>', unsafe_allow_html=True)
+            # --- Glassmorphism Layout ---
+            with st.container(border=True):
+                st.markdown('<p class="card-title">لوحة المؤشرات العامة</p>', unsafe_allow_html=True)
+                c1, c2, c3 = st.columns(3)
+                
+                with c1:
                     total_days = (end_date_obj - start_date_obj).days if end_date_obj > start_date_obj else 1
                     days_passed = (today - start_date_obj).days if today >= start_date_obj else 0
                     progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
@@ -409,52 +415,49 @@ if selected_period_id:
                     fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_gauge, use_container_width=True)
 
-            with col2:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">مؤشرات الأداء الرئيسية</p>', unsafe_allow_html=True)
-                    total_period_minutes = period_logs_df['total_minutes'].sum()
-                    total_period_hours = int(total_period_minutes // 60)
-                    active_participants = period_logs_df['member_id'].nunique()
-                    avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
-                    total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
+                total_period_minutes = period_logs_df['total_minutes'].sum()
+                total_period_hours = int(total_period_minutes // 60)
+                active_participants = period_logs_df['member_id'].nunique()
+                avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
+                total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
-                    kpi_c1, kpi_c2 = st.columns(2)
-                    with kpi_c1:
-                        st.markdown(f"""
-                        <div class="kpi-metric">
-                            <div class="icon">⏳</div>
-                            <div class="label">مجموع ساعات القراءة</div>
-                            <div class="value">{total_period_hours:,}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.markdown(f"""
-                        <div class="kpi-metric" style="margin-top: 15px;">
-                            <div class="icon">✍️</div>
-                            <div class="label">الاقتباسات المرسلة</div>
-                            <div class="value">{int(total_period_quotes)}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                    with kpi_c2:
-                        st.markdown(f"""
-                        <div class="kpi-metric">
-                            <div class="icon">👥</div>
-                            <div class="label">المشاركون الفعليون</div>
-                            <div class="value">{active_participants}</div>
-                        </div>
-                        """, unsafe_allow_html=True)
-                        st.markdown(f"""
-                        <div class="kpi-metric" style="margin-top: 15px;">
-                            <div class="icon">📊</div>
-                            <div class="label">متوسط القراءة/عضو</div>
-                            <div class="value">{avg_daily_reading:.1f}</div>
-                            <div class="unit">دقيقة/يوم</div>
-                        </div>
-                        """, unsafe_allow_html=True)
+                with c2:
+                    st.markdown(f"""
+                    <div class="kpi-metric">
+                        <div class="icon">⏳</div>
+                        <div class="label">مجموع ساعات القراءة</div>
+                        <div class="value">{total_period_hours:,}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="kpi-metric" style="margin-top: 15px;">
+                        <div class="icon">✍️</div>
+                        <div class="label">الاقتباسات المرسلة</div>
+                        <div class="value">{int(total_period_quotes)}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with c3:
+                    st.markdown(f"""
+                    <div class="kpi-metric">
+                        <div class="icon">👥</div>
+                        <div class="label">المشاركون الفعليون</div>
+                        <div class="value">{active_participants}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                    st.markdown(f"""
+                    <div class="kpi-metric" style="margin-top: 15px;">
+                        <div class="icon">📊</div>
+                        <div class="label">متوسط القراءة/عضو</div>
+                        <div class="value">{avg_daily_reading:.1f}</div>
+                        <div class="unit">دقيقة/يوم</div>
+                    </div>
+                    """, unsafe_allow_html=True)
             
-            col3, col4 = st.columns(2, gap="large")
-            with col3:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">مجموع ساعات القراءة التراكمي</p>', unsafe_allow_html=True)
+            with st.container(border=True):
+                st.markdown('<p class="card-title">التحليلات البيانية</p>', unsafe_allow_html=True)
+                r1c1, r1c2 = st.columns(2, gap="large")
+                with r1c1:
+                    st.markdown('<h4>مجموع ساعات القراءة التراكمي</h4>', unsafe_allow_html=True)
                     chart_end_date = min(date.today(), end_date_obj)
                     all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
                     full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
@@ -466,17 +469,15 @@ if selected_period_id:
                     fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78')
                     st.plotly_chart(fig_area, use_container_width=True)
 
-            with col4:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">خريطة الالتزام الحرارية</p>', unsafe_allow_html=True)
+                with r1c2:
+                    st.markdown('<h4>خريطة الالتزام الحرارية</h4>', unsafe_allow_html=True)
                     heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
                     heatmap_fig.update_layout(margin=dict(t=10, b=10, l=10, r=10), font_color='#1E2A78')
                     st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
 
-            col5, col6 = st.columns(2, gap="large")
-            with col5:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">🏆 المتصدرون بالساعات</p>', unsafe_allow_html=True)
+                r2c1, r2c2 = st.columns(2, gap="large")
+                with r2c1:
+                    st.markdown('<h4>🏆 المتصدرون بالساعات</h4>', unsafe_allow_html=True)
                     if not podium_df.empty:
                         hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
                         fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
@@ -489,9 +490,8 @@ if selected_period_id:
                     else:
                         st.info("لا توجد بيانات.")
 
-            with col6:
-                with st.container(border=True):
-                    st.markdown('<p class="card-title">⭐ المتصدرون بالنقاط</p>', unsafe_allow_html=True)
+                with r2c2:
+                    st.markdown('<h4>⭐ المتصدرون بالنقاط</h4>', unsafe_allow_html=True)
                     if not podium_df.empty:
                         points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
                         fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
@@ -503,6 +503,8 @@ if selected_period_id:
                         st.plotly_chart(fig_points, use_container_width=True)
                     else:
                         st.info("لا توجد بيانات.")
+        
+        st.markdown('</div>', unsafe_allow_html=True) # Close the summary-tab-content div
 
     with tab2:
         if podium_df.empty:
