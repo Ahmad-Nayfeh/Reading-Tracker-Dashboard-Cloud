@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet includes the final fix for member chips
+# This CSS snippet includes the final styles for the redesigned admin page
 st.markdown("""
     <style>
         /* --- Base RTL Fixes --- */
@@ -54,7 +54,7 @@ st.markdown("""
             padding-bottom: 0.5rem; border-bottom: 1px solid #e9ecef;
         }
 
-        /* --- CORRECTED Member Chip Styling --- */
+        /* --- Member Chip Styling --- */
         .member-grid [data-testid="stVerticalBlockBorderWrapper"] {
             padding: 0.4rem 0.6rem !important;
             border-radius: 10px;
@@ -72,7 +72,7 @@ st.markdown("""
             height: 36px;
         }
         .member-name {
-            padding-top: 5px; /* Vertical alignment */
+            padding-top: 5px;
             overflow: hidden;
             text-overflow: ellipsis;
             white-space: nowrap;
@@ -90,6 +90,15 @@ st.markdown("""
             color: #6c757d; width: 38px; height: 38px; border-radius: 50%;
         }
         .challenge-card-actions .stButton button:hover { background-color: #e9ecef; border-color: #adb5bd; }
+        
+        /* Specific style for the current challenge card to make it stand out */
+        .current-challenge-card {
+            border-color: #2980b9 !important;
+            border-width: 1px;
+        }
+        .current-challenge-card h5 {
+            color: #2980b9 !important;
+        }
 
         /* --- Tabs Styling --- */
         [data-testid="stTabs"] button { padding: 12px 18px; font-size: 1.05em; }
@@ -233,36 +242,91 @@ with st.container(border=True):
     if st.button("➕ إضافة تحدي", key="add_challenge_button"):
         st.session_state.show_add_challenge_dialog = True
 
-    today_str = str(date.today())
+    today = date.today()
+    current_challenges, past_challenges, future_challenges = [], [], []
     if not periods_df.empty:
-        sorted_periods = periods_df.sort_values(by='start_date', ascending=False).reset_index()
-        num_challenges = len(sorted_periods)
-        num_cols = 2
-        for i in range(0, num_challenges, num_cols):
-            cols = st.columns(num_cols)
-            for j in range(num_cols):
-                if i + j < num_challenges:
-                    with cols[j]:
-                        with st.container(border=True):
-                            period = sorted_periods.iloc[i+j]
-                            is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
-                            
-                            c1, c2 = st.columns([3, 1])
-                            with c1:
-                                st.markdown(f"""
-                                    <div class="challenge-card-info">
-                                        <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
-                                        <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
-                                    </div>
-                                """, unsafe_allow_html=True)
-                            with c2:
-                                st.markdown('<div class="challenge-card-actions">', unsafe_allow_html=True)
-                                btn_c1, btn_c2 = st.columns(2)
-                                btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
-                                btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
-                                st.markdown('</div>', unsafe_allow_html=True)
+        for _, period in periods_df.iterrows():
+            start_date = datetime.strptime(period['start_date'], '%Y-%m-%d').date()
+            end_date = datetime.strptime(period['end_date'], '%Y-%m-%d').date()
+            if start_date > today:
+                future_challenges.append(period)
+            elif end_date < today:
+                past_challenges.append(period)
+            else:
+                current_challenges.append(period)
+
+    # Display Current Challenge
+    st.markdown('<p class="subsection-title">التحدي النشط حالياً</p>', unsafe_allow_html=True)
+    if current_challenges:
+        for period in current_challenges:
+            with st.container(border=True):
+                st.markdown('<div class="current-challenge-card">', unsafe_allow_html=True)
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    st.markdown(f"""
+                        <div class="challenge-card-info">
+                            <h5>{period.get('book_title', 'غير متوفر')}</h5>
+                            <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with c2:
+                    st.markdown('<div class="challenge-card-actions">', unsafe_allow_html=True)
+                    btn_c1, btn_c2 = st.columns(2)
+                    btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                    btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=True, help="لا يمكن حذف التحدي النشط", use_container_width=True)
+                    st.markdown('</div>', unsafe_allow_html=True)
+                st.markdown('</div>', unsafe_allow_html=True)
     else:
-        st.info("لا توجد تحديات لعرضها.")
+        st.info("لا يوجد تحدي نشط حالياً.")
+
+    # Display Past and Future Challenges in columns
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown('<p class="subsection-title">التحديات المنتهية</p>', unsafe_allow_html=True)
+        if past_challenges:
+            past_challenges.sort(key=lambda p: p['start_date'], reverse=True)
+            for period in past_challenges:
+                with st.container(border=True):
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        st.markdown(f"""
+                            <div class="challenge-card-info">
+                                <h5>{period.get('book_title', 'غير متوفر')}</h5>
+                                <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    with c2:
+                        st.markdown('<div class="challenge-card-actions">', unsafe_allow_html=True)
+                        btn_c1, btn_c2 = st.columns(2)
+                        btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                        btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", help="حذف التحدي", use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("لا توجد تحديات منتهية.")
+
+    with col2:
+        st.markdown('<p class="subsection-title">التحديات المقبلة</p>', unsafe_allow_html=True)
+        if future_challenges:
+            future_challenges.sort(key=lambda p: p['start_date'])
+            for period in future_challenges:
+                with st.container(border=True):
+                    c1, c2 = st.columns([3, 1])
+                    with c1:
+                        st.markdown(f"""
+                            <div class="challenge-card-info">
+                                <h5>{period.get('book_title', 'غير متوفر')}</h5>
+                                <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                            </div>
+                        """, unsafe_allow_html=True)
+                    with c2:
+                        st.markdown('<div class="challenge-card-actions">', unsafe_allow_html=True)
+                        btn_c1, btn_c2 = st.columns(2)
+                        btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                        btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", help="حذف التحدي", use_container_width=True)
+                        st.markdown('</div>', unsafe_allow_html=True)
+        else:
+            st.info("لا توجد تحديات مقبلة.")
+
 
 # --- Spacer ---
 st.write("") 
@@ -565,7 +629,7 @@ if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom
             rules['attend_discussion_points'] = st.number_input("نقاط حضور جلسة النقاش:", value=default_settings['attend_discussion_points'], min_value=0)
             if st.form_submit_button("حفظ التحدي بالقوانين المخصصة", type="primary"):
                 success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], rules)
-                if success: st.toast(f"✅ {message}", icon="🎉")
+                if success: st.toast(f"✅ {message}", icon="�")
                 else: st.error(f"❌ {message}")
                 del st.session_state.show_custom_rules_form, st.session_state.new_challenge_data
                 st.cache_data.clear()
