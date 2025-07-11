@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL and adds the final custom styles for the admin dashboard
+# This CSS snippet enforces RTL and adds the final custom styles for the new grid layout
 st.markdown("""
     <style>
         /* --- Base RTL Fixes --- */
@@ -67,53 +67,50 @@ st.markdown("""
             border-bottom: 1px solid #e9ecef;
         }
 
-        /* --- Member display styling --- */
-        .member-entry {
+        /* --- NEW: Member Chip Styling for Grid Layout --- */
+        .member-chip {
             display: flex;
             align-items: center;
             justify-content: space-between;
-            padding: 8px;
+            padding: 8px 12px;
             border-radius: 8px;
-        }
-        .member-entry:hover {
             background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            text-align: center;
+            height: 50px;
         }
-        .member-entry.inactive span {
+        .member-chip span {
+            flex-grow: 1;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+        .member-chip.inactive span {
             color: #adb5bd;
             text-decoration: line-through;
         }
-        .member-entry .stButton button {
-            background-color: #f1f3f5;
+        .member-chip .stButton button {
+            background-color: transparent;
             color: #868e96;
-            border: 1px solid #dee2e6;
-            border-radius: 8px;
-            width: 38px;
-            height: 32px;
+            border: none;
+            padding: 0;
+            margin-right: 5px; /* RTL margin */
+            width: 24px;
+            height: 24px;
         }
 
-        /* --- NEW: Challenge Entry Styling (List-like) --- */
-        .challenge-entry {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            padding: 1.25rem 1rem;
-            border-bottom: 1px solid #e9ecef;
-        }
-        /* Remove border from the last challenge entry */
-        .challenges-container > div:last-child .challenge-entry {
-            border-bottom: none;
-        }
-        .challenge-info h5 {
+        /* --- Challenge Card Info --- */
+        .challenge-card-info h5 {
             margin: 0 0 5px 0;
             color: #2c3e50;
             font-size: 1.1em;
         }
-        .challenge-info p {
+        .challenge-card-info p {
             margin: 0;
             font-size: 0.9em;
             color: #6c757d;
         }
-        .challenge-actions .stButton button {
+        .challenge-card-actions .stButton button {
             background-color: transparent;
             border: 1px solid #ced4da;
             color: #6c757d;
@@ -121,7 +118,7 @@ st.markdown("""
             height: 38px;
             border-radius: 50%;
         }
-        .challenge-actions .stButton button:hover {
+        .challenge-card-actions .stButton button:hover {
             background-color: #e9ecef;
             border-color: #adb5bd;
         }
@@ -224,30 +221,39 @@ with st.container(border=True):
     active_members_df = members_df[members_df['is_active'] == True] if not members_df.empty else pd.DataFrame()
     inactive_members_df = members_df[members_df['is_active'] == False] if not members_df.empty else pd.DataFrame()
 
-    col1, col2 = st.columns(2)
-    with col1:
-        st.markdown('<p class="subsection-title">النشطون</p>', unsafe_allow_html=True)
-        if not active_members_df.empty:
-            for _, member in active_members_df.iterrows():
-                m_col1, m_col2 = st.columns([4, 1])
-                with m_col1:
-                    st.markdown(f'<div class="member-entry"><span>{member["name"]}</span></div>', unsafe_allow_html=True)
-                with m_col2:
-                    st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو", use_container_width=True)
-        else:
-            st.info("لا يوجد أعضاء نشطون حالياً.")
-    
-    with col2:
-        st.markdown('<p class="subsection-title">الأرشيف</p>', unsafe_allow_html=True)
-        if not inactive_members_df.empty:
-            for _, member in inactive_members_df.iterrows():
-                m_col1, m_col2 = st.columns([4, 1])
-                with m_col1:
-                    st.markdown(f'<div class="member-entry inactive"><span>{member["name"]}</span></div>', unsafe_allow_html=True)
-                with m_col2:
-                    st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو", use_container_width=True)
-        else:
-            st.info("لا يوجد أعضاء في الأرشيف.")
+    # --- Active Members Grid ---
+    st.markdown('<p class="subsection-title">النشطون</p>', unsafe_allow_html=True)
+    if not active_members_df.empty:
+        num_members = len(active_members_df)
+        num_cols = 5
+        for i in range(0, num_members, num_cols):
+            cols = st.columns(num_cols)
+            for j in range(num_cols):
+                if i + j < num_members:
+                    with cols[j]:
+                        member = active_members_df.iloc[i+j]
+                        st.markdown(f'<div class="member-chip"><span>{member["name"]}</span>', unsafe_allow_html=True)
+                        st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو")
+                        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("لا يوجد أعضاء نشطون حالياً.")
+
+    # --- Inactive Members Grid ---
+    st.markdown('<p class="subsection-title">الأرشيف</p>', unsafe_allow_html=True)
+    if not inactive_members_df.empty:
+        num_members = len(inactive_members_df)
+        num_cols = 5
+        for i in range(0, num_members, num_cols):
+            cols = st.columns(num_cols)
+            for j in range(num_cols):
+                if i + j < num_members:
+                    with cols[j]:
+                        member = inactive_members_df.iloc[i+j]
+                        st.markdown(f'<div class="member-chip inactive"><span>{member["name"]}</span>', unsafe_allow_html=True)
+                        st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو")
+                        st.markdown('</div>', unsafe_allow_html=True)
+    else:
+        st.info("لا يوجد أعضاء في الأرشيف.")
 
     st.divider()
 
@@ -262,30 +268,32 @@ with st.container(border=True):
 
     today_str = str(date.today())
     if not periods_df.empty:
-        sorted_periods = periods_df.sort_values(by='start_date', ascending=False)
-        st.markdown('<div class="challenges-container">', unsafe_allow_html=True)
-        for _, period in sorted_periods.iterrows():
-            is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
-            
-            # Use columns to structure each challenge entry
-            st.markdown('<div class="challenge-entry">', unsafe_allow_html=True)
-            c1, c2 = st.columns([4, 1])
-            with c1:
-                st.markdown(f"""
-                    <div class="challenge-info">
-                        <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
-                        <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
-                    </div>
-                """, unsafe_allow_html=True)
-            with c2:
-                st.markdown('<div class="challenge-actions">', unsafe_allow_html=True)
-                btn_c1, btn_c2 = st.columns(2)
-                btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
-                btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
-            st.markdown('</div>', unsafe_allow_html=True)
-
-        st.markdown('</div>', unsafe_allow_html=True)
+        sorted_periods = periods_df.sort_values(by='start_date', ascending=False).reset_index()
+        num_challenges = len(sorted_periods)
+        num_cols = 2
+        for i in range(0, num_challenges, num_cols):
+            cols = st.columns(num_cols)
+            for j in range(num_cols):
+                if i + j < num_challenges:
+                    with cols[j]:
+                        with st.container(border=True):
+                            period = sorted_periods.iloc[i+j]
+                            is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
+                            
+                            c1, c2 = st.columns([3, 1])
+                            with c1:
+                                st.markdown(f"""
+                                    <div class="challenge-card-info">
+                                        <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
+                                        <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                                    </div>
+                                """, unsafe_allow_html=True)
+                            with c2:
+                                st.markdown('<div class="challenge-card-actions">', unsafe_allow_html=True)
+                                btn_c1, btn_c2 = st.columns(2)
+                                btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                                btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
+                                st.markdown('</div>', unsafe_allow_html=True)
     else:
         st.info("لا توجد تحديات لعرضها.")
 
@@ -493,7 +501,7 @@ for _, member in members_df.iterrows():
             final_active_names = active_members_df['name'].tolist() + [member['name']]
             form_id, q_id = user_settings.get('form_id'), user_settings.get('member_question_id')
             update_form_members(forms_service, form_id, q_id, final_active_names)
-            st.toast(f"تم إعادة تنشيط {member['name']} وإضافته للنموذج.", icon="🔄")
+            st.toast(f"تم إعادة تنشيط {member['name']} وإضافته للنموذج.", icon="�")
             st.cache_data.clear()
             st.rerun()
 
@@ -566,7 +574,7 @@ if 'show_rules_choice' in st.session_state and st.session_state.show_rules_choic
         if c1.button("📈 استخدام النظام الافتراضي", use_container_width=True):
             default_rules = db.load_user_global_rules(user_id)
             success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], default_rules)
-            if success: st.toast(f"✅ {message}", icon="�")
+            if success: st.toast(f"✅ {message}", icon="🎉")
             else: st.error(f"❌ {message}")
             del st.session_state.show_rules_choice, st.session_state.new_challenge_data
             st.cache_data.clear()
