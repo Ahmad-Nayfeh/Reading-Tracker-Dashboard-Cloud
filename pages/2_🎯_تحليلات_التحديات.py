@@ -18,90 +18,112 @@ st.set_page_config(
 st.markdown("""
     <style>
         /* Main app container */
-        .stApp {
-            direction: rtl;
-        }
-        /* Sidebar */
-        [data-testid="stSidebar"] {
-            direction: rtl;
-        }
-        /* Ensure text alignment is right for various elements */
-        h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
-            text-align: right !important;
-        }
-        /* Fix for radio buttons label alignment */
-        .st-b8 label {
-            text-align: right !important;
-            display: block;
-        }
-        /* Fix for selectbox label alignment */
-        .st-ae label {
-            text-align: right !important;
-            display: block;
-        }
+        .stApp { direction: rtl; }
+        [data-testid="stSidebar"] { direction: rtl; }
+        h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae { text-align: right !important; }
+        .st-b8 label, .st-ae label { text-align: right !important; display: block; }
         
         /* --- Custom styles for the main KPI cards --- */
         .main-kpi-card {
-            background-color: #FFFFFF;
-            border-radius: 10px;
-            padding: 20px;
-            text-align: center;
-            border: 1px solid #e6e6e6;
+            background-color: #FFFFFF; border-radius: 10px; padding: 20px;
+            text-align: center; border: 1px solid #e6e6e6;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
         }
-        .main-kpi-card .label {
-            font-size: 1.2em;
-            font-weight: bold;
-            color: #5D6D7E;
-        }
-        .main-kpi-card .value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #2980B9;
-            margin: 10px 0;
-        }
+        .main-kpi-card .label { font-size: 1.2em; font-weight: bold; color: #5D6D7E; }
+        .main-kpi-card .value { font-size: 2.5em; font-weight: bold; color: #2980B9; margin: 10px 0; }
 
         /* --- Professional News Ticker Styles --- */
         .news-container {
+            background-color: #ffffff; border-radius: 12px; padding: 0;
+            margin-bottom: 20px; border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05); overflow: hidden;
+        }
+        .news-header { background-color: #2980b9; color: white; padding: 12px 20px; font-size: 1.3em; font-weight: bold; }
+        .news-body { padding: 15px 20px; }
+        .news-body ul { list-style-type: none; padding-right: 0; margin: 0; }
+        .news-body li { padding: 8px 0; border-bottom: 1px solid #f0f0f0; font-size: 1.1em; color: #34495e; }
+        .news-body li:last-child { border-bottom: none; }
+        .news-body li b { color: #2c3e50; }
+        .news-body .no-news { color: #7f8c8d; font-style: italic; }
+
+        /* --- NEW: Reader Profile Card Styles --- */
+        .reader-card-container {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 15px;
+            padding: 25px;
+            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
+            margin-top: 20px;
+        }
+
+        .reader-kpi-box {
             background-color: #ffffff;
             border-radius: 12px;
-            padding: 0;
-            margin-bottom: 20px;
-            border: 1px solid #e0e0e0;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            overflow: hidden; /* Important for rounded corners on children */
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e9ecef;
+            transition: all 0.3s ease-in-out;
         }
-        .news-header {
-            background-color: #2980b9;
-            color: white;
-            padding: 12px 20px;
-            font-size: 1.3em;
-            font-weight: bold;
+        .reader-kpi-box:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 6px 12px rgba(0,0,0,0.08);
         }
-        .news-body {
-            padding: 15px 20px;
+        .reader-kpi-box .icon {
+            font-size: 2.5em;
+            margin-bottom: 10px;
         }
-        .news-body ul {
-            list-style-type: none;
-            padding-right: 0;
-            margin: 0;
-        }
-        .news-body li {
-            padding: 8px 0;
-            border-bottom: 1px solid #f0f0f0;
+        .reader-kpi-box .label {
             font-size: 1.1em;
+            font-weight: 600;
+            color: #6c757d;
+        }
+        .reader-kpi-box .value {
+            font-size: 2em;
+            font-weight: 700;
+            color: #343a40;
+        }
+        
+        .card-subheader {
+            font-size: 1.5em;
+            font-weight: 700;
             color: #34495e;
+            margin-top: 25px;
+            margin-bottom: 15px;
+            padding-bottom: 10px;
+            border-bottom: 3px solid #3498db;
+            display: inline-block;
         }
-        .news-body li:last-child {
-            border-bottom: none;
+
+        .badge-container {
+            display: flex;
+            align-items: center;
+            background-color: #eafaf1;
+            border-right: 5px solid #2ecc71;
+            border-radius: 8px;
+            padding: 15px;
+            margin-bottom: 12px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.04);
         }
-        .news-body li b {
+        .badge-icon {
+            font-size: 1.8em;
+            margin-left: 15px;
+            color: #2ecc71;
+        }
+        .badge-text {
+            font-size: 1.1em;
             color: #2c3e50;
         }
-        .news-body .no-news {
-            color: #7f8c8d;
-            font-style: italic;
+        
+        .achievement-item {
+            font-size: 1.1em;
+            padding: 8px 0;
+            color: #34495e;
         }
+        .achievement-item::before {
+            content: "🎯";
+            margin-left: 10px;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -404,9 +426,12 @@ if selected_period_id:
                 progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
                 
                 fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number", value=progress, number={'suffix': '%'},
+                    mode="gauge+number",
+                    value=progress,
+                    number={'suffix': '%'},
                     title={'text': f"انقضى {days_passed} من {total_days} يوم"},
-                    gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
+                    gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}
+                ))
                 fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
                 st.plotly_chart(fig_gauge, use_container_width=True)
 
@@ -505,33 +530,58 @@ if selected_period_id:
         else:
             member_names = sorted(podium_df['name'].tolist())
             selected_member_name = st.selectbox("اختر قارئاً لعرض بطاقته:", member_names)
-            st.markdown("---")
-
+            
             if selected_member_name:
+                st.markdown('<div class="reader-card-container">', unsafe_allow_html=True)
+                
                 member_data = podium_df[podium_df['name'] == selected_member_name].iloc[0]
                 member_id = member_data['member_id']
                 
-                st.subheader("📊 مؤشرات الأداء")
+                # --- Redesigned KPI Section ---
                 kpi_cols = st.columns(3)
-                kpi_cols[0].metric("⭐ النقاط", f"{int(member_data['points'])}")
-                kpi_cols[1].metric("⏳ ساعات القراءة", f"{member_data['hours']:.1f}")
-                kpi_cols[2].metric("✍️ الاقتباسات", f"{int(member_data['quotes'])}")
-                st.markdown("---")
+                with kpi_cols[0]:
+                    st.markdown(f"""
+                    <div class="reader-kpi-box">
+                        <div class="icon">⭐</div>
+                        <div class="label">النقاط</div>
+                        <div class="value">{int(member_data['points'])}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with kpi_cols[1]:
+                    st.markdown(f"""
+                    <div class="reader-kpi-box">
+                        <div class="icon">⏳</div>
+                        <div class="label">ساعات القراءة</div>
+                        <div class="value">{member_data['hours']:.1f}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+                with kpi_cols[2]:
+                    st.markdown(f"""
+                    <div class="reader-kpi-box">
+                        <div class="icon">✍️</div>
+                        <div class="label">الاقتباسات</div>
+                        <div class="value">{int(member_data['quotes'])}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
 
+                
+                # --- Redesigned Badges and Achievements ---
                 col1, col2 = st.columns(2, gap="large")
                 
                 with col1:
-                    st.subheader("🏅 الأوسمة والشارات")
+                    st.markdown('<div class="card-subheader">🏅 الأوسمة والشارات</div>', unsafe_allow_html=True)
                     member_logs = period_logs_df[period_logs_df['member_id'] == member_id]
                     member_achievements = period_achievements_df[period_achievements_df['member_id'] == member_id] if not period_achievements_df.empty else pd.DataFrame()
 
                     badges_unlocked = []
-                    if member_data['quotes'] > 10: badges_unlocked.append("✍️ **وسام الفيلسوف:** إرسال أكثر من 10 اقتباسات.")
+                    if member_data['quotes'] > 10: 
+                        badges_unlocked.append(('✍️', 'وسام الفيلسوف: إرسال أكثر من 10 اقتباسات.'))
                     if not member_achievements.empty:
                         finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
                         if not finish_common_ach.empty:
                             finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date_dt']).date()
-                            if (finish_date_dt - start_date_obj).days <= 7: badges_unlocked.append("🏃‍♂️ **وسام العدّاء:** إنهاء الكتاب في الأسبوع الأول.")
+                            if (finish_date_dt - start_date_obj).days <= 7: 
+                                badges_unlocked.append(('🏃‍♂️', 'وسام العدّاء: إنهاء الكتاب في الأسبوع الأول.'))
                     if not member_logs.empty:
                         log_dates = sorted(pd.to_datetime(member_logs['submission_date_dt'].unique()))
                         if len(log_dates) >= 7:
@@ -542,27 +592,39 @@ if selected_period_id:
                                     if (log_dates[i] - log_dates[i-1]).days == 1: current_streak += 1
                                     else: max_streak = max(max_streak, current_streak); current_streak = 1
                                 max_streak = max(max_streak, current_streak)
-                            if max_streak >= 7: badges_unlocked.append(f"💯 **وسام المثابرة:** القراءة لـ {max_streak} أيام متتالية.")
+                            if max_streak >= 7: 
+                                badges_unlocked.append(('💯', f'وسام المثابرة: القراءة لـ {max_streak} أيام متتالية.'))
                     
                     if badges_unlocked:
-                        for badge in badges_unlocked: st.success(badge)
-                    else: st.info("لا توجد أوسمة بعد.")
+                        for icon, text in badges_unlocked:
+                            st.markdown(f"""
+                            <div class="badge-container">
+                                <div class="badge-icon">{icon}</div>
+                                <div class="badge-text">{text}</div>
+                            </div>
+                            """, unsafe_allow_html=True)
+                    else: 
+                        st.info("لا توجد أوسمة بعد. استمر في القراءة لفتحها!")
 
                 with col2:
-                    st.subheader("🎯 الإنجازات")
+                    st.markdown('<div class="card-subheader">🎯 الإنجازات</div>', unsafe_allow_html=True)
                     if not member_achievements.empty:
                         achievement_map = {'FINISHED_COMMON_BOOK': 'إنهاء الكتاب المشترك', 'ATTENDED_DISCUSSION': 'حضور جلسة النقاش', 'FINISHED_OTHER_BOOK': 'إنهاء كتاب آخر'}
-                        for _, ach in member_achievements.iterrows(): st.markdown(f"- **{achievement_map.get(ach['achievement_type'], ach['achievement_type'])}**")
-                    else: st.info("لا توجد إنجازات بعد.")
+                        for _, ach in member_achievements.iterrows(): 
+                            st.markdown(f"<div class='achievement-item'>{achievement_map.get(ach['achievement_type'], ach['achievement_type'])}</div>", unsafe_allow_html=True)
+                    else: 
+                        st.info("لا توجد إنجازات مسجلة بعد.")
 
                 st.markdown("---")
+                
+                # --- Charts Section ---
                 col4, col5 = st.columns(2, gap="large")
                 with col4:
-                    st.subheader(f"خريطة التزام: {selected_member_name}")
+                    st.markdown(f'<div class="card-subheader">خريطة التزام: {selected_member_name}</div>', unsafe_allow_html=True)
                     individual_heatmap = create_activity_heatmap(member_logs, start_date_obj, end_date_obj, title_text="")
                     st.plotly_chart(individual_heatmap, use_container_width=True, key="individual_heatmap")
                 with col5:
-                    st.subheader("مصادر النقاط")
+                    st.markdown('<div class="card-subheader">مصادر النقاط</div>', unsafe_allow_html=True)
                     period_rules = selected_challenge_data
                     points_source = {}
                     common_minutes = member_logs['common_book_minutes'].sum()
@@ -592,15 +654,17 @@ if selected_period_id:
 
                         fig_donut = go.Figure(data=[go.Pie(
                             labels=chart_labels, values=list(points_source_filtered.values()), 
-                            hole=.5, textinfo='percent', insidetextorientation='radial',
+                            hole=.5, textinfo='percent+label', insidetextorientation='radial',
                             marker_colors=chart_colors
                         )])
                         fig_donut.update_layout(
-                            showlegend=True, legend=dict(orientation="h", yanchor="bottom", y=-0.2, xanchor="center", x=0.5),
-                            margin=dict(t=20, b=50, l=20, r=20)
+                            showlegend=False,
+                            margin=dict(t=20, b=20, l=20, r=20)
                         )
                         st.plotly_chart(fig_donut, use_container_width=True)
                     else: st.info("لا توجد نقاط مسجلة لعرض مصادرها.")
+                
+                st.markdown('</div>', unsafe_allow_html=True) # Close the reader-card-container
     
     st.markdown("---")
     with st.expander("🖨️ تصدير تقرير أداء التحدي (PDF)"):
