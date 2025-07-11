@@ -40,6 +40,27 @@ st.markdown("""
             display: block;
         }
         
+        /* --- Custom styles for the main KPI cards --- */
+        .main-kpi-card {
+            background-color: #FFFFFF;
+            border-radius: 10px;
+            padding: 20px;
+            text-align: center;
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+        }
+        .main-kpi-card .label {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #5D6D7E;
+        }
+        .main-kpi-card .value {
+            font-size: 2.5em;
+            font-weight: bold;
+            color: #2980B9;
+            margin: 10px 0;
+        }
+
         /* --- Professional News Ticker Styles --- */
         .news-container {
             background-color: #ffffff;
@@ -397,12 +418,26 @@ if selected_period_id:
                 avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
                 total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
+                # Helper function to display KPI cards
+                def display_main_kpi(label, value):
+                    st.markdown(f"""
+                    <div class="main-kpi-card" style="margin-bottom: 15px; height: 115px; display: flex; flex-direction: column; justify-content: center;">
+                        <div class="label">{label}</div>
+                        <div class="value">{value}</div>
+                    </div>
+                    """, unsafe_allow_html=True)
+
                 kpi1, kpi2 = st.columns(2)
-                kpi1.metric("⏳ مجموع ساعات القراءة", f"{total_period_hours:,}")
-                kpi2.metric("👥 المشاركون الفعليون", f"{active_participants}")
+                with kpi1:
+                    display_main_kpi("⏳ مجموع ساعات القراءة", f"{total_period_hours:,}")
+                with kpi2:
+                    display_main_kpi("👥 المشاركون الفعليون", f"{active_participants}")
+                
                 kpi3, kpi4 = st.columns(2)
-                kpi3.metric("✍️ الاقتباسات المرسلة", f"{int(total_period_quotes)}")
-                kpi4.metric("📊 متوسط القراءة اليومي/عضو", f"{avg_daily_reading:.1f} دقيقة")
+                with kpi3:
+                    display_main_kpi("✍️ الاقتباسات المرسلة", f"{int(total_period_quotes)}")
+                with kpi4:
+                    display_main_kpi("📊 متوسط القراءة/عضو", f"{avg_daily_reading:.1f} دقيقة")
             st.markdown("---")
 
             col3, col4 = st.columns(2, gap="large")
