@@ -96,8 +96,9 @@ class PDFReporter(FPDF):
             paper_bgcolor='rgba(0,0,0,0)',
             plot_bgcolor='rgba(0,0,0,0)',
             title=dict(font=dict(family="Amiri", size=18, color="black"), x=0.5, pad=dict(b=15)),
-            xaxis=dict(title=dict(font=dict(family="Amiri", size=14, color="black")), tickfont=dict(family="Amiri", size=12, color="black")),
-            yaxis=dict(title=dict(font=dict(family="Amiri", size=14, color="black")), tickfont=dict(family="Amiri", size=12, color="black"))
+            xaxis=dict(title=dict(font=dict(family="Amiri", size=14, color="black")), tickfont=dict(family="Amiri", size=12, color="black"), showgrid=True, gridcolor="lightgray", gridwidth=0.5),
+            yaxis=dict(title=dict(font=dict(family="Amiri", size=14, color="black")), tickfont=dict(family="Amiri", size=12, color="black"), showgrid=True, gridcolor="lightgray", gridwidth=0.5),
+            margin=dict(l=60, r=60, t=80, b=60)
         )
         return fig
 
@@ -164,8 +165,7 @@ class PDFReporter(FPDF):
             self.cell(0, line_h, self._process_text("لا توجد تحديات مسجلة بعد."), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
 
     def add_plot(self, fig: go.Figure, width_percent=90):
-        # MODIFIED: Added check for None fig
-        if not self.font_loaded or fig is None: return None, 0
+        if not self.font_loaded or not fig: return None, 0
         styled_fig = self._style_figure_for_arabic(fig)
         pio.kaleido.chromium_args = "--no-sandbox"
         img_bytes = styled_fig.to_image(format="png", scale=2, width=800, height=500)
@@ -204,8 +204,6 @@ class PDFReporter(FPDF):
             self.add_champions_section(champions_data)
 
     def _add_single_plot_page(self, fig, title):
-        # MODIFIED: Added check for None fig
-        if fig is None: return
         self.add_page()
         pil_img = Image.open(io.BytesIO(fig.to_image(format="png", scale=2, width=800, height=500)))
         aspect_ratio = pil_img.height / pil_img.width
@@ -225,16 +223,6 @@ class PDFReporter(FPDF):
         self.add_plot(fig, width_percent=85)
 
     def _add_dual_plot_page(self, fig1, title1, fig2, title2):
-        # MODIFIED: Added checks for None figs
-        if fig1 is None and fig2 is None:
-            return
-        if fig1 is not None and fig2 is None:
-            self._add_single_plot_page(fig1, title1)
-            return
-        if fig1 is None and fig2 is not None:
-            self._add_single_plot_page(fig2, title2)
-            return
-
         self.add_page()
         page_width = self.w - self.l_margin - self.r_margin
         img_width_mm = page_width * 0.85
