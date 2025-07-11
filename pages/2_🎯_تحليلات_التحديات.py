@@ -404,7 +404,7 @@ if selected_period_id:
                 progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
                 
                 fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number", value=progress,
+                    mode="gauge+number", value=progress, number={'suffix': '%'},
                     title={'text': f"انقضى {days_passed} من {total_days} يوم"},
                     gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
                 fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20))
