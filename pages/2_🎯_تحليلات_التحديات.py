@@ -37,31 +37,7 @@ st.markdown("""
         .news-body li b { color: #2c3e50; }
         .news-body .no-news { color: #7f8c8d; font-style: italic; }
 
-        /* --- NEW: Challenge Summary Card Styles --- */
-        .summary-card {
-            background-color: #ffffff;
-            border: 1px solid #e9ecef;
-            border-radius: 15px;
-            padding: 25px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.05);
-            height: 100%;
-            display: flex;
-            flex-direction: column;
-        }
-        .summary-card-title {
-            font-size: 1.4em;
-            font-weight: 700;
-            color: #34495e;
-            margin-bottom: 20px;
-            padding-bottom: 10px;
-            border-bottom: 2px solid #3498db;
-        }
-        .summary-kpi-grid {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 15px;
-            flex-grow: 1;
-        }
+        /* --- Summary KPI Item Styles (inside st.container) --- */
         .summary-kpi-item {
             background-color: #f8f9fa;
             border-radius: 10px;
@@ -84,11 +60,6 @@ st.markdown("""
         }
 
         /* --- Reader Profile Card Styles --- */
-        .reader-card-container {
-            background-color: #f8f9fa; border: 1px solid #dee2e6;
-            border-radius: 15px; padding: 25px;
-            box-shadow: 0 8px 16px rgba(0,0,0,0.05); margin-top: 20px;
-        }
         .reader-kpi-box {
             background-color: #ffffff; border-radius: 12px; padding: 20px; text-align: center;
             border: 1px solid #e9ecef; transition: all 0.3s ease-in-out;
@@ -110,7 +81,7 @@ st.markdown("""
         .badge-icon { font-size: 1.8em; margin-left: 15px; color: #2ecc71; }
         .badge-text { font-size: 1.1em; color: #2c3e50; }
         .achievement-item { font-size: 1.1em; padding: 8px 0; color: #34495e; }
-        .achievement-item::before { content: "🎯"; margin-left: 10px; }
+        .achievement-item::before { content: "�"; margin-left: 10px; }
 
     </style>
 """, unsafe_allow_html=True)
@@ -404,115 +375,116 @@ if selected_period_id:
         elif today < start_date_obj:
             st.info(f"هذا التحدي لم يبدأ بعد. موعد الانطلاق: {start_date_obj.strftime('%Y-%m-%d')}")
         else:
-            # --- Redesigned Summary Layout ---
+            # --- Redesigned Summary Layout using st.container(border=True) ---
             col1, col2 = st.columns([1, 1.5], gap="large")
             with col1:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">مؤشر التقدم</div>', unsafe_allow_html=True)
-                total_days = (end_date_obj - start_date_obj).days if end_date_obj > start_date_obj else 1
-                days_passed = (today - start_date_obj).days if today >= start_date_obj else 0
-                progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
-                
-                fig_gauge = go.Figure(go.Indicator(
-                    mode="gauge+number", value=progress, number={'suffix': '%'},
-                    title={'text': f"انقضى {days_passed} من {total_days} يوم", 'font': {'size': 16}},
-                    gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
-                fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
-                st.plotly_chart(fig_gauge, use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">مؤشر التقدم</div>', unsafe_allow_html=True)
+                    total_days = (end_date_obj - start_date_obj).days if end_date_obj > start_date_obj else 1
+                    days_passed = (today - start_date_obj).days if today >= start_date_obj else 0
+                    progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
+                    
+                    fig_gauge = go.Figure(go.Indicator(
+                        mode="gauge+number", value=progress, number={'suffix': '%'},
+                        title={'text': f"انقضى {days_passed} من {total_days} يوم", 'font': {'size': 16}},
+                        gauge={'axis': {'range': [None, 100]}, 'bar': {'color': "#2980b9"}}))
+                    fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
+                    st.plotly_chart(fig_gauge, use_container_width=True)
 
             with col2:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">مؤشرات الأداء الرئيسية</div>', unsafe_allow_html=True)
-                total_period_minutes = period_logs_df['total_minutes'].sum()
-                total_period_hours = int(total_period_minutes // 60)
-                active_participants = period_logs_df['member_id'].nunique()
-                avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
-                total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">مؤشرات الأداء الرئيسية</div>', unsafe_allow_html=True)
+                    total_period_minutes = period_logs_df['total_minutes'].sum()
+                    total_period_hours = int(total_period_minutes // 60)
+                    active_participants = period_logs_df['member_id'].nunique()
+                    avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
+                    total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
-                st.markdown(f"""
-                <div class="summary-kpi-grid">
-                    <div class="summary-kpi-item">
-                        <div class="label">⏳ مجموع ساعات القراءة</div>
-                        <div class="value">{total_period_hours:,}</div>
-                    </div>
-                    <div class="summary-kpi-item">
-                        <div class="label">👥 المشاركون الفعليون</div>
-                        <div class="value">{active_participants}</div>
-                    </div>
-                    <div class="summary-kpi-item">
-                        <div class="label">✍️ الاقتباسات المرسلة</div>
-                        <div class="value">{int(total_period_quotes)}</div>
-                    </div>
-                    <div class="summary-kpi-item">
-                        <div class="label">📊 متوسط القراءة/عضو</div>
-                        <div class="value">{avg_daily_reading:.1f}</div>
-                        <div class="unit">دقيقة/يوم</div>
-                    </div>
-                </div>
-                """, unsafe_allow_html=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                    kpi_c1, kpi_c2 = st.columns(2)
+                    with kpi_c1:
+                        st.markdown(f"""
+                        <div class="summary-kpi-item">
+                            <div class="label">⏳ مجموع ساعات القراءة</div>
+                            <div class="value">{total_period_hours:,}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class="summary-kpi-item" style="margin-top: 15px;">
+                            <div class="label">✍️ الاقتباسات المرسلة</div>
+                            <div class="value">{int(total_period_quotes)}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with kpi_c2:
+                        st.markdown(f"""
+                        <div class="summary-kpi-item">
+                            <div class="label">👥 المشاركون الفعليون</div>
+                            <div class="value">{active_participants}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                        st.markdown(f"""
+                        <div class="summary-kpi-item" style="margin-top: 15px;">
+                            <div class="label">📊 متوسط القراءة/عضو</div>
+                            <div class="value">{avg_daily_reading:.1f}</div>
+                            <div class="unit">دقيقة/يوم</div>
+                        </div>
+                        """, unsafe_allow_html=True)
             
             st.markdown("---")
 
             col3, col4 = st.columns(2, gap="large")
             with col3:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">مجموع ساعات القراءة التراكمي</div>', unsafe_allow_html=True)
-                chart_end_date = min(date.today(), end_date_obj)
-                all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
-                full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
-                daily_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().reset_index()
-                merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
-                merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
-                
-                fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
-                fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0))
-                st.plotly_chart(fig_area, use_container_width=True)
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">مجموع ساعات القراءة التراكمي</div>', unsafe_allow_html=True)
+                    chart_end_date = min(date.today(), end_date_obj)
+                    all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
+                    full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
+                    daily_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().reset_index()
+                    merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
+                    merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
+                    
+                    fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'}, color_discrete_sequence=['#2ecc71'])
+                    fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10))
+                    st.plotly_chart(fig_area, use_container_width=True)
 
             with col4:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">خريطة الالتزام الحرارية</div>', unsafe_allow_html=True)
-                heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
-                heatmap_fig.update_layout(margin=dict(t=0, b=0, l=0, r=0))
-                st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">خريطة الالتزام الحرارية</div>', unsafe_allow_html=True)
+                    heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
+                    heatmap_fig.update_layout(margin=dict(t=10, b=10, l=10, r=10))
+                    st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
 
             st.markdown("---")
 
             col5, col6 = st.columns(2, gap="large")
             with col5:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">🏆 المتصدرون بالساعات</div>', unsafe_allow_html=True)
-                if not podium_df.empty:
-                    hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
-                    fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
-                    fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-                    fig_hours.update_layout(
-                        yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                        xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0)
-                    )
-                    st.plotly_chart(fig_hours, use_container_width=True)
-                else:
-                    st.info("لا توجد بيانات.")
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">🏆 المتصدرون بالساعات</div>', unsafe_allow_html=True)
+                    if not podium_df.empty:
+                        hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
+                        fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=['#e67e22'])
+                        fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+                        fig_hours.update_layout(
+                            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                            xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10)
+                        )
+                        st.plotly_chart(fig_hours, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات.")
 
             with col6:
-                st.markdown('<div class="summary-card">', unsafe_allow_html=True)
-                st.markdown('<div class="summary-card-title">⭐ المتصدرون بالنقاط</div>', unsafe_allow_html=True)
-                if not podium_df.empty:
-                    points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
-                    fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
-                    fig_points.update_traces(textposition='outside')
-                    fig_points.update_layout(
-                        yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                        xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=0, b=0, l=0, r=0)
-                    )
-                    st.plotly_chart(fig_points, use_container_width=True)
-                else:
-                    st.info("لا توجد بيانات.")
-                st.markdown('</div>', unsafe_allow_html=True)
+                with st.container(border=True):
+                    st.markdown('<div class="summary-card-title">⭐ المتصدرون بالنقاط</div>', unsafe_allow_html=True)
+                    if not podium_df.empty:
+                        points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
+                        fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=['#9b59b6'])
+                        fig_points.update_traces(textposition='outside')
+                        fig_points.update_layout(
+                            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+                            xaxis_autorange='reversed', paper_bgcolor='rgba(0,0,0,0)', plot_bgcolor='rgba(0,0,0,0)', margin=dict(t=10, b=10, l=10, r=10)
+                        )
+                        st.plotly_chart(fig_points, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات.")
 
     with tab2:
         if podium_df.empty:
@@ -522,139 +494,136 @@ if selected_period_id:
             selected_member_name = st.selectbox("اختر قارئاً لعرض بطاقته:", member_names)
             
             if selected_member_name:
-                st.markdown('<div class="reader-card-container">', unsafe_allow_html=True)
-                
-                member_data = podium_df[podium_df['name'] == selected_member_name].iloc[0]
-                member_id = member_data['member_id']
-                
-                # --- Redesigned KPI Section ---
-                kpi_cols = st.columns(3)
-                with kpi_cols[0]:
-                    st.markdown(f"""
-                    <div class="reader-kpi-box">
-                        <div class="icon">⭐</div>
-                        <div class="label">النقاط</div>
-                        <div class="value">{int(member_data['points'])}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with kpi_cols[1]:
-                    st.markdown(f"""
-                    <div class="reader-kpi-box">
-                        <div class="icon">⏳</div>
-                        <div class="label">ساعات القراءة</div>
-                        <div class="value">{member_data['hours']:.1f}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-                with kpi_cols[2]:
-                    st.markdown(f"""
-                    <div class="reader-kpi-box">
-                        <div class="icon">✍️</div>
-                        <div class="label">الاقتباسات</div>
-                        <div class="value">{int(member_data['quotes'])}</div>
-                    </div>
-                    """, unsafe_allow_html=True)
-
-                
-                # --- Redesigned Badges and Achievements ---
-                col1, col2 = st.columns(2, gap="large")
-                
-                with col1:
-                    st.markdown('<div class="card-subheader">🏅 الأوسمة والشارات</div>', unsafe_allow_html=True)
-                    member_logs = period_logs_df[period_logs_df['member_id'] == member_id]
-                    member_achievements = period_achievements_df[period_achievements_df['member_id'] == member_id] if not period_achievements_df.empty else pd.DataFrame()
-
-                    badges_unlocked = []
-                    if member_data['quotes'] > 10: 
-                        badges_unlocked.append(('✍️', 'وسام الفيلسوف: إرسال أكثر من 10 اقتباسات.'))
-                    if not member_achievements.empty:
-                        finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
-                        if not finish_common_ach.empty:
-                            finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date_dt']).date()
-                            if (finish_date_dt - start_date_obj).days <= 7: 
-                                badges_unlocked.append(('🏃‍♂️', 'وسام العدّاء: إنهاء الكتاب في الأسبوع الأول.'))
-                    if not member_logs.empty:
-                        log_dates = sorted(pd.to_datetime(member_logs['submission_date_dt'].unique()))
-                        if len(log_dates) >= 7:
-                            max_streak, current_streak = 0, 0
-                            if log_dates:
-                                current_streak = 1; max_streak = 1
-                                for i in range(1, len(log_dates)):
-                                    if (log_dates[i] - log_dates[i-1]).days == 1: current_streak += 1
-                                    else: max_streak = max(max_streak, current_streak); current_streak = 1
-                                max_streak = max(max_streak, current_streak)
-                            if max_streak >= 7: 
-                                badges_unlocked.append(('💯', f'وسام المثابرة: القراءة لـ {max_streak} أيام متتالية.'))
+                with st.container(border=True):
+                    member_data = podium_df[podium_df['name'] == selected_member_name].iloc[0]
+                    member_id = member_data['member_id']
                     
-                    if badges_unlocked:
-                        for icon, text in badges_unlocked:
-                            st.markdown(f"""
-                            <div class="badge-container">
-                                <div class="badge-icon">{icon}</div>
-                                <div class="badge-text">{text}</div>
-                            </div>
-                            """, unsafe_allow_html=True)
-                    else: 
-                        st.info("لا توجد أوسمة بعد. استمر في القراءة لفتحها!")
+                    # --- Redesigned KPI Section ---
+                    kpi_cols = st.columns(3)
+                    with kpi_cols[0]:
+                        st.markdown(f"""
+                        <div class="reader-kpi-box">
+                            <div class="icon">⭐</div>
+                            <div class="label">النقاط</div>
+                            <div class="value">{int(member_data['points'])}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with kpi_cols[1]:
+                        st.markdown(f"""
+                        <div class="reader-kpi-box">
+                            <div class="icon">⏳</div>
+                            <div class="label">ساعات القراءة</div>
+                            <div class="value">{member_data['hours']:.1f}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
+                    with kpi_cols[2]:
+                        st.markdown(f"""
+                        <div class="reader-kpi-box">
+                            <div class="icon">✍️</div>
+                            <div class="label">الاقتباسات</div>
+                            <div class="value">{int(member_data['quotes'])}</div>
+                        </div>
+                        """, unsafe_allow_html=True)
 
-                with col2:
-                    st.markdown('<div class="card-subheader">🎯 الإنجازات</div>', unsafe_allow_html=True)
-                    if not member_achievements.empty:
-                        achievement_map = {'FINISHED_COMMON_BOOK': 'إنهاء الكتاب المشترك', 'ATTENDED_DISCUSSION': 'حضور جلسة النقاش', 'FINISHED_OTHER_BOOK': 'إنهاء كتاب آخر'}
-                        for _, ach in member_achievements.iterrows(): 
-                            st.markdown(f"<div class='achievement-item'>{achievement_map.get(ach['achievement_type'], ach['achievement_type'])}</div>", unsafe_allow_html=True)
-                    else: 
-                        st.info("لا توجد إنجازات مسجلة بعد.")
+                    
+                    # --- Redesigned Badges and Achievements ---
+                    col1, col2 = st.columns(2, gap="large")
+                    
+                    with col1:
+                        st.markdown('<div class="card-subheader">🏅 الأوسمة والشارات</div>', unsafe_allow_html=True)
+                        member_logs = period_logs_df[period_logs_df['member_id'] == member_id]
+                        member_achievements = period_achievements_df[period_achievements_df['member_id'] == member_id] if not period_achievements_df.empty else pd.DataFrame()
 
-                st.markdown("---")
-                
-                # --- Charts Section ---
-                col4, col5 = st.columns(2, gap="large")
-                with col4:
-                    st.markdown(f'<div class="card-subheader">خريطة التزام: {selected_member_name}</div>', unsafe_allow_html=True)
-                    individual_heatmap = create_activity_heatmap(member_logs, start_date_obj, end_date_obj, title_text="")
-                    st.plotly_chart(individual_heatmap, use_container_width=True, key="individual_heatmap")
-                with col5:
-                    st.markdown('<div class="card-subheader">مصادر النقاط</div>', unsafe_allow_html=True)
-                    period_rules = selected_challenge_data
-                    points_source = {}
-                    common_minutes = member_logs['common_book_minutes'].sum()
-                    other_minutes = member_logs['other_book_minutes'].sum()
-                    if period_rules.get('minutes_per_point_common', 0) > 0: points_source['قراءة الكتاب المشترك'] = (common_minutes // period_rules['minutes_per_point_common'])
-                    if period_rules.get('minutes_per_point_other', 0) > 0: points_source['قراءة كتب أخرى'] = (other_minutes // period_rules['minutes_per_point_other'])
-                    common_quotes = member_logs['submitted_common_quote'].sum()
-                    other_quotes = member_logs['submitted_other_quote'].sum()
-                    points_source['اقتباسات (الكتاب المشترك)'] = common_quotes * period_rules.get('quote_common_book_points', 0)
-                    points_source['اقتباسات (كتب أخرى)'] = other_quotes * period_rules.get('quote_other_book_points', 0)
-                    if not member_achievements.empty:
-                        for _, ach in member_achievements.iterrows():
-                            ach_type = ach['achievement_type']
-                            if ach_type == 'FINISHED_COMMON_BOOK': points_source['إنهاء الكتاب المشترك'] = points_source.get('إنهاء الكتاب المشترك', 0) + period_rules.get('finish_common_book_points', 0)
-                            elif ach_type == 'ATTENDED_DISCUSSION': points_source['حضور النقاش'] = points_source.get('حضور النقاش', 0) + period_rules.get('attend_discussion_points', 0)
-                            elif ach_type == 'FINISHED_OTHER_BOOK': points_source['إنهاء كتب أخرى'] = points_source.get('إنهاء كتب أخرى', 0) + period_rules.get('finish_other_book_points', 0)
-                    points_source_filtered = {k: v for k, v in points_source.items() if v > 0}
-                    if points_source_filtered:
-                        color_map = {
-                            'قراءة الكتاب المشترك': '#3498db', 'قراءة كتب أخرى': '#f1c40f',
-                            'اقتباسات (الكتاب المشترك)': '#2ecc71', 'اقتباسات (كتب أخرى)': '#e67e22',
-                            'إنهاء الكتاب المشترك': '#9b59b6', 'حضور النقاش': '#e74c3c',
-                            'إنهاء كتب أخرى': '#1abc9c'
-                        }
-                        chart_labels = list(points_source_filtered.keys())
-                        chart_colors = [color_map.get(label, '#bdc3c7') for label in chart_labels]
+                        badges_unlocked = []
+                        if member_data['quotes'] > 10: 
+                            badges_unlocked.append(('✍️', 'وسام الفيلسوف: إرسال أكثر من 10 اقتباسات.'))
+                        if not member_achievements.empty:
+                            finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
+                            if not finish_common_ach.empty:
+                                finish_date_dt = pd.to_datetime(finish_common_ach.iloc[0]['achievement_date_dt']).date()
+                                if (finish_date_dt - start_date_obj).days <= 7: 
+                                    badges_unlocked.append(('🏃‍♂️', 'وسام العدّاء: إنهاء الكتاب في الأسبوع الأول.'))
+                        if not member_logs.empty:
+                            log_dates = sorted(pd.to_datetime(member_logs['submission_date_dt'].unique()))
+                            if len(log_dates) >= 7:
+                                max_streak, current_streak = 0, 0
+                                if log_dates:
+                                    current_streak = 1; max_streak = 1
+                                    for i in range(1, len(log_dates)):
+                                        if (log_dates[i] - log_dates[i-1]).days == 1: current_streak += 1
+                                        else: max_streak = max(max_streak, current_streak); current_streak = 1
+                                    max_streak = max(max_streak, current_streak)
+                                if max_streak >= 7: 
+                                    badges_unlocked.append(('💯', f'وسام المثابرة: القراءة لـ {max_streak} أيام متتالية.'))
+                        
+                        if badges_unlocked:
+                            for icon, text in badges_unlocked:
+                                st.markdown(f"""
+                                <div class="badge-container">
+                                    <div class="badge-icon">{icon}</div>
+                                    <div class="badge-text">{text}</div>
+                                </div>
+                                """, unsafe_allow_html=True)
+                        else: 
+                            st.info("لا توجد أوسمة بعد. استمر في القراءة لفتحها!")
 
-                        fig_donut = go.Figure(data=[go.Pie(
-                            labels=chart_labels, values=list(points_source_filtered.values()), 
-                            hole=.5, textinfo='percent+label', insidetextorientation='radial',
-                            marker_colors=chart_colors
-                        )])
-                        fig_donut.update_layout(
-                            showlegend=False,
-                            margin=dict(t=20, b=20, l=20, r=20)
-                        )
-                        st.plotly_chart(fig_donut, use_container_width=True)
-                    else: st.info("لا توجد نقاط مسجلة لعرض مصادرها.")
-                
-                st.markdown('</div>', unsafe_allow_html=True) # Close the reader-card-container
+                    with col2:
+                        st.markdown('<div class="card-subheader">🎯 الإنجازات</div>', unsafe_allow_html=True)
+                        if not member_achievements.empty:
+                            achievement_map = {'FINISHED_COMMON_BOOK': 'إنهاء الكتاب المشترك', 'ATTENDED_DISCUSSION': 'حضور جلسة النقاش', 'FINISHED_OTHER_BOOK': 'إنهاء كتاب آخر'}
+                            for _, ach in member_achievements.iterrows(): 
+                                st.markdown(f"<div class='achievement-item'>{achievement_map.get(ach['achievement_type'], ach['achievement_type'])}</div>", unsafe_allow_html=True)
+                        else: 
+                            st.info("لا توجد إنجازات مسجلة بعد.")
+
+                    st.markdown("---")
+                    
+                    # --- Charts Section ---
+                    col4, col5 = st.columns(2, gap="large")
+                    with col4:
+                        st.markdown(f'<div class="card-subheader">خريطة التزام: {selected_member_name}</div>', unsafe_allow_html=True)
+                        individual_heatmap = create_activity_heatmap(member_logs, start_date_obj, end_date_obj, title_text="")
+                        st.plotly_chart(individual_heatmap, use_container_width=True, key="individual_heatmap")
+                    with col5:
+                        st.markdown('<div class="card-subheader">مصادر النقاط</div>', unsafe_allow_html=True)
+                        period_rules = selected_challenge_data
+                        points_source = {}
+                        common_minutes = member_logs['common_book_minutes'].sum()
+                        other_minutes = member_logs['other_book_minutes'].sum()
+                        if period_rules.get('minutes_per_point_common', 0) > 0: points_source['قراءة الكتاب المشترك'] = (common_minutes // period_rules['minutes_per_point_common'])
+                        if period_rules.get('minutes_per_point_other', 0) > 0: points_source['قراءة كتب أخرى'] = (other_minutes // period_rules['minutes_per_point_other'])
+                        common_quotes = member_logs['submitted_common_quote'].sum()
+                        other_quotes = member_logs['submitted_other_quote'].sum()
+                        points_source['اقتباسات (الكتاب المشترك)'] = common_quotes * period_rules.get('quote_common_book_points', 0)
+                        points_source['اقتباسات (كتب أخرى)'] = other_quotes * period_rules.get('quote_other_book_points', 0)
+                        if not member_achievements.empty:
+                            for _, ach in member_achievements.iterrows():
+                                ach_type = ach['achievement_type']
+                                if ach_type == 'FINISHED_COMMON_BOOK': points_source['إنهاء الكتاب المشترك'] = points_source.get('إنهاء الكتاب المشترك', 0) + period_rules.get('finish_common_book_points', 0)
+                                elif ach_type == 'ATTENDED_DISCUSSION': points_source['حضور النقاش'] = points_source.get('حضور النقاش', 0) + period_rules.get('attend_discussion_points', 0)
+                                elif ach_type == 'FINISHED_OTHER_BOOK': points_source['إنهاء كتب أخرى'] = points_source.get('إنهاء كتب أخرى', 0) + period_rules.get('finish_other_book_points', 0)
+                        points_source_filtered = {k: v for k, v in points_source.items() if v > 0}
+                        if points_source_filtered:
+                            color_map = {
+                                'قراءة الكتاب المشترك': '#3498db', 'قراءة كتب أخرى': '#f1c40f',
+                                'اقتباسات (الكتاب المشترك)': '#2ecc71', 'اقتباسات (كتب أخرى)': '#e67e22',
+                                'إنهاء الكتاب المشترك': '#9b59b6', 'حضور النقاش': '#e74c3c',
+                                'إنهاء كتب أخرى': '#1abc9c'
+                            }
+                            chart_labels = list(points_source_filtered.keys())
+                            chart_colors = [color_map.get(label, '#bdc3c7') for label in chart_labels]
+
+                            fig_donut = go.Figure(data=[go.Pie(
+                                labels=chart_labels, values=list(points_source_filtered.values()), 
+                                hole=.5, textinfo='percent+label', insidetextorientation='radial',
+                                marker_colors=chart_colors
+                            )])
+                            fig_donut.update_layout(
+                                showlegend=False,
+                                margin=dict(t=20, b=20, l=20, r=20)
+                            )
+                            st.plotly_chart(fig_donut, use_container_width=True)
+                        else: st.info("لا توجد نقاط مسجلة لعرض مصادرها.")
     
     st.markdown("---")
     with st.expander("🖨️ تصدير تقرير أداء التحدي (PDF)"):
