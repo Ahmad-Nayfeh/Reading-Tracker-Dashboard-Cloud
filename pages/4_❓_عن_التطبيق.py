@@ -16,82 +16,194 @@ st.markdown("""
         [data-testid="stSidebar"] { direction: rtl; }
         h1, h2, h3, h4, h5, h6, p, li { text-align: right !important; }
 
-        /* --- Custom Expander Styles (to look like cards) --- */
+        /* --- Custom Expander Styles (Enhanced Design) --- */
         div[data-testid="stExpander"] {
-            background-color: #ffffff;
-            border: 2px solid #e9ecef;
-            border-radius: 12px;
-            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            margin: 5px 0;
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e3e6ea;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            margin: 12px 0;
+            transition: all 0.3s ease;
+            overflow: hidden;
+            position: relative;
+        }
+
+        div[data-testid="stExpander"]:hover {
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
+        }
+
+        /* Elegant gradient accent line */
+        div[data-testid="stExpander"]::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
         }
 
         /* Style for the expander header */
         div[data-testid="stExpander"] summary {
-            font-size: 1.5em !important;
-            font-weight: bold;
+            font-size: 1.4em !important;
+            font-weight: 700;
             color: #2c3e50;
-            padding: 15px 20px;
+            padding: 20px 25px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 0 0 12px 12px;
+            margin-bottom: 5px;
+            position: relative;
+        }
+
+        /* Subtle icon enhancement */
+        div[data-testid="stExpander"] summary::before {
+            content: '';
+            position: absolute;
+            right: 25px;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 6px;
+            background: #667eea;
+            border-radius: 50%;
+            box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1);
         }
         
         /* Style for the expander content area */
         div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-            padding: 0px 25px 20px 25px;
+            padding: 5px 30px 25px 30px;
+            background: rgba(255, 255, 255, 0.95);
         }
 
-        /* --- Styles for the content inside the expander --- */
+        /* --- Enhanced Content Styles --- */
         .section-content h4 {
             color: #1a5276;
-            font-size: 1.15em;
-            font-weight: bold;
-            margin-top: 20px;
-            margin-bottom: 10px;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 12px;
+            position: relative;
+            padding-right: 15px;
+        }
+
+        .section-content h4::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 4px;
+            height: 20px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 2px;
         }
         
         .section-content p, .section-content li {
             font-size: 1.05em !important;
             line-height: 1.8 !important;
             color: #34495e;
+            font-weight: 400;
         }
         
         .section-content ul {
-            list-style-position: outside;
-            padding-right: 20px;
-            margin-bottom: 15px;
+            list-style: none;
+            padding-right: 0;
+            margin-bottom: 20px;
         }
         
         .section-content li {
-            margin-bottom: 8px;
-            padding-right: 8px;
+            margin-bottom: 12px;
+            padding-right: 25px;
+            position: relative;
+            transition: all 0.2s ease;
         }
 
-        .section-content li::marker {
-            color: #3498db;
-            font-size: 1.1em;
+        .section-content li:hover {
+            color: #2c3e50;
+            transform: translateX(-3px);
+        }
+
+        .section-content li::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 12px;
+            width: 8px;
+            height: 8px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 50%;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
         }
         
         .section-content b, .section-content strong {
-            color: #21618c;
+            color: #1a5276;
+            font-weight: 600;
         }
         
         .contact-links a {
             text-decoration: none;
-            color: #2980b9;
-            font-weight: bold;
+            color: #667eea;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 2px 8px;
+            border-radius: 6px;
         }
         .contact-links a:hover {
-            text-decoration: underline;
+            background: rgba(102, 126, 234, 0.1);
+            color: #4c63d2;
+            transform: translateX(-2px);
         }
 
-        /* Two-column layout for Hall of Fame */
+        /* Enhanced two-column layout for Hall of Fame */
         .two-column-container {
             display: flex;
             flex-wrap: wrap;
             width: 100%;
+            gap: 20px;
         }
         .column {
-            flex: 50%;
-            padding: 0 15px;
-            box-sizing: border-box;
+            flex: 1;
+            min-width: 300px;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.6);
+            border-radius: 12px;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: all 0.3s ease;
+        }
+        .column:hover {
+            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.08);
+            transform: translateY(-2px);
+        }
+
+        /* Enhanced intro text */
+        .intro-text {
+            font-size: 1.15em;
+            color: #5D6D7E;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+        }
+
+        /* Custom divider */
+        .custom-divider {
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+            margin: 30px 0;
+            border-radius: 2px;
+        }
+
+        /* Enhanced title styling */
+        .main-title {
+            text-align: center;
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
     </style>
 """, unsafe_allow_html=True)
@@ -108,9 +220,9 @@ if not creds or not user_id:
 
 
 # --- Page Title ---
-st.title("❓ عن تطبيق ماراثون القراءة")
-st.markdown("<p style='font-size: 1.1em; text-align: center; color: #5D6D7E;'>أهلاً بك في الدليل الشامل! انقر على أي قسم أدناه لعرض تفاصيله.</p>", unsafe_allow_html=True)
-st.divider()
+st.markdown('<h1 class="main-title">❓ عن تطبيق ماراثون القراءة</h1>', unsafe_allow_html=True)
+st.markdown('<div class="intro-text">أهلاً بك في الدليل الشامل! انقر على أي قسم أدناه لعرض تفاصيله.</div>', unsafe_allow_html=True)
+st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
 
 # --- Section 1: Philosophy of Points ---
@@ -140,29 +252,36 @@ with st.expander("🌟 فك شفرة الأبطال: شرح لوحة الشرف"
         <p>لوحة شرف الأبطال هي احتفاء بالإنجازات المتميزة في الماراثون. إليك معنى كل لقب:</p>
     </div>
     """, unsafe_allow_html=True)
+    
+    st.markdown('<div class="two-column-container">', unsafe_allow_html=True)
     col1, col2 = st.columns(2)
     with col1:
         st.markdown("""
-        <div class="section-content" style="padding: 0;">
-            <ul>
-                <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
-                <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
-                <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
-                <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
-            </ul>
+        <div class="column">
+            <div class="section-content" style="padding: 0;">
+                <ul>
+                    <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
+                    <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
+                    <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
+                    <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
+                </ul>
+            </div>
         </div>
         """, unsafe_allow_html=True)
     with col2:
         st.markdown("""
-        <div class="section-content" style="padding: 0;">
-            <ul>
-                <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
-                <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
-                <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
-                <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
-            </ul>
+        <div class="column">
+            <div class="section-content" style="padding: 0;">
+                <ul>
+                    <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
+                    <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
+                    <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
+                    <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
+                </ul>
+            </div>
         </div>
         """, unsafe_allow_html=True)
+    st.markdown('</div>', unsafe_allow_html=True)
 
 
 # --- Section 3: News Ticker Explained ---
