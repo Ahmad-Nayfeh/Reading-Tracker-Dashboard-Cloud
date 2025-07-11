@@ -2,6 +2,10 @@ import streamlit as st
 import db_manager as db
 import auth_manager
 
+import style_manager  # <-- السطر الأول
+
+style_manager.apply_sidebar_styles()  # <-- السطر الثاني
+
 st.set_page_config(
     page_title="عن التطبيق",
     page_icon="❓",

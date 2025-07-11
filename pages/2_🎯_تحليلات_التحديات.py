@@ -7,6 +7,9 @@ import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
 import auth_manager
 from utils import apply_chart_theme, CHART_COLORS # <-- استيراد الدالة والألوان
+import style_manager  # <-- السطر الأول
+
+style_manager.apply_sidebar_styles()  # <-- السطر الثاني
 
 st.set_page_config(
     page_title="تحليلات التحديات",

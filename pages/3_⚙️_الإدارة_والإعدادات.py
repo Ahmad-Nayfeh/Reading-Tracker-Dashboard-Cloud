@@ -8,6 +8,9 @@ from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import gspread
 import time
+import style_manager  # <-- السطر الأول
+
+style_manager.apply_sidebar_styles()  # <-- السطر الثاني
 
 st.set_page_config(
     page_title="الإدارة والإعدادات",
