@@ -38,13 +38,12 @@ st.markdown("""
         .news-body .no-news { color: #7f8c8d; font-style: italic; }
 
         /* --- NEW: Glassmorphism Design for Challenge Summary --- */
-        /* Apply a subtle gradient background to the main content area */
         [data-testid="stAppViewContainer"] > .main {
             background-image: linear-gradient(120deg, #f0ecfc 0%, #c2e9fb 100%);
         }
 
-        /* Target st.container(border=True) and apply glass style */
-        div[data-testid="stVerticalBlockBorderWrapper"] {
+        /* --- THE FIX: Target ONLY the top-level containers in columns --- */
+        div[data-testid="stHorizontalBlock"] > div[data-testid="stVerticalBlock"] > div[data-testid="stVerticalBlockBorderWrapper"] {
             background: rgba(255, 255, 255, 0.25);
             backdrop-filter: blur(10px);
             -webkit-backdrop-filter: blur(10px);
@@ -52,7 +51,7 @@ st.markdown("""
             border: 1px solid rgba(255, 255, 255, 0.18);
             padding: 25px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-            color: #1E2A78; /* Dark blue text for contrast */
+            color: #1E2A78;
             margin-bottom: 20px;
         }
 
@@ -78,6 +77,7 @@ st.markdown("""
         .kpi-metric .unit { font-size: 0.9em; }
 
         /* --- Reader Profile Card Styles (Applied to its own container) --- */
+        /* This container uses a different background, so it's not affected by the glass style */
         .reader-kpi-box {
             background-color: #ffffff; border-radius: 12px; padding: 20px; text-align: center;
             border: 1px solid #e9ecef; transition: all 0.3s ease-in-out;
