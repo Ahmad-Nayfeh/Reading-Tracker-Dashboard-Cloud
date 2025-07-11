@@ -11,7 +11,7 @@ import time
 import os
 import style_manager  # <-- السطر الأول
 
-
+style_manager.apply_sidebar_styles()  # <-- السطر الثاني
 
 # --- Page Configuration and RTL CSS Injection ---
 st.set_page_config(
