@@ -221,6 +221,5 @@ developer_html = """
             <li><strong>Portfolio:</strong> <a href="https://ahmadnayfeh.vercel.app/" target="_blank">ahmadnayfeh.vercel.app</a></li>
             <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/ahmad-nayfeh2000/" target="_blank">in/ahmad-nayfeh2000</a></li>
         </ul>
-    </div>
 """
 render_card("🧑‍💻", "عن المطور", developer_html)
