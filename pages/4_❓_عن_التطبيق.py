@@ -27,7 +27,7 @@ st.markdown("""
 
         /* Style for the expander header */
         div[data-testid="stExpander"] summary {
-            font-size: 10em !important;
+            font-size: 1.5em !important;
             font-weight: bold;
             color: #2c3e50;
             padding: 15px 20px;
