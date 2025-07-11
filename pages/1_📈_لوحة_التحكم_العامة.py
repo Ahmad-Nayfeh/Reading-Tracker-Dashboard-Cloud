@@ -1,6 +1,6 @@
 import streamlit as st
 import pandas as pd
-from datetime import date, timedelta
+from datetime import date, timedelta, datetime
 import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
@@ -87,6 +87,24 @@ st.markdown("""
             font-size: 1.0em;
             color: #7f8c8d; /* Gray for the number */
         }
+        /* Custom styles for the news ticker */
+        .news-ticker {
+            background-color: #f0f2f6;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 5px solid #2980b9;
+        }
+        .news-ticker-title {
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #1c2833;
+            margin-bottom: 10px;
+        }
+        .news-item {
+            font-size: 1.05em;
+            color: #34495e;
+            margin-bottom: 5px;
+        }
     </style>
 """, unsafe_allow_html=True)
 
@@ -101,85 +119,143 @@ if not creds or not user_id:
 # -----------------------------------------
 
 
-# --- Helper function for Dynamic Headline (Overall Dashboard) ---
-def generate_headline(logs_df, achievements_df, members_df):
-    if 'common_book_minutes' in logs_df.columns and 'other_book_minutes' in logs_df.columns:
-        logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
+# --- Logic for News Ticker ---
+def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
+    """Calculates all hero stats up to a specific date."""
+    if logs_df.empty or members_df.empty:
+        return {}
+
+    # Filter data up to the target date
+    logs_past = logs_df[logs_df['submission_date_dt'].dt.date <= target_date]
+    achievements_past = achievements_df[achievements_df['achievement_date_dt'].dt.date <= target_date]
+
+    if logs_past.empty:
+        return {}
+
+    # Calculate stats
+    # 1. Total Points and Reading Minutes from logs
+    member_stats = logs_past.groupby('member_id').agg(
+        total_reading_minutes_common=('common_book_minutes', 'sum'),
+        total_reading_minutes_other=('other_book_minutes', 'sum'),
+        total_quotes_submitted=('total_quotes_submitted', 'sum')
+    ).reset_index()
+
+    # 2. Total books and meetings attended from achievements
+    if not achievements_past.empty:
+        ach_stats = achievements_past.groupby('member_id').agg(
+            total_common_books_read=('achievement_type', lambda x: (x == 'FINISHED_COMMON_BOOK').sum()),
+            total_other_books_read=('achievement_type', lambda x: (x == 'FINISHED_OTHER_BOOK').sum()),
+        ).reset_index()
+        member_stats = pd.merge(member_stats, ach_stats, on='member_id', how='left')
     else:
-        return "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
-
-    today = date.today()
-    last_7_days_start = today - timedelta(days=6)
-    prev_7_days_start = today - timedelta(days=13)
-    prev_7_days_end = today - timedelta(days=7)
-
-    # Ensure 'submission_date_dt' is datetime before comparison
-    logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date_dt'])
-    last_7_days_logs = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_days_start]
-    prev_7_days_logs = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_days_start) & (logs_df['submission_date_dt'].dt.date <= prev_7_days_end)]
+        member_stats['total_common_books_read'] = 0
+        member_stats['total_other_books_read'] = 0
     
-    last_7_total_minutes = last_7_days_logs['total_minutes'].sum()
-    prev_7_total_minutes = prev_7_days_logs['total_minutes'].sum()
+    # Fill NaN values after merge
+    member_stats.fillna(0, inplace=True)
+    member_stats['total_reading_minutes'] = member_stats['total_reading_minutes_common'] + member_stats['total_reading_minutes_other']
+    member_stats['total_books_read'] = member_stats['total_common_books_read'] + member_stats['total_other_books_read']
 
-    momentum_available = prev_7_total_minutes > 0
-    momentum_positive = None
-    percentage_change = 0
-    if momentum_available:
-        percentage_change = ((last_7_total_minutes - prev_7_total_minutes) / prev_7_total_minutes) * 100
-        momentum_positive = percentage_change >= 0
 
-    achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date_dt'])
-    recent_achievements = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_days_start]
-    book_finishers = recent_achievements[recent_achievements['achievement_type'].isin(['FINISHED_COMMON_BOOK', 'FINISHED_OTHER_BOOK'])]
+    # Merge with member names
+    member_stats = pd.merge(member_stats, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
     
-    recent_finishers_names = []
-    if not book_finishers.empty and 'member_id' in book_finishers.columns and not members_df.empty:
-        finisher_ids = book_finishers['member_id'].unique()
-        recent_finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
+    # Calculate more complex stats
+    # Consistency
+    consistency = logs_past.groupby('name')['submission_date_dt'].nunique().reset_index()
+    consistency.rename(columns={'submission_date_dt': 'days_read'}, inplace=True)
+    member_stats = pd.merge(member_stats, consistency, on='name', how='left')
 
-    achievement_available = len(recent_finishers_names) > 0
-    
-    highlight_style = "color: #2980b9; font-weight: bold;"
+    # Best single day/week/month
+    daily_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
+    weekly_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
+    monthly_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
 
-    momentum_str = ""
-    if momentum_available:
-        if momentum_positive:
-            momentum_str = f"الفريق في أوج حماسه، ارتفع الأداء بنسبة <span style='{highlight_style}'>{percentage_change:.0f}%</span> هذا الأسبوع"
-        else:
-            momentum_str = f"هل أخذ الفريق استراحة محارب، تراجع الأداء بنسبة <span style='{highlight_style}'>{abs(percentage_change):.0f}%</span> هذا الأسبوع"
-    
-    achievement_str = ""
-    if achievement_available:
-        n = len(recent_finishers_names)
-        names = [f"<span style='{highlight_style}'>{name}</span>" for name in recent_finishers_names]
-        if n == 1:
-            achievement_detail = f"ونهنئ {names[0]} على إنهائه لكتاب خلال السبع أيام الماضية"
-        elif n == 2:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} على إنهاء كل واحد منهما لكتاب خلال السبع أيام الماضية"
-        elif n == 3:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و {names[2]} على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        elif n == 4:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} وعضوان آخران على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        elif 5 <= n <= 10:
-            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و <span style='{highlight_style}'>{n-2}</span> أعضاء آخرين على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
-        else: # n >= 11
-            achievement_detail = f"ونحب أن نهنئ أكثر من <span style='{highlight_style}'>{n-1}</span> عضو على إنهائهم لكتاب خلال السبع أيام الماضية"
+    def get_max_for_member(df, value_col):
+        if df.empty: return pd.Series()
+        return df.groupby('name')[value_col].max()
         
-        if not momentum_available:
-            achievement_str = f"انطلقت شرارة التحدي، {achievement_detail}"
-        else:
-            achievement_str = achievement_detail
-    
-    if momentum_str and achievement_str:
-        final_text = f"{momentum_str}، {achievement_str}"
-    elif momentum_str:
-        final_text = momentum_str
-    elif achievement_str:
-        final_text = achievement_str
-    else:
-        final_text = "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
+    member_stats = pd.merge(member_stats, get_max_for_member(daily_sum, 'total_minutes').rename('max_daily'), on='name', how='left')
+    member_stats = pd.merge(member_stats, get_max_for_member(weekly_sum, 'total_minutes').rename('max_weekly'), on='name', how='left')
+    member_stats = pd.merge(member_stats, get_max_for_member(monthly_sum, 'total_minutes').rename('max_monthly'), on='name', how='left')
 
-    return final_text
+    member_stats.fillna(0, inplace=True)
+
+    # Simplified points calculation for headlines - a more accurate one is in main.py
+    # For this purpose, we can use a proxy or just focus on non-point metrics
+    # Here, we'll just add a placeholder for total_points
+    member_stats['total_points'] = member_stats['total_reading_minutes'] / 10 # Example proxy
+
+    heroes = {}
+    hero_metrics = {
+        "🧠 العقل المدبّر": "total_points",
+        "⏳ سيد الساعات": "total_reading_minutes",
+        "📚 الديدان القارئ": "total_books_read",
+        "💎 صائد الدرر": "total_quotes_submitted",
+        "🏃‍♂️ صاحب النَفَس الطويل": "days_read",
+        "⚡ العدّاء السريع": "max_daily",
+        "⭐ نجم الأسبوع": "max_weekly",
+        "💪 عملاق الشهر": "max_monthly",
+    }
+    
+    for hero_title, metric_col in hero_metrics.items():
+        if metric_col in member_stats.columns:
+            max_value = member_stats[metric_col].max()
+            if pd.notna(max_value) and max_value > 0:
+                winners = member_stats[member_stats[metric_col] == max_value]['name'].tolist()
+                heroes[hero_title] = sorted(winners)
+            else:
+                heroes[hero_title] = [] # No one has this title yet
+    return heroes
+
+def generate_headline_news(logs_df, achievements_df, members_df):
+    today = date.today()
+    last_week_date = today - timedelta(days=7)
+    news = []
+
+    # Ensure data is ready for processing
+    if logs_df.empty or (today - logs_df['submission_date_dt'].min().date()).days < 7:
+        return ["أهلاً بكم في ماراثون القراءة! نتطلع لرؤية إنجازاتكم."]
+
+    heroes_today = get_heroes_at_date(today, logs_df, achievements_df, members_df)
+    heroes_last_week = get_heroes_at_date(last_week_date, logs_df, achievements_df, members_df)
+
+    if not heroes_today or not heroes_last_week:
+        return ["جاري تحليل البيانات الأسبوعية..."]
+    
+    # Compare heroes
+    for title, current_winners in heroes_today.items():
+        last_week_winners = heroes_last_week.get(title, [])
+        
+        # Convert lists to sets for easy comparison
+        current_set = set(current_winners)
+        last_week_set = set(last_week_winners)
+
+        if not current_set:
+            continue # No one has this title yet, so no news
+
+        # Case 1: First ever winner(s) for this title
+        if not last_week_set and current_set:
+            names = " و ".join(current_winners)
+            news.append(f"🏆 **إنجاز غير مسبوق:** {names} أصبح أول من يحصل على لقب '{title}'!")
+            continue
+
+        # Case 2: Change in leadership
+        if current_set != last_week_set:
+            newly_joined = current_set - last_week_set
+            if newly_joined:
+                new_names = " و ".join(list(newly_joined))
+                # Subcase 2a: Someone new joined an existing leader
+                if last_week_set.issubset(current_set):
+                     news.append(f"🤝 **منافسة على القمة:** {new_names} ينضم إلى الصدارة في لقب '{title}'!")
+                # Subcase 2b: A completely new leader
+                else:
+                    news.append(f"🥇 **صعود جديد:** {new_names} يتصدر قائمة '{title}' هذا الأسبوع!")
+
+    if not news:
+        return ["الأبطال يحافظون على مواقعهم! استمروا في العطاء هذا الأسبوع."]
+
+    return news
 
 
 # --- Data Loading ---
@@ -199,6 +275,8 @@ members_df, periods_df, logs_df, achievements_df, member_stats_df = load_all_dat
 if not logs_df.empty:
     logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date'], format='%d/%m/%Y', errors='coerce')
     logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
+    logs_df['total_quotes_submitted'] = logs_df['submitted_common_quote'] + logs_df['submitted_other_quote']
+
 
 if not achievements_df.empty:
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date'], errors='coerce')
@@ -213,11 +291,13 @@ st.header("📈 لوحة التحكم العامة")
 
 # --- Dynamic Headline ---
 st.markdown("---")
-if not logs_df.empty and not achievements_df.empty and not members_df.empty:
-    headline_html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
-    st.markdown(f"<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>{headline_html}</div>", unsafe_allow_html=True)
-else:
-    st.markdown("<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>انطلق الماراثون! أهلاً بكم</div>", unsafe_allow_html=True)
+# Generate and display news
+news_items = generate_headline_news(logs_df.copy(), achievements_df.copy(), members_df.copy())
+st.markdown('<div class="news-ticker">', unsafe_allow_html=True)
+st.markdown('<div class="news-ticker-title">📰 آخر أخبار الماراثون (آخر 7 أيام)</div>', unsafe_allow_html=True)
+for item in news_items:
+    st.markdown(f'<div class="news-item">• {item}</div>', unsafe_allow_html=True)
+st.markdown('</div>', unsafe_allow_html=True)
 st.markdown("---")
 
 
@@ -303,6 +383,8 @@ def get_winners(df, column, name_col='name'):
 heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
 
 if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df.columns:
+    # Use the full stats calculated and stored in the database for the hall of fame
+    # This ensures consistency with what the user sees elsewhere
     logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
 
     # 1. Mastermind (Points)
