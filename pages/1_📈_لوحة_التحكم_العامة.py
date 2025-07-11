@@ -38,26 +38,42 @@ st.markdown("""
             text-align: right !important;
             display: block;
         }
-        /* Custom styles for the main KPI cards */
-        .main-kpi-card {
-            background-color: #FFFFFF;
-            border-radius: 10px;
+
+        /* --- NEW KPI Card Styles --- */
+        .kpi-card {
+            background-color: #ffffff;
+            border-radius: 15px;
             padding: 20px;
-            text-align: center;
-            border: 1px solid #e6e6e6;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
+            display: flex;
+            align-items: center;
+            border-left: 5px solid var(--kpi-color);
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            transition: transform 0.2s;
+            height: 120px;
+            margin-bottom: 15px; /* Add margin for spacing */
         }
-        .main-kpi-card .label {
-            font-size: 1.2em;
-            font-weight: bold;
+        .kpi-card:hover {
+            transform: translateY(-4px);
+        }
+        .kpi-icon {
+            font-size: 2.5em;
+            padding: 0px 20px;
+            color: var(--kpi-color);
+        }
+        .kpi-text {
+            flex-grow: 1;
+            text-align: right;
+        }
+        .kpi-value {
+            font-size: 2.2em;
+            font-weight: 700;
+            color: #2c3e50;
+        }
+        .kpi-label {
+            font-size: 1.1em;
             color: #5D6D7E;
         }
-        .main-kpi-card .value {
-            font-size: 2.5em;
-            font-weight: bold;
-            color: #2980B9;
-            margin: 10px 0;
-        }
+        
         /* Custom styles for the hero metric cards */
         .metric-card {
             background-color: #f9f9f9;
@@ -342,25 +358,25 @@ st.markdown("---")
 # --- Main KPIs Section ---
 st.subheader("📊 مؤشرات الأداء الرئيسية")
 
-def display_main_kpi(col, label, value):
+def display_main_kpi(col, label, value, icon, color):
     with col:
         st.markdown(f"""
-        <div class="main-kpi-card">
-            <div class="label">{label}</div>
-            <div class="value">{value}</div>
+        <div class="kpi-card" style="--kpi-color: {color};">
+            <div class="kpi-icon">{icon}</div>
+            <div class="kpi-text">
+                <div class="kpi-value">{value}</div>
+                <div class="kpi-label">{label}</div>
+            </div>
         </div>
         """, unsafe_allow_html=True)
 
-kpi_col1, kpi_col2, kpi_col3 = st.columns(3)
-kpi_col4, kpi_col5, kpi_col6 = st.columns(3)
-
 # Calculate KPIs
-total_hours_val = 0
-total_books_finished_val = 0
-total_quotes_val = 0
-active_members_count_val = 0
-total_reading_days_val = 0
-completed_challenges_count_val = 0
+total_hours_val = "0"
+total_books_finished_val = "0"
+total_quotes_val = "0"
+active_members_count_val = "0"
+total_reading_days_val = "0"
+completed_challenges_count_val = "0"
 
 if not member_stats_df.empty:
     total_minutes = member_stats_df['total_reading_minutes_common'].sum() + member_stats_df['total_reading_minutes_other'].sum()
@@ -379,13 +395,17 @@ if not periods_df.empty:
     periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
     completed_challenges_count_val = f"{len(periods_df[periods_df['end_date_dt'] < today_date_obj])}"
 
-# Display KPIs
-display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours_val)
-display_main_kpi(kpi_col2, "📚 إجمالي الكتب المنهَاة", total_books_finished_val)
-display_main_kpi(kpi_col3, "✍️ إجمالي الاقتباسات", total_quotes_val)
-display_main_kpi(kpi_col4, "👥 الأعضاء النشطون", active_members_count_val)
-display_main_kpi(kpi_col5, "🗓️ إجمالي أيام القراءة", total_reading_days_val)
-display_main_kpi(kpi_col6, "🏁 التحديات المكتملة", completed_challenges_count_val)
+# Display KPIs in two rows
+kpi_row1_cols = st.columns(3)
+display_main_kpi(kpi_row1_cols[0], "إجمالي ساعات القراءة", total_hours_val, "⏳", "#2980B9")
+display_main_kpi(kpi_row1_cols[1], "إجمالي الكتب المنهَاة", total_books_finished_val, "📚", "#8E44AD")
+display_main_kpi(kpi_row1_cols[2], "إجمالي الاقتباسات", total_quotes_val, "✍️", "#27AE60")
+
+kpi_row2_cols = st.columns(3)
+display_main_kpi(kpi_row2_cols[0], "الأعضاء النشطون", active_members_count_val, "👥", "#F39C12")
+display_main_kpi(kpi_row2_cols[1], "إجمالي أيام القراءة", total_reading_days_val, "🗓️", "#E74C3C")
+display_main_kpi(kpi_row2_cols[2], "التحديات المكتملة", completed_challenges_count_val, "🏁", "#16A085")
+
 st.markdown("---")
 
 
