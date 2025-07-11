@@ -166,9 +166,16 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
         news_list.append(f"⏳ <b>الاستعدادات جارية:</b> سينطلق تحدي '{book_title}' في تاريخ {start_date_obj.strftime('%Y-%m-%d')}.")
         return news_list
 
+    # Ensure members_df is not empty and has the required column
+    if members_df.empty or 'members_id' not in members_df.columns:
+        return ["لا يمكن عرض الأخبار، بيانات الأعضاء غير متوفرة."]
+
     finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
-    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], on='member_id', how='left')
-    finishers_df.sort_values(by='achievement_date_dt', inplace=True)
+    
+    if not finishers_df.empty:
+        # **FIXED LINE**
+        finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+        finishers_df.sort_values(by='achievement_date_dt', inplace=True)
     
     total_finishers = len(finishers_df)
 
@@ -202,7 +209,8 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
     if today > end_date_obj:
         attendees_df = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION'].copy()
         if not attendees_df.empty:
-            attendees_df = pd.merge(attendees_df, members_df[['members_id', 'name']], on='member_id', how='left')
+            # **FIXED LINE**
+            attendees_df = pd.merge(attendees_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
             attendee_names = [f"<b>{name}</b>" for name in attendees_df['name']]
             news_list.append(f"🗣️ <b>جلسة نقاش مثمرة:</b> نُشيد بحضور { ' و '.join(attendee_names)} للجلسة الختامية.")
         else:
@@ -419,21 +427,21 @@ if selected_period_id:
 
             with race_col1:
                 st.markdown("##### 🏁 خط النهاية")
-                finishers_df = pd.DataFrame()
+                finishers_df_chart = pd.DataFrame()
                 if not period_achievements_df.empty:
-                    finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
+                    finishers_df_chart = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
                 
-                if not finishers_df.empty:
-                    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+                if not finishers_df_chart.empty:
+                    finishers_df_chart = pd.merge(finishers_df_chart, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
                     
-                    finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'], errors='coerce')
-                    finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
+                    finishers_df_chart['achievement_date_dt'] = pd.to_datetime(finishers_df_chart['achievement_date_dt'], errors='coerce')
+                    finishers_df_chart.dropna(subset=['achievement_date_dt'], inplace=True)
                     
-                    finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).apply(lambda x: x.days)
+                    finishers_df_chart['days_to_finish'] = (finishers_df_chart['achievement_date_dt'].dt.date - start_date_obj).apply(lambda x: x.days)
 
-                    finishers_df.sort_values('days_to_finish', ascending=False, inplace=True)
+                    finishers_df_chart.sort_values('days_to_finish', ascending=False, inplace=True)
 
-                    fig_finish_line = px.bar(finishers_df, 
+                    fig_finish_line = px.bar(finishers_df_chart, 
                                              x='days_to_finish', y='name', 
                                              orientation='h',
                                              text='days_to_finish',
