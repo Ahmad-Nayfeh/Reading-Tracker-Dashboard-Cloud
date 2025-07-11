@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL and adds custom styles for the new accordion component
+# This CSS snippet enforces RTL and adds custom styles for the new card-based layout
 st.markdown("""
     <style>
         /* --- Base RTL and Font Fixes --- */
@@ -16,113 +16,72 @@ st.markdown("""
         [data-testid="stSidebar"] { direction: rtl; }
         h1, h2, h3, h4, h5, h6, p, li { text-align: right !important; }
 
-        /* --- Custom Accordion Styles --- */
-        .accordion-container {
-            width: 100%;
-            margin: 0 auto;
-        }
-        .accordion-item {
+        /* --- Custom Section Card Styles --- */
+        .section-card {
             background-color: #ffffff;
             border: 1px solid #e9ecef;
             border-radius: 12px;
-            margin-bottom: 15px;
-            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
-            transition: box-shadow 0.3s ease-in-out;
-        }
-        .accordion-item:hover {
-            box-shadow: 0 6px 16px rgba(0, 0, 0, 0.08);
+            padding: 25px 30px;
+            margin: 25px 0;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
         }
         
-        /* Hide the default checkbox */
-        .accordion-item input[type="checkbox"] {
-            display: none;
-        }
-        
-        /* The clickable title label */
-        .accordion-title {
+        .section-header {
             display: flex;
-            justify-content: space-between;
             align-items: center;
-            padding: 20px 25px;
-            font-size: 1.4em;
-            font-weight: bold;
-            color: #2c3e50;
-            cursor: pointer;
-            transition: background-color 0.3s ease;
-        }
-        
-        .accordion-title:hover {
-            background-color: #f8f9fa;
-        }
-        
-        /* The icon/arrow */
-        .accordion-title::before {
-            content: '▼';
-            font-size: 0.8em;
-            transition: transform 0.4s ease;
-            color: #3498db;
-        }
-        
-        /* The content that expands */
-        .accordion-content {
-            max-height: 0;
-            overflow: hidden;
-            transition: max-height 0.5s ease-out, padding 0.5s ease-out;
-            padding: 0 25px;
-            background-color: #ffffff;
-            border-bottom-left-radius: 12px;
-            border-bottom-right-radius: 12px;
-        }
-        
-        /* --- Logic for opening the accordion --- */
-        .accordion-item input[type="checkbox"]:checked ~ .accordion-title {
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-        }
-        
-        .accordion-item input[type="checkbox"]:checked ~ .accordion-title::before {
-            transform: rotate(180deg);
-        }
-        
-        .accordion-item input[type="checkbox"]:checked ~ .accordion-content {
-            max-height: 2000px; /* Adjust as needed */
-            padding: 25px;
-        }
-        
-        /* --- Styles for the content inside the accordion --- */
-        .content-section h4 {
-            color: #1a5276;
-            font-size: 1.25em;
-            font-weight: bold;
-            border-bottom: 2px solid #aed6f1;
-            padding-bottom: 8px;
-            margin-top: 10px;
+            justify-content: flex-start;
+            border-bottom: 2px solid #f0f2f6;
+            padding-bottom: 15px;
             margin-bottom: 20px;
         }
-        .content-section p {
-            font-size: 1.1em !important;
-            line-height: 1.9 !important;
-            color: #34495e;
-            margin-bottom: 15px;
+        
+        .section-header .icon {
+            font-size: 2.2em;
+            margin-left: 15px;
+            color: #2980b9;
         }
-        .content-section ul {
-            list-style-position: outside;
-            padding-right: 20px;
+        
+        .section-header h2 {
+            font-size: 1.8em;
+            font-weight: bold;
+            color: #2c3e50;
             margin: 0;
         }
-        .content-section li {
-            font-size: 1.05em !important;
-            line-height: 1.9 !important;
-            margin-bottom: 12px;
+        
+        .section-content h4 {
+            color: #1a5276;
+            font-size: 1.3em;
+            font-weight: bold;
+            margin-top: 25px;
+            margin-bottom: 15px;
+        }
+        
+        .section-content p, .section-content li {
+            font-size: 1.15em !important;
+            line-height: 2 !important;
+            color: #34495e;
+        }
+        
+        .section-content ul {
+            list-style-position: outside;
+            padding-right: 25px;
+            margin: 0;
+        }
+        
+        .section-content li {
+            margin-bottom: 10px;
             padding-right: 10px;
         }
-        .content-section li::marker {
+
+        .section-content li::marker {
             color: #3498db;
-            font-size: 1.1em;
+            font-size: 1.2em;
         }
-        .content-section b, .content-section strong {
-            color: #2c3e50;
+        
+        .section-content b, .section-content strong {
+            color: #21618c;
         }
+
         .contact-links a {
             text-decoration: none;
             color: #2980b9;
@@ -144,121 +103,128 @@ if not creds or not user_id:
     st.stop()
 # -----------------------------------------
 
+# --- Helper function to render a styled section ---
+def render_section(icon, title, content_html):
+    st.markdown(f"""
+    <div class="section-card">
+        <div class="section-header">
+            <span class="icon">{icon}</span>
+            <h2>{title}</h2>
+        </div>
+        <div class="section-content">
+            {content_html}
+        </div>
+    </div>
+    """, unsafe_allow_html=True)
 
+
+# --- Page Title ---
 st.title("❓ عن تطبيق ماراثون القراءة")
-st.markdown("---")
 st.markdown("<p style='font-size: 1.2em; text-align: center; color: #5D6D7E;'>أهلاً بك في الدليل الشامل! هنا، ستجد كل ما تحتاج لمعرفته حول كيفية عمل التطبيق، من فلسفة النقاط إلى شرح الألقاب والأخبار.</p>", unsafe_allow_html=True)
+st.divider()
 
 
-# --- Build the entire page HTML as a single string ---
-
-page_html = """
-<div class="accordion-container">
-    <!-- Section 1: Philosophy of Points -->
-    <div class="accordion-item">
-        <input type="checkbox" id="accordion-1" name="accordion-group" checked>
-        <label for="accordion-1" class="accordion-title">🎯 نظام المسابقات والنقاط: فلسفة التحفيز الذكي</label>
-        <div class="accordion-content">
-            <div class="content-section">
-                <p>هذا هو قلب المشروع النابض، وهو مصمم لتحقيق توازن دقيق بين القراءة الجماعية المنظمة والقراءة الفردية الحرة، لخلق جو حماسي ومرن.</p>
-                <h4>حرية الاختيار هي الأساس</h4>
-                <p>لا يوجد مسار إلزامي. العضو لديه الحرية الكاملة ليختار المسار الذي يناسبه:</p>
-                <ul>
-                    <li><b>مسار الكتاب المشترك:</b> يقرأ الكتاب الذي تم اختياره للتحدي. إنهاؤه يمنحه <strong>دفعة هائلة من النقاط</strong> تقديرًا لالتزامه وتهيئته لجلسة النقاش.</li>
-                    <li><b>مسار الكتاب الحر:</b> يقرأ أي كتاب آخر من اختياره. هنا، تتضاعف نقاطه بناءً على <strong>وقت القراءة</strong>، لكن نقاط إنهاء الكتاب تكون أقل.</li>
-                </ul>
-                <p>ويمكن للعضو أن يمشي بالمسارين معًا في وقت واحد، أو حتى يقرأ عدة كتب حرة! الأمر متروك له ولهمّته.</p>
-                <h4>منطق النقاط الذكي للموازنة</h4>
-                <ul>
-                    <li><b>للتشجيع على الالتزام:</b> نقاط إنهاء الكتاب المشترك <strong>أعلى بكثير</strong>.</li>
-                    <li><b>لتعزيز المشاركة المجتمعية:</b> حضور جلسة النقاش الخاصة بالكتاب المشترك يمنح نقاطًا إضافية.</li>
-                    <li><b>لتشجيع القراءة العميقة:</b> إضافة <strong>اقتباس</strong> من كتاب يقرأه العضو يمنحه نقاطًا إضافية.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section 2: Hall of Fame Explained -->
-    <div class="accordion-item">
-        <input type="checkbox" id="accordion-2" name="accordion-group">
-        <label for="accordion-2" class="accordion-title">🌟 فك شفرة الأبطال: شرح لوحة الشرف</label>
-        <div class="accordion-content">
-            <div class="content-section">
-                <p>لوحة شرف الأبطال هي احتفاء بالإنجازات المتميزة في الماراثون. إليك معنى كل لقب:</p>
-                <ul>
-                    <li><b>🧠 العقل المدبّر:</b> يُمنح للعضو الذي جمع <strong>أعلى عدد من النقاط</strong> في المجموع الكلي.</li>
-                    <li><b>⏳ سيد الساعات:</b> يُمنح للعضو الذي سجل <strong>أطول وقت قراءة إجمالي</strong>.</li>
-                    <li><b>📚 الديدان القارئ:</b> يُمنح للعضو الذي <strong>أنهى أكبر عدد من الكتب</strong>.</li>
-                    <li><b>💎 صائد الدرر:</b> يُمنح للعضو الذي أرسل <strong>أكبر عدد من الاقتباسات</strong>.</li>
-                    <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> يُمنح للعضو الذي سجل القراءة في <strong>أكبر عدد من الأيام المختلفة</strong>.</li>
-                    <li><b>⚡ العدّاء السريع:</b> يُمنح للعضو الذي سجل <strong>أعلى عدد من دقائق القراءة في يوم واحد</strong>.</li>
-                    <li><b>⭐ نجم الأسبوع:</b> يُمنح للعضو الذي سجل <strong>أعلى مجموع دقائق قراءة خلال أسبوع واحد</strong>.</li>
-                    <li><b>💪 عملاق الشهر:</b> يُمنح للعضو الذي سجل <strong>أعلى مجموع دقائق قراءة خلال شهر واحد</strong>.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section 3: News Ticker Explained -->
-    <div class="accordion-item">
-        <input type="checkbox" id="accordion-3" name="accordion-group">
-        <label for="accordion-3" class="accordion-title">📰 نشرة الماراثون: كيف تعمل "آخر الأخبار"؟</label>
-        <div class="accordion-content">
-            <div class="content-section">
-                <p>شريط الأخبار هو نافذتك على أحدث المستجدات في الماراثون، ويعمل بطريقتين مختلفتين حسب الصفحة:</p>
-                <h4>في لوحة التحكم العامة</h4>
-                <ul>
-                    <li>يعرض الشريط هنا <strong>التغييرات التي طرأت على لوحة شرف الأبطال خلال آخر 7 أيام</strong>.</li>
-                    <li>يقوم النظام بمقارنة قائمة الأبطال الحالية بقائمتهم قبل أسبوع، ويرصد أي تغييرات.</li>
-                    <li>الهدف هو تسليط الضوء على الديناميكية والمنافسة على مستوى الماراثون ككل.</li>
-                </ul>
-                <h4>في صفحة تحليلات التحديات</h4>
-                <ul>
-                    <li>يركز الشريط هنا على <strong>أحداث التحدي المحدد فقط</strong>.</li>
-                    <li>يعرض الأخبار بتسلسل زمني، مع التركيز على آخر المستجدات (مثل من أنهى الكتاب ومتى).</li>
-                    <li>الهدف هو متابعة التقدم والإنجازات داخل كل تحدي على حدة.</li>
-                </ul>
-            </div>
-        </div>
-    </div>
-
-    <!-- Section 4: Q&A -->
-    <div class="accordion-item">
-        <input type="checkbox" id="accordion-4" name="accordion-group">
-        <label for="accordion-4" class="accordion-title">🤔 أسئلة شائعة</label>
-        <div class="accordion-content">
-            <div class="content-section">
-                <h4>كيف يتم حساب النقاط بالضبط؟</h4>
-                <p>يتم حساب النقاط بناءً على نظام النقاط الافتراضي الذي يمكنك تعديله. يمكنك مراجعة نظام النقاط الحالي من صفحة "الإدارة والإعدادات".</p>
-                <h4>هل يمكنني تعديل نظام النقاط؟</h4>
-                <p>نعم! كمدير للماراثون، يمكنك الذهاب إلى صفحة "الإدارة والإعدادات" وتعديل نظام النقاط الافتراضي، أو تعيين نظام نقاط خاص لكل تحدي على حدة.</p>
-                <h4>ماذا لو نسيت تسجيل قراءتي ليوم ما؟</h4>
-                <p>لا تقلق. يمكن لمدير الماراثون الذهاب إلى "الإدارة والإعدادات" ثم "محرر السجلات" لتعديل أي سجل سابق لأي عضو. بعد الحفظ، يجب إعادة مزامنة البيانات لتعكس التغييرات.</p>
-            </div>
-        </div>
-    </div>
-    
-    <!-- Section 5: About the Developer -->
-    <div class="accordion-item">
-        <input type="checkbox" id="accordion-5" name="accordion-group">
-        <label for="accordion-5" class="accordion-title">🧑‍💻 عن المطور</label>
-        <div class="accordion-content">
-            <div class="content-section contact-links">
-                <p><strong>الاسم:</strong> احمد نايفه</p>
-                <p><strong>الهدف من المشروع:</strong> يهدف هذا المشروع إلى توفير أداة عصرية ومحفزة للمجموعات القرائية في الوطن العربي، للمساهمة في تعزيز ثقافة القراءة وجعلها تجربة تفاعلية وممتعة.</p>
-                <h4><strong>للتواصل والدعم الفني</strong></h4>
-                <p>إذا واجهتك أي مشكلة تقنية، أو كان لديك اقتراح لتطوير التطبيق، فلا تتردد في التواصل معي:</p>
-                <ul>
-                    <li><strong>البريد الإلكتروني:</strong> <a href="mailto:ahmadnayfeh2000@gmail.com">ahmadnayfeh2000@gmail.com</a></li>
-                    <li><strong>Portfolio:</strong> <a href="https://ahmadnayfeh.vercel.app/" target="_blank">ahmadnayfeh.vercel.app</a></li>
-                    <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/ahmad-nayfeh2000/" target="_blank">in/ahmad-nayfeh2000</a></li>
-                    <li><strong>GitHub:</strong> <a href="https://github.com/Ahmad-Nayfeh" target="_blank">Ahmad-Nayfeh</a></li>
-                </ul>
-            </div>
-        </div>
-    </div>
-</div>
+# --- Section 1: Philosophy of Points ---
+philosophy_html = """
+    <p>
+    هذا هو قلب المشروع النابض، وهو مصمم لتحقيق توازن دقيق بين القراءة الجماعية المنظمة والقراءة الفردية الحرة، لخلق جو حماسي ومرن.
+    </p>
+    <h4>حرية الاختيار هي الأساس</h4>
+    <p>لا يوجد مسار إلزامي. العضو لديه الحرية الكاملة ليختار المسار الذي يناسبه:</p>
+    <ul>
+        <li><b>مسار الكتاب المشترك:</b> يقرأ الكتاب الذي تم اختياره للتحدي. إنهاؤه يمنحه <strong>دفعة هائلة من النقاط</strong> تقديرًا لالتزامه وتهيئته لجلسة النقاش.</li>
+        <li><b>مسار الكتاب الحر:</b> يقرأ أي كتاب آخر من اختياره. هنا، تتضاعف نقاطه بناءً على <strong>وقت القراءة</strong>، لكن نقاط إنهاء الكتاب تكون أقل.</li>
+    </ul>
+    <h4>منطق النقاط الذكي للموازنة</h4>
+    <ul>
+        <li><b>للتشجيع على الالتزام:</b> نقاط إنهاء الكتاب المشترك <strong>أعلى بكثير</strong>.</li>
+        <li><b>لتعزيز المشاركة المجتمعية:</b> حضور جلسة النقاش الخاصة بالكتاب المشترك يمنح نقاطًا إضافية.</li>
+        <li><b>لتشجيع القراءة العميقة:</b> إضافة <strong>اقتباس</strong> من كتاب يقرأه العضو يمنحه نقاطًا إضافية.</li>
+    </ul>
 """
+render_section("🎯", "نظام المسابقات والنقاط: فلسفة التحفيز الذكي", philosophy_html)
 
-# Display the entire accordion with a single markdown command
-st.markdown(page_html, unsafe_allow_html=True)
+
+# --- Section 2: Hall of Fame Explained ---
+st.markdown(
+    """
+    <div class="section-card">
+        <div class="section-header">
+            <span class="icon">🌟</span>
+            <h2>فك شفرة الأبطال: شرح لوحة الشرف</h2>
+        </div>
+        <div class="section-content">
+            <p>لوحة شرف الأبطال هي احتفاء بالإنجازات المتميزة في الماراثون. إليك معنى كل لقب:</p>
+        </div>
+    </div>
+    """, unsafe_allow_html=True
+)
+col1, col2 = st.columns(2)
+with col1:
+    st.markdown("""
+    <div class="section-content" style="padding: 0 20px 20px 20px;">
+        <ul>
+            <li><b>🧠 العقل المدبّر:</b> يُمنح للعضو الذي جمع <strong>أعلى عدد من النقاط</strong>.</li>
+            <li><b>⏳ سيد الساعات:</b> يُمنح للعضو الذي سجل <strong>أطول وقت قراءة إجمالي</strong>.</li>
+            <li><b>📚 الديدان القارئ:</b> يُمنح للعضو الذي <strong>أنهى أكبر عدد من الكتب</strong>.</li>
+            <li><b>💎 صائد الدرر:</b> يُمنح للعضو الذي أرسل <strong>أكبر عدد من الاقتباسات</strong>.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+with col2:
+    st.markdown("""
+    <div class="section-content" style="padding: 0 20px 20px 20px;">
+        <ul>
+            <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> يُمنح للعضو الذي سجل القراءة في <strong>أكبر عدد من الأيام</strong>.</li>
+            <li><b>⚡ العدّاء السريع:</b> يُمنح للعضو الذي سجل <strong>أعلى قراءة في يوم واحد</strong>.</li>
+            <li><b>⭐ نجم الأسبوع:</b> يُمنح للعضو الذي سجل <strong>أعلى قراءة خلال أسبوع واحد</strong>.</li>
+            <li><b>💪 عملاق الشهر:</b> يُمنح للعضو الذي سجل <strong>أعلى قراءة خلال شهر واحد</strong>.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+
+
+# --- Section 3: News Ticker Explained ---
+news_html = """
+    <p>شريط الأخبار هو نافذتك على أحدث المستجدات في الماراثون، ويعمل بطريقتين مختلفتين حسب الصفحة:</p>
+    <h4>في لوحة التحكم العامة</h4>
+    <ul>
+        <li>يعرض الشريط هنا <strong>التغييرات التي طرأت على لوحة شرف الأبطال خلال آخر 7 أيام</strong>.</li>
+        <li>الهدف هو تسليط الضوء على الديناميكية والمنافسة على مستوى الماراثون ككل.</li>
+    </ul>
+    <h4>في صفحة تحليلات التحديات</h4>
+    <ul>
+        <li>يركز الشريط هنا على <strong>أحداث التحدي المحدد فقط</strong>.</li>
+        <li>يعرض الأخبار بتسلسل زمني، مع التركيز على آخر المستجدات (مثل من أنهى الكتاب ومتى).</li>
+    </ul>
+"""
+render_section("📰", "نشرة الماراثون: كيف تعمل \"آخر الأخبار\"؟", news_html)
+
+
+# --- Section 4: Q&A ---
+qa_html = """
+    <h4>كيف يتم حساب النقاط بالضبط؟</h4>
+    <p>يتم حساب النقاط بناءً على نظام النقاط الافتراضي الذي يمكنك تعديله. يمكنك مراجعة نظام النقاط الحالي من صفحة "الإدارة والإعدادات".</p>
+    <h4>هل يمكنني تعديل نظام النقاط؟</h4>
+    <p>نعم! كمدير للماراثون، يمكنك الذهاب إلى صفحة "الإدارة والإعدادات" وتعديل نظام النقاط الافتراضي، أو تعيين نظام نقاط خاص لكل تحدي على حدة.</p>
+    <h4>ماذا لو نسيت تسجيل قراءتي ليوم ما؟</h4>
+    <p>لا تقلق. يمكن لمدير الماراثون الذهاب إلى "الإدارة والإعدادات" ثم "محرر السجلات" لتعديل أي سجل سابق لأي عضو. بعد الحفظ، يجب إعادة مزامنة البيانات.</p>
+"""
+render_section("🤔", "أسئلة شائعة", qa_html)
+
+
+# --- Section 5: About the Developer ---
+developer_html = """
+    <div class="contact-links">
+        <p><strong>الاسم:</strong> احمد نايفه</p>
+        <p><strong>الهدف من المشروع:</strong> يهدف هذا المشروع إلى توفير أداة عصرية ومحفزة للمجموعات القرائية في الوطن العربي، للمساهمة في تعزيز ثقافة القراءة وجعلها تجربة تفاعلية وممتعة.</p>
+        <h4><strong>للتواصل والدعم الفني</strong></h4>
+        <ul>
+            <li><strong>البريد الإلكتروني:</strong> <a href="mailto:ahmadnayfeh2000@gmail.com">ahmadnayfeh2000@gmail.com</a></li>
+            <li><strong>Portfolio:</strong> <a href="https://ahmadnayfeh.vercel.app/" target="_blank">ahmadnayfeh.vercel.app</a></li>
+            <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/ahmad-nayfeh2000/" target="_blank">in/ahmad-nayfeh2000</a></li>
+            <li><strong>GitHub:</strong> <a href="https://github.com/Ahmad-Nayfeh" target="_blank">Ahmad-Nayfeh</a></li>
+        </ul>
+    </div>
+"""
+render_section("🧑‍💻", "عن المطور", developer_html)
