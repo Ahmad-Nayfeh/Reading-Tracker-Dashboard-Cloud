@@ -11,6 +11,7 @@ def apply_sidebar_styles():
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
             
             /* --- Base Styles for Sidebar Navigation Links (Light Theme) --- */
+            /* هذه الأنماط ستطبق بشكل افتراضي وهي خاصة بالوضع الفاتح */
             [data-testid="stSidebar"] {
                 direction: rtl;
                 background-color: #f0f2f6; /* Very light gray for a calm background */
@@ -46,6 +47,7 @@ def apply_sidebar_styles():
             }
 
             /* --- Dark Theme Specific Styles --- */
+            /* هذه الأنماط ستُلغى الأنماط الافتراضية فقط عندما يكون الوضع الداكن مفضلاً */
             @media (prefers-color-scheme: dark) {
                 [data-testid="stSidebar"] {
                     background-color: #1a1a2e; /* Darker background for sidebar */
