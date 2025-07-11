@@ -5,7 +5,7 @@ import db_manager as db
 import plotly.express as px
 import plotly.graph_objects as go
 from pdf_reporter import PDFReporter
-import auth_manager  # <-- استيراد مدير المصادقة
+import auth_manager # <-- استيراد مدير المصادقة
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
@@ -13,7 +13,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# === Enhanced CSS for Unique & Dazzling KPI Cards ===
+# This CSS snippet enforces RTL layout and adds custom styles for the hero cards
 st.markdown("""
     <style>
         /* Main app container */
@@ -28,150 +28,170 @@ st.markdown("""
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
         }
-        /* Fix for radio buttons & selectbox */
-        .st-b8 label, .st-ae label {
+        /* Fix for radio buttons label alignment */
+        .st-b8 label {
             text-align: right !important;
             display: block;
         }
-
-        /* === Elegant & Dazzling KPI Cards === */
+        /* Fix for selectbox label alignment */
+        .st-ae label {
+            text-align: right !important;
+            display: block;
+        }
+        /* Custom styles for the main KPI cards */
         .main-kpi-card {
-            background: linear-gradient(135deg, #ff9a9e 0%, #fad0c4 100%);
-            border-radius: 12px;
+            background-color: #FFFFFF;
+            border-radius: 10px;
             padding: 20px;
             text-align: center;
-            box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
-            animation: float 6s ease-in-out infinite;
-            transition: transform 0.3s ease, box-shadow 0.3s ease;
-            margin-bottom: 25px;
-        }
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-5px); }
-            100% { transform: translateY(0px); }
-        }
-        .main-kpi-card:hover {
-            transform: scale(1.05);
-            box-shadow: 0 12px 30px rgba(0, 0, 0, 0.2);
+            border: 1px solid #e6e6e6;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
         }
         .main-kpi-card .label {
-            font-size: 1.1em;
-            font-weight: 700;
-            color: #ffffff;
-            margin-bottom: 8px;
+            font-size: 1.2em;
+            font-weight: bold;
+            color: #5D6D7E;
         }
         .main-kpi-card .value {
             font-size: 2.5em;
-            font-weight: 900;
-            color: #ffffff;
-            line-height: 1.1;
+            font-weight: bold;
+            color: #2980B9;
+            margin: 10px 0;
         }
-
-        /* === Subtle Hero Metric Cards === */
+        /* Custom styles for the hero metric cards */
         .metric-card {
-            background-color: #f0f4f8;
+            background-color: #f9f9f9;
             border-radius: 10px;
             padding: 15px;
             text-align: center;
-            border: 1px solid #d0d7de;
-            margin-bottom: 15px;
-            min-height: 100px;
+            border: 1px solid #e6e6e6;
+            margin-bottom: 10px;
+            height: 130px; /* Fixed height for alignment */
             display: flex;
             flex-direction: column;
             justify-content: center;
         }
         .metric-card .label {
-            font-size: 0.95em;
-            font-weight: 600;
-            color: #2c3e50;
+            font-size: 1.1em;
+            font-weight: bold;
+            color: #2980b9; /* Accent color for the title */
         }
         .metric-card .value {
-            font-size: 1.4em;
-            color: #1f2c3e;
-            margin: 5px 0;
+            font-size: 1.5em;
+            color: #2c3e50; /* Darker color for the name */
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
         }
         .metric-card .sub-value {
-            font-size: 0.85em;
-            color: #6c7a89;
+            font-size: 1.0em;
+            color: #7f8c8d; /* Gray for the number */
         }
     </style>
 """, unsafe_allow_html=True)
 
+
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
 creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
+
 if not creds or not user_id:
     st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
     st.stop()
+# -----------------------------------------
 
-# --- دالة توليد العنوان الديناميكي (محدثة) ---
+
+# --- Helper function for Dynamic Headline (Overall Dashboard) ---
 def generate_headline(logs_df, achievements_df, members_df):
-    # حساب دقائق القراءة الكلية
     if 'common_book_minutes' in logs_df.columns and 'other_book_minutes' in logs_df.columns:
         logs_df['total_minutes'] = logs_df['common_book_minutes'] + logs_df['other_book_minutes']
     else:
-        return "صفحة جديدة في ماراثوننا، الأسبوع الأول فارغة، حان وقت تدوين الإنجازات"
+        return "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
 
     today = date.today()
-    last_7_start = today - timedelta(days=6)
-    prev_7_start = today - timedelta(days=13)
-    prev_7_end = today - timedelta(days=7)
+    last_7_days_start = today - timedelta(days=6)
+    prev_7_days_start = today - timedelta(days=13)
+    prev_7_days_end = today - timedelta(days=7)
 
+    # Ensure 'submission_date_dt' is datetime before comparison
     logs_df['submission_date_dt'] = pd.to_datetime(logs_df['submission_date_dt'])
-    last_week = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_start]
-    prev_week = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_start) &
-                        (logs_df['submission_date_dt'].dt.date <= prev_7_end)]
+    last_7_days_logs = logs_df[logs_df['submission_date_dt'].dt.date >= last_7_days_start]
+    prev_7_days_logs = logs_df[(logs_df['submission_date_dt'].dt.date >= prev_7_days_start) & (logs_df['submission_date_dt'].dt.date <= prev_7_days_end)]
+    
+    last_7_total_minutes = last_7_days_logs['total_minutes'].sum()
+    prev_7_total_minutes = prev_7_days_logs['total_minutes'].sum()
 
-    last_total = last_week['total_minutes'].sum()
-    prev_total = prev_week['total_minutes'].sum()
-    momentum_ok = prev_total > 0
-    pct_change = ((last_total - prev_total) / prev_total) * 100 if momentum_ok else 0
+    momentum_available = prev_7_total_minutes > 0
+    momentum_positive = None
+    percentage_change = 0
+    if momentum_available:
+        percentage_change = ((last_7_total_minutes - prev_7_total_minutes) / prev_7_total_minutes) * 100
+        momentum_positive = percentage_change >= 0
 
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date_dt'])
-    recent = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_start]
-    finished = recent[recent['achievement_type'].isin(['FINISHED_COMMON_BOOK','FINISHED_OTHER_BOOK'])]
+    recent_achievements = achievements_df[achievements_df['achievement_date_dt'].dt.date >= last_7_days_start]
+    book_finishers = recent_achievements[recent_achievements['achievement_type'].isin(['FINISHED_COMMON_BOOK', 'FINISHED_OTHER_BOOK'])]
+    
+    recent_finishers_names = []
+    if not book_finishers.empty and 'member_id' in book_finishers.columns and not members_df.empty:
+        finisher_ids = book_finishers['member_id'].unique()
+        recent_finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
 
-    names = []
-    if not finished.empty and 'member_id' in finished.columns and not members_df.empty:
-        ids = finished['member_id'].unique()
-        names = members_df[members_df['members_id'].isin(ids)]['name'].tolist()
+    achievement_available = len(recent_finishers_names) > 0
+    
+    highlight_style = "color: #2980b9; font-weight: bold;"
 
-    hl = "color: #2980b9; font-weight: bold;"
-    parts = []
-
-    if momentum_ok:
-        icon = "🚀" if pct_change >= 0 else "⚠️"
-        direction = "تصاعد" if pct_change >= 0 else "تراجع"
-        parts.append(
-            f"{icon} <span style='{hl}'>أداء الفريق</span> {direction} بنسبة "
-            f"<span style='{hl}'>{abs(pct_change):.0f}%</span> هذا الأسبوع"
-        )
-
-    if names:
-        n = len(names)
-        highlighted = ", ".join(f"<span style='{hl}'>{name}</span>" for name in names)
-        if n == 1:
-            parts.append(f"📚 نهنئ {highlighted} لإتمام كتابه في 7 أيام")
-        elif n == 2:
-            parts.append(f"📚👏 {highlighted} أكملا كتبهم في أسبوع واحد")
+    momentum_str = ""
+    if momentum_available:
+        if momentum_positive:
+            momentum_str = f"الفريق في أوج حماسه، ارتفع الأداء بنسبة <span style='{highlight_style}'>{percentage_change:.0f}%</span> هذا الأسبوع"
         else:
-            parts.append(f"🏅 {highlighted} أتموا كتبهم خلال السبعة أيام الماضية")
+            momentum_str = f"هل أخذ الفريق استراحة محارب، تراجع الأداء بنسبة <span style='{highlight_style}'>{abs(percentage_change):.0f}%</span> هذا الأسبوع"
+    
+    achievement_str = ""
+    if achievement_available:
+        n = len(recent_finishers_names)
+        names = [f"<span style='{highlight_style}'>{name}</span>" for name in recent_finishers_names]
+        if n == 1:
+            achievement_detail = f"ونهنئ {names[0]} على إنهائه لكتاب خلال السبع أيام الماضية"
+        elif n == 2:
+            achievement_detail = f"ونهنئ {names[0]} و {names[1]} على إنهاء كل واحد منهما لكتاب خلال السبع أيام الماضية"
+        elif n == 3:
+            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و {names[2]} على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
+        elif n == 4:
+            achievement_detail = f"ونهنئ {names[0]} و {names[1]} وعضوان آخران على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
+        elif 5 <= n <= 10:
+            achievement_detail = f"ونهنئ {names[0]} و {names[1]} و <span style='{highlight_style}'>{n-2}</span> أعضاء آخرين على إنهاء كل واحد منهم لكتاب خلال السبع أيام الماضية"
+        else: # n >= 11
+            achievement_detail = f"ونحب أن نهنئ أكثر من <span style='{highlight_style}'>{n-1}</span> عضو على إنهائهم لكتاب خلال السبع أيام الماضية"
+        
+        if not momentum_available:
+            achievement_str = f"انطلقت شرارة التحدي، {achievement_detail}"
+        else:
+            achievement_str = achievement_detail
+    
+    if momentum_str and achievement_str:
+        final_text = f"{momentum_str}، {achievement_str}"
+    elif momentum_str:
+        final_text = momentum_str
+    elif achievement_str:
+        final_text = achievement_str
+    else:
+        final_text = "صفحة جديدة في ماراثوننا، الأسبوع الأول هو صفحة بيضاء، حان وقت تدوين الإنجازات"
 
-    if not parts:
-        return "✨ بداية مشرقة في ماراثون القراءة، انطلقوا!"
+    return final_text
 
-    return "<br>".join(parts)
 
-# --- تحميل البيانات ---
+# --- Data Loading ---
 @st.cache_data(ttl=300)
 def load_all_data(user_id):
     all_data = db.get_all_data_for_stats(user_id)
     members_df = pd.DataFrame(all_data.get('members', []))
     periods_df = pd.DataFrame(all_data.get('periods', []))
     logs_df = pd.DataFrame(all_data.get('logs', []))
-    ach_df = pd.DataFrame(all_data.get('achievements', []))
-    stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
-    return members_df, periods_df, logs_df, ach_df, stats_df
+    achievements_df = pd.DataFrame(all_data.get('achievements', []))
+    member_stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
+    return members_df, periods_df, logs_df, achievements_df, member_stats_df
 
 members_df, periods_df, logs_df, achievements_df, member_stats_df = load_all_data(user_id)
 
@@ -188,39 +208,16 @@ if not member_stats_df.empty and not members_df.empty:
     member_stats_df = pd.merge(member_stats_df, members_df[['members_id', 'name']], on='members_id', how='left')
 
 
-# --- عرض الصفحة ---
+# --- Page Rendering ---
 st.header("📈 لوحة التحكم العامة")
+
+# --- Dynamic Headline ---
 st.markdown("---")
-
 if not logs_df.empty and not achievements_df.empty and not members_df.empty:
-    html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
-    st.markdown(f"""
-        <div style="
-            background: linear-gradient(90deg, #e8f4fd 0%, #ffffff 100%);
-            padding: 20px;
-            border-left: 6px solid #2980B9;
-            border-radius: 12px;
-            font-size: 1.15em;
-            line-height: 1.4;
-            text-align: center;
-        ">
-            {html}
-        </div>
-    """, unsafe_allow_html=True)
+    headline_html = generate_headline(logs_df.copy(), achievements_df.copy(), members_df.copy())
+    st.markdown(f"<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>{headline_html}</div>", unsafe_allow_html=True)
 else:
-    st.markdown(f"""
-        <div style="
-            background: #f9f9f9;
-            padding: 20px;
-            border-radius: 12px;
-            text-align: center;
-            font-size: 1.15em;
-            color: #7f8c8d;
-        ">
-            🌟 انطلق الماراثون! أسطر هذا الأسبوع بإنجازاتك.
-        </div>
-    """, unsafe_allow_html=True)
-
+    st.markdown("<div style='background-color: #f0f2f6; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;'>انطلق الماراثون! أهلاً بكم</div>", unsafe_allow_html=True)
 st.markdown("---")
 
 
@@ -282,10 +279,26 @@ def display_hero(col, title, name, value_str):
         st.markdown(f"""
         <div class="metric-card">
             <div class="label">{title}</div>
-            <div class="value">{name}</div>
+            <div class="value" title="{name}">{name}</div>
             <div class="sub-value">{value_str}</div>
         </div>
         """, unsafe_allow_html=True)
+
+# Helper function to find winner(s)
+def get_winners(df, column, name_col='name'):
+    if df.empty or column not in df.columns:
+        return "لا يوجد", 0
+    
+    max_value = df[column].max()
+    
+    if pd.isna(max_value) or max_value == 0:
+        return "لا يوجد", 0
+        
+    winners_df = df[df[column] == max_value]
+    winner_names = winners_df[name_col].tolist()
+    
+    return ", ".join(winner_names), max_value
+
 
 heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
 
@@ -293,54 +306,43 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
     logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
 
     # 1. Mastermind (Points)
-    hero_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
-    display_hero(heroes_col1, "🧠 العقل المدبّر", hero_points.get('name', 'N/A'), f"{int(hero_points.get('total_points', 0))} نقطة")
+    winner_name, max_val = get_winners(member_stats_df, 'total_points')
+    display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, f"{int(max_val)} نقطة")
 
     # 2. Lord of the Hours (Total Reading Time)
     member_stats_df['total_reading_minutes'] = member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']
-    hero_hours = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
-    display_hero(heroes_col2, "⏳ سيد الساعات", hero_hours.get('name', 'N/A'), f"{hero_hours.get('total_reading_minutes', 0) / 60:.1f} ساعة")
+    winner_name, max_val = get_winners(member_stats_df, 'total_reading_minutes')
+    display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, f"{max_val / 60:.1f} ساعة")
 
     # 3. Bookworm (Total Books)
     member_stats_df['total_books_read'] = member_stats_df['total_common_books_read'] + member_stats_df['total_other_books_read']
-    hero_books = member_stats_df.loc[member_stats_df['total_books_read'].idxmax()]
-    display_hero(heroes_col3, "📚 الديدان القارئ", hero_books.get('name', 'N/A'), f"{int(hero_books.get('total_books_read',0))} كتب")
+    winner_name, max_val = get_winners(member_stats_df, 'total_books_read')
+    display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, f"{int(max_val)} كتب")
 
     # 4. Pearl Hunter (Total Quotes)
-    hero_quotes = member_stats_df.loc[member_stats_df['total_quotes_submitted'].idxmax()]
-    display_hero(heroes_col4, "💎 صائد الدرر", hero_quotes.get('name', 'N/A'), f"{int(hero_quotes.get('total_quotes_submitted',0))} اقتباساً")
+    winner_name, max_val = get_winners(member_stats_df, 'total_quotes_submitted')
+    display_hero(heroes_col4, "💎 صائد الدرر", winner_name, f"{int(max_val)} اقتباساً")
 
     # 5. The Long-Hauler (Consistency)
     consistency = logs_with_names.groupby('name')['submission_date_dt'].nunique().reset_index()
-    if not consistency.empty:
-        hero_consistency = consistency.loc[consistency['submission_date_dt'].idxmax()]
-        display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", hero_consistency.get('name', 'N/A'), f"{hero_consistency.get('submission_date_dt', 0)} يوم قراءة")
-    else:
-        display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", "لا يوجد", "0 يوم")
+    consistency.rename(columns={'submission_date_dt': 'days_read'}, inplace=True)
+    winner_name, max_val = get_winners(consistency, 'days_read')
+    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, f"{int(max_val)} يوم قراءة")
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
-    if not daily_sum.empty and daily_sum['total_minutes'].max() > 0:
-        hero_daily = daily_sum.loc[daily_sum['total_minutes'].idxmax()]
-        display_hero(heroes_col2, "⚡ العدّاء السريع", hero_daily['name'], f"{hero_daily['total_minutes'] / 60:.1f} ساعة في يوم")
-    else:
-        display_hero(heroes_col2, "⚡ العدّاء السريع", "لا يوجد", "0 ساعة في يوم")
+    winner_name, max_val = get_winners(daily_sum, 'total_minutes')
+    display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, f"{max_val / 60:.1f} ساعة في يوم")
 
     # 7. Star of the Week (Best Single Week)
     weekly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
-    if not weekly_sum.empty and weekly_sum['total_minutes'].max() > 0:
-        hero_weekly = weekly_sum.loc[weekly_sum['total_minutes'].idxmax()]
-        display_hero(heroes_col3, "⭐ نجم الأسبوع", hero_weekly['name'], f"{hero_weekly['total_minutes'] / 60:.1f} ساعة في أسبوع")
-    else:
-         display_hero(heroes_col3, "⭐ نجم الأسبوع", "لا يوجد", "0 ساعة في أسبوع")
+    winner_name, max_val = get_winners(weekly_sum, 'total_minutes')
+    display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, f"{max_val / 60:.1f} ساعة في أسبوع")
 
     # 8. Giant of the Month (Best Single Month)
     monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
-    if not monthly_sum.empty and monthly_sum['total_minutes'].max() > 0:
-        hero_monthly = monthly_sum.loc[monthly_sum['total_minutes'].idxmax()]
-        display_hero(heroes_col4, "💪 عملاق الشهر", hero_monthly['name'], f"{hero_monthly['total_minutes'] / 60:.1f} ساعة في شهر")
-    else:
-        display_hero(heroes_col4, "💪 عملاق الشهر", "لا يوجد", "0 ساعة في شهر")
+    winner_name, max_val = get_winners(monthly_sum, 'total_minutes')
+    display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, f"{max_val / 60:.1f} ساعة في شهر")
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
 st.markdown("---")
