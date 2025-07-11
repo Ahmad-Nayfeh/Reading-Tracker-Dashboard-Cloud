@@ -483,7 +483,7 @@ with charts_col1:
         fig_growth = px.area(daily_minutes_growth, x='submission_date_dt', y='cumulative_hours', 
                              labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
                              markers=False, color_discrete_sequence=['#2ECC71'])
-        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'})
+        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'}, xaxis_autorange='reversed') # <-- السطر المعدل
         st.plotly_chart(fig_growth, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
