@@ -2,18 +2,16 @@ import streamlit as st
 
 def apply_sidebar_styles():
     """
-    Applies enhanced styles for the sidebar navigation links with calmer colors and larger font.
-    This version includes support for Streamlit's dark theme.
-    Call this function at the beginning of each page script.
+    Applies robust styles for the sidebar that work with modern Streamlit versions
+    and correctly adapt to the dark theme using the [data-theme="dark"] selector.
     """
     st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;700&display=swap');
             
-            /* --- Base styles (Light Theme) --- */
+            /* --- General Sidebar Styles --- */
             [data-testid="stSidebar"] {
                 direction: rtl;
-                background-color: #f0f2f6; /* Very light gray for a calm background */
             }
             
             [data-testid="stSidebarNav"] ul {  
@@ -26,52 +24,51 @@ def apply_sidebar_styles():
                 padding: 12px 15px !important;
                 margin-bottom: 7px;
                 border-radius: 10px;
-                transition: all 0.2s ease;
-                color: #4a5568; /* Darker gray for text */
+                transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
             }
             
             [data-testid="stSidebarNav"] a:hover {
-                background-color: rgba(176, 190, 197, 0.2); /* Soft blue-gray hover */
-                color: #2d3748;
                 transform: translateX(-3px);
             }
-            
-            [data-testid="stSidebarNav"] a[aria-current="page"] {
-                background: linear-gradient(90deg, #9bbde0 0%, #7fa8cc 100%); /* Calmer blue gradient */
+
+            /* --- Light Theme Styles --- */
+            body[data-theme="light"] [data-testid="stSidebar"] {
+                background-color: #f0f2f6;
+            }
+            body[data-theme="light"] [data-testid="stSidebarNav"] a {
+                color: #4a5568;
+            }
+            body[data-theme="light"] [data-testid="stSidebarNav"] a:hover {
+                background-color: rgba(176, 190, 197, 0.2);
+                color: #2d3748;
+            }
+            body[data-theme="light"] [data-testid="stSidebarNav"] a[aria-current="page"] {
+                background: linear-gradient(90deg, #9bbde0 0%, #7fa8cc 100%);
                 color: white !important;
                 font-weight: bold;
-                box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
             }
 
-            /* --- Dark Theme Overrides --- */
-            .theme-dark [data-testid="stSidebar"] {
-                background-color: #1a1a2e; /* Dark navy blue for dark background */
+            /* --- Dark Theme Styles --- */
+            body[data-theme="dark"] [data-testid="stSidebar"] {
+                background-color: #0e1117; /* Matches Streamlit's default dark background */
             }
-
-            .theme-dark [data-testid="stSidebarNav"] a {
-                color: #e0e0e0; /* Light gray text for readability */
+            body[data-theme="dark"] [data-testid="stSidebarNav"] a {
+                color: #fafafa; /* Clean white text */
             }
-
-            .theme-dark [data-testid="stSidebarNav"] a:hover {
-                background-color: rgba(76, 88, 114, 0.3); /* Softer, darker hover */
-                color: #ffffff; /* White text on hover */
+            body[data-theme="dark"] [data-testid="stSidebarNav"] a:hover {
+                background-color: rgba(255, 255, 255, 0.1); /* Subtle white overlay on hover */
+                color: #ffffff;
             }
-
-            .theme-dark [data-testid="stSidebarNav"] a[aria-current="page"] {
-                background: linear-gradient(90deg, #1e3a8a 0%, #3b82f6 100%); /* Deep to vibrant blue for dark mode */
+            body[data-theme="dark"] [data-testid="stSidebarNav"] a[aria-current="page"] {
+                background-color: #3b82f6; /* A vibrant blue for the active page */
                 color: white !important;
+                font-weight: bold;
             }
         </style>
     """, unsafe_allow_html=True)
 
-# --- مثال على كيفية الاستخدام في تطبيقك ---
-# st.set_page_config(page_title="My App", layout="wide")
-
+# --- مثال على كيفية الاستخدام ---
 # apply_sidebar_styles()
-
-# st.sidebar.page_link("app.py", label="الصفحة الرئيسية")
-# st.sidebar.page_link("pages/page1.py", label="صفحة فرعية ١")
-# st.sidebar.page_link("pages/page2.py", label="صفحة فرعية ٢")
-
-# st.title("الصفحة الرئيسية")
-# st.write("محتوى الصفحة هنا...")
+# st.sidebar.page_link("app.py", label="الرئيسية")
+# st.sidebar.page_link("pages/page1.py", label="صفحة 1")
+# st.write("اختر صفحة من الشريط الجانبي")
