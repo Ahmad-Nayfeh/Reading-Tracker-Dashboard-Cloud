@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL and adds the final custom styles for the new grid layout
+# This CSS snippet includes the final fix for member chips
 st.markdown("""
     <style>
         /* --- Base RTL Fixes --- */
@@ -24,8 +24,8 @@ st.markdown("""
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae { text-align: right !important; }
         .st-b8 label, .st-ae label { text-align: right !important; display: block; }
 
-        /* --- Main Container Styling (using st.container(border=True)) --- */
-        [data-testid="stVerticalBlockBorderWrapper"] {
+        /* --- Main Container Styling --- */
+        .main-card {
             background-color: #FFFFFF;
             border-radius: 15px;
             border: 1px solid #e9ecef;
@@ -33,101 +33,66 @@ st.markdown("""
             padding: 1.5rem 1.75rem;
         }
 
-        /* --- Custom Header for sections inside containers --- */
+        /* --- Custom Header for sections --- */
         .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             margin-bottom: 1.5rem;
         }
-        .section-header h3 {
-            margin: 0;
-            color: #2c3e50;
-            font-size: 1.6em;
-        }
+        .section-header h3 { margin: 0; color: #2c3e50; font-size: 1.6em; }
         .section-header .stButton button {
-            background-color: #2980b9;
-            color: white;
-            border: none;
-            border-radius: 8px;
-            padding: 8px 16px;
+            background-color: #2980b9; color: white; border: none;
+            border-radius: 8px; padding: 8px 16px;
         }
-        .section-header .stButton button:hover {
-            background-color: #3498db;
-        }
+        .section-header .stButton button:hover { background-color: #3498db; }
 
-        /* --- Sub-section titles (e.g., Active Members) --- */
+        /* --- Sub-section titles --- */
         .subsection-title {
-            font-size: 1.2em;
-            font-weight: 600;
-            color: #34495e;
-            margin-top: 1rem;
-            margin-bottom: 0.75rem;
-            padding-bottom: 0.5rem;
-            border-bottom: 1px solid #e9ecef;
+            font-size: 1.2em; font-weight: 600; color: #34495e;
+            margin-top: 1rem; margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem; border-bottom: 1px solid #e9ecef;
         }
 
-        /* --- NEW: Member Chip Styling for Grid Layout --- */
-        .member-chip {
+        /* --- CORRECTED Member Chip Styling --- */
+        .member-grid [data-testid="stVerticalBlockBorderWrapper"] {
+            padding: 0.4rem 0.6rem !important;
+            border-radius: 10px;
+            background-color: #f8f9fa;
+            min-height: 55px;
             display: flex;
             align-items: center;
-            justify-content: space-between;
-            padding: 8px 12px;
-            border-radius: 8px;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            text-align: center;
-            height: 50px;
+            justify-content: center;
         }
-        .member-chip span {
-            flex-grow: 1;
-            white-space: nowrap;
+        .member-grid .stButton button {
+            background-color: #e9ecef;
+            color: #868e96;
+            border: 1px solid #dee2e6;
+            width: 36px;
+            height: 36px;
+        }
+        .member-name {
+            padding-top: 5px; /* Vertical alignment */
             overflow: hidden;
             text-overflow: ellipsis;
+            white-space: nowrap;
         }
-        .member-chip.inactive span {
-            color: #adb5bd;
+        .member-name.inactive {
             text-decoration: line-through;
-        }
-        .member-chip .stButton button {
-            background-color: transparent;
-            color: #868e96;
-            border: none;
-            padding: 0;
-            margin-right: 5px; /* RTL margin */
-            width: 24px;
-            height: 24px;
+            color: #adb5bd;
         }
 
-        /* --- Challenge Card Info --- */
-        .challenge-card-info h5 {
-            margin: 0 0 5px 0;
-            color: #2c3e50;
-            font-size: 1.1em;
-        }
-        .challenge-card-info p {
-            margin: 0;
-            font-size: 0.9em;
-            color: #6c757d;
-        }
+        /* --- Challenge Card Styling --- */
+        .challenge-card-info h5 { margin: 0 0 5px 0; color: #2c3e50; font-size: 1.1em; }
+        .challenge-card-info p { margin: 0; font-size: 0.9em; color: #6c757d; }
         .challenge-card-actions .stButton button {
-            background-color: transparent;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            width: 38px;
-            height: 38px;
-            border-radius: 50%;
+            background-color: transparent; border: 1px solid #ced4da;
+            color: #6c757d; width: 38px; height: 38px; border-radius: 50%;
         }
-        .challenge-card-actions .stButton button:hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
-        }
+        .challenge-card-actions .stButton button:hover { background-color: #e9ecef; border-color: #adb5bd; }
 
-        /* --- Styling for Tabs inside the Settings Card --- */
-        [data-testid="stTabs"] button {
-            padding: 12px 18px;
-            font-size: 1.05em;
-        }
+        /* --- Tabs Styling --- */
+        [data-testid="stTabs"] button { padding: 12px 18px; font-size: 1.05em; }
     </style>
 """, unsafe_allow_html=True)
 
@@ -210,11 +175,7 @@ st.header("⚙️ الإدارة والإعدادات")
 with st.container(border=True):
     
     # --- Members Section ---
-    st.markdown("""
-        <div class="section-header">
-            <h3>👥 إدارة المشاركين</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h3>👥 إدارة المشاركين</h3></div>', unsafe_allow_html=True)
     if st.button("➕ إضافة مشارك", key="add_member_button"):
         st.session_state.show_add_member_dialog = True
 
@@ -223,6 +184,7 @@ with st.container(border=True):
 
     # --- Active Members Grid ---
     st.markdown('<p class="subsection-title">النشطون</p>', unsafe_allow_html=True)
+    st.markdown('<div class="member-grid">', unsafe_allow_html=True)
     if not active_members_df.empty:
         num_members = len(active_members_df)
         num_cols = 5
@@ -231,15 +193,20 @@ with st.container(border=True):
             for j in range(num_cols):
                 if i + j < num_members:
                     with cols[j]:
-                        member = active_members_df.iloc[i+j]
-                        st.markdown(f'<div class="member-chip"><span>{member["name"]}</span>', unsafe_allow_html=True)
-                        st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو")
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        with st.container(border=True):
+                            member = active_members_df.iloc[i+j]
+                            name_col, btn_col = st.columns([3, 1])
+                            with name_col:
+                                st.markdown(f'<div class="member-name" title="{member["name"]}">{member["name"]}</div>', unsafe_allow_html=True)
+                            with btn_col:
+                                st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو", use_container_width=True)
     else:
         st.info("لا يوجد أعضاء نشطون حالياً.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     # --- Inactive Members Grid ---
     st.markdown('<p class="subsection-title">الأرشيف</p>', unsafe_allow_html=True)
+    st.markdown('<div class="member-grid">', unsafe_allow_html=True)
     if not inactive_members_df.empty:
         num_members = len(inactive_members_df)
         num_cols = 5
@@ -248,21 +215,21 @@ with st.container(border=True):
             for j in range(num_cols):
                 if i + j < num_members:
                     with cols[j]:
-                        member = inactive_members_df.iloc[i+j]
-                        st.markdown(f'<div class="member-chip inactive"><span>{member["name"]}</span>', unsafe_allow_html=True)
-                        st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو")
-                        st.markdown('</div>', unsafe_allow_html=True)
+                        with st.container(border=True):
+                            member = inactive_members_df.iloc[i+j]
+                            name_col, btn_col = st.columns([3, 1])
+                            with name_col:
+                                st.markdown(f'<div class="member-name inactive" title="{member["name"]}">{member["name"]}</div>', unsafe_allow_html=True)
+                            with btn_col:
+                                st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو", use_container_width=True)
     else:
         st.info("لا يوجد أعضاء في الأرشيف.")
+    st.markdown('</div>', unsafe_allow_html=True)
 
     st.divider()
 
     # --- Challenges Section ---
-    st.markdown("""
-        <div class="section-header">
-            <h3>📅 إدارة التحديات</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h3>📅 إدارة التحديات</h3></div>', unsafe_allow_html=True)
     if st.button("➕ إضافة تحدي", key="add_challenge_button"):
         st.session_state.show_add_challenge_dialog = True
 
@@ -302,11 +269,7 @@ st.write("")
 
 # --- Container 2: Advanced Settings & Tools ---
 with st.container(border=True):
-    st.markdown("""
-        <div class="section-header">
-            <h3>⚙️ الإعدادات المتقدمة والأدوات</h3>
-        </div>
-    """, unsafe_allow_html=True)
+    st.markdown('<div class="section-header"><h3>⚙️ الإعدادات المتقدمة والأدوات</h3></div>', unsafe_allow_html=True)
 
     settings_tab1, settings_tab2, settings_tab3 = st.tabs(["🎯 نظام النقاط", "🔗 الروابط والأدوات", "📝 محرر السجلات"])
 
@@ -501,7 +464,7 @@ for _, member in members_df.iterrows():
             final_active_names = active_members_df['name'].tolist() + [member['name']]
             form_id, q_id = user_settings.get('form_id'), user_settings.get('member_question_id')
             update_form_members(forms_service, form_id, q_id, final_active_names)
-            st.toast(f"تم إعادة تنشيط {member['name']} وإضافته للنموذج.", icon="�")
+            st.toast(f"تم إعادة تنشيط {member['name']} وإضافته للنموذج.", icon="🔄")
             st.cache_data.clear()
             st.rerun()
 
