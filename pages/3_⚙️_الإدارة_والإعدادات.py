@@ -15,7 +15,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL layout and adds all the new custom styles for the admin dashboard
+# This CSS snippet enforces RTL and adds custom styles for the new container-based layout
 st.markdown("""
     <style>
         /* --- Base RTL Fixes --- */
@@ -24,126 +24,86 @@ st.markdown("""
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae { text-align: right !important; }
         .st-b8 label, .st-ae label { text-align: right !important; display: block; }
 
-        /* --- Main Admin Card Styling --- */
-        .admin-card {
+        /* --- Main Container Styling (using st.container(border=True)) --- */
+        /* Targets the wrapper of the bordered container */
+        [data-testid="stVerticalBlockBorderWrapper"] {
             background-color: #FFFFFF;
             border-radius: 15px;
-            padding: 25px;
             border: 1px solid #e9ecef;
             box-shadow: 0 6px 18px rgba(0, 0, 0, 0.04);
-            margin-bottom: 25px;
+            padding: 1.5rem 1.75rem; /* Add padding to the container itself */
         }
 
-        /* --- Card Header Styling --- */
-        .card-header {
+        /* --- Custom Header for sections inside containers --- */
+        .section-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            margin-bottom: 20px;
-            padding-bottom: 15px;
-            border-bottom: 1px solid #e9ecef;
+            margin-bottom: 1.5rem;
         }
-        .card-header h3 {
+        .section-header h3 {
             margin: 0;
             color: #2c3e50;
             font-size: 1.6em;
         }
-        .card-header .stButton button {
+        .section-header .stButton button {
             background-color: #2980b9;
             color: white;
             border: none;
             border-radius: 8px;
             padding: 8px 16px;
         }
-        .card-header .stButton button:hover {
+        .section-header .stButton button:hover {
             background-color: #3498db;
         }
-        
-        /* --- Member Chip Styling --- */
-        .members-container {
-            display: flex;
-            flex-wrap: wrap;
-            gap: 10px;
-            margin-top: 15px;
-        }
-        .member-chip {
-            display: flex;
-            align-items: center;
-            background-color: #f8f9fa;
-            border: 1px solid #dee2e6;
-            border-radius: 20px;
-            padding: 5px 5px 5px 12px;
-            font-size: 0.95em;
-            color: #495057;
-        }
-        .member-chip.inactive {
-            background-color: #f1f3f5;
-            color: #adb5bd;
-        }
-        .member-chip .stButton button {
-            background-color: transparent;
-            color: #6c757d;
-            border: none;
-            padding: 2px;
-            margin-right: 5px;
-            line-height: 1;
-            border-radius: 50%;
-            width: 24px;
-            height: 24px;
-        }
-        .member-chip.inactive .stButton button {
-            color: #868e96;
-        }
-        .member-chip .stButton button:hover {
-            background-color: #e9ecef;
-        }
 
-        /* --- Section Title Styling (e.g., Active/Inactive Members) --- */
-        .section-title {
-            font-size: 1.1em;
+        /* --- Sub-section titles (e.g., Active Members) --- */
+        .subsection-title {
+            font-size: 1.2em;
             font-weight: 600;
             color: #34495e;
-            margin-top: 15px;
-            margin-bottom: 10px;
+            margin-top: 1rem;
+            margin-bottom: 0.75rem;
+            padding-bottom: 0.5rem;
+            border-bottom: 1px solid #e9ecef;
         }
-        
-        /* --- Challenge Card Styling --- */
-        .challenge-card {
-            background-color: #f8f9fa;
-            border-radius: 10px;
-            padding: 15px;
-            margin-bottom: 10px;
-            border: 1px solid #e9ecef;
+
+        /* --- Member display styling --- */
+        .member-entry {
             display: flex;
-            justify-content: space-between;
             align-items: center;
+            justify-content: space-between;
+            padding: 8px;
+            border-radius: 8px;
         }
-        .challenge-info {
-            flex-grow: 1;
+        .member-entry:hover {
+            background-color: #f8f9fa;
         }
-        .challenge-info h5 {
+        .member-entry.inactive span {
+            color: #adb5bd;
+            text-decoration: line-through;
+        }
+        .member-entry .stButton button {
+            background-color: #f1f3f5;
+            color: #868e96;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            width: 38px;
+            height: 32px;
+        }
+
+        /* --- Challenge Card Info --- */
+        .challenge-card-info h5 {
             margin: 0 0 5px 0;
             color: #2c3e50;
+            font-size: 1.1em;
         }
-        .challenge-info p {
+        .challenge-card-info p {
             margin: 0;
             font-size: 0.9em;
             color: #6c757d;
         }
-        .challenge-actions .stButton button {
-            background-color: transparent;
-            border: 1px solid #ced4da;
-            color: #6c757d;
-            width: 36px;
-            height: 36px;
-            border-radius: 50%;
-            margin-right: 8px;
-        }
-         .challenge-actions .stButton button:hover {
-            background-color: #e9ecef;
-            border-color: #adb5bd;
-        }
-        
+
         /* --- Styling for Tabs inside the Settings Card --- */
         [data-testid="stTabs"] button {
             padding: 12px 18px;
@@ -227,85 +187,88 @@ members_df, periods_df, user_settings = load_management_data(user_id)
 # --- Page Title ---
 st.header("⚙️ الإدارة والإعدادات")
 
-# --- Card 1: Team & Challenges Management ---
-with st.container():
-    st.markdown('<div class="admin-card">', unsafe_allow_html=True)
+# --- Container 1: Team & Challenges Management ---
+with st.container(border=True):
     
-    # --- Card Header for Members ---
-    st.markdown('<div class="card-header"><h3>👥 إدارة المشاركين</h3>', unsafe_allow_html=True)
+    # --- Members Section ---
+    st.markdown("""
+        <div class="section-header">
+            <h3>👥 إدارة المشاركين</h3>
+        </div>
+    """, unsafe_allow_html=True)
     if st.button("➕ إضافة مشارك", key="add_member_button"):
         st.session_state.show_add_member_dialog = True
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- Members Display ---
     active_members_df = members_df[members_df['is_active'] == True] if not members_df.empty else pd.DataFrame()
     inactive_members_df = members_df[members_df['is_active'] == False] if not members_df.empty else pd.DataFrame()
 
-    st.markdown('<p class="section-title">النشطون</p>', unsafe_allow_html=True)
-    if not active_members_df.empty:
-        st.markdown('<div class="members-container">', unsafe_allow_html=True)
-        for _, member in active_members_df.iterrows():
-            st.markdown(f'<div class="member-chip"><span>{member["name"]}</span>', unsafe_allow_html=True)
-            if st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو"):
-                # Logic is handled below after the component is rendered
-                pass
-            st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
-    else:
-        st.info("لا يوجد أعضاء نشطون حالياً.")
-
-    st.markdown('<p class="section-title">الأرشيف</p>', unsafe_allow_html=True)
-    if not inactive_members_df.empty:
-        st.markdown('<div class="members-container">', unsafe_allow_html=True)
-        for _, member in inactive_members_df.iterrows():
-            st.markdown(f'<div class="member-chip inactive"><span>{member["name"]}</span>', unsafe_allow_html=True)
-            if st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو"):
-                 # Logic is handled below
-                pass
-            st.markdown('</div>', unsafe_allow_html=True)
-        st.markdown('</div>', unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown('<p class="subsection-title">النشطون</p>', unsafe_allow_html=True)
+        if not active_members_df.empty:
+            for _, member in active_members_df.iterrows():
+                m_col1, m_col2 = st.columns([4, 1])
+                with m_col1:
+                    st.markdown(f'<div class="member-entry"><span>{member["name"]}</span></div>', unsafe_allow_html=True)
+                with m_col2:
+                    st.button("🚫", key=f"deactivate_{member['members_id']}", help="تعطيل العضو", use_container_width=True)
+        else:
+            st.info("لا يوجد أعضاء نشطون حالياً.")
     
+    with col2:
+        st.markdown('<p class="subsection-title">الأرشيف</p>', unsafe_allow_html=True)
+        if not inactive_members_df.empty:
+            for _, member in inactive_members_df.iterrows():
+                m_col1, m_col2 = st.columns([4, 1])
+                with m_col1:
+                    st.markdown(f'<div class="member-entry inactive"><span>{member["name"]}</span></div>', unsafe_allow_html=True)
+                with m_col2:
+                    st.button("🔄", key=f"reactivate_{member['members_id']}", help="إعادة تنشيط العضو", use_container_width=True)
+        else:
+            st.info("لا يوجد أعضاء في الأرشيف.")
+
     st.divider()
 
-    # --- Card Header for Challenges ---
-    st.markdown('<div class="card-header"><h3>📅 إدارة التحديات</h3>', unsafe_allow_html=True)
+    # --- Challenges Section ---
+    st.markdown("""
+        <div class="section-header">
+            <h3>📅 إدارة التحديات</h3>
+        </div>
+    """, unsafe_allow_html=True)
     if st.button("➕ إضافة تحدي", key="add_challenge_button"):
         st.session_state.show_add_challenge_dialog = True
-    st.markdown('</div>', unsafe_allow_html=True)
 
-    # --- Challenges Display ---
     today_str = str(date.today())
     if not periods_df.empty:
         sorted_periods = periods_df.sort_values(by='start_date', ascending=False)
         for _, period in sorted_periods.iterrows():
-            is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
-            st.markdown('<div class="challenge-card">', unsafe_allow_html=True)
-            st.markdown(f"""
-                <div class="challenge-info">
-                    <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
-                    <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
-                </div>
-            """, unsafe_allow_html=True)
-            
-            st.markdown('<div class="challenge-actions">', unsafe_allow_html=True)
-            c1, c2 = st.columns(2)
-            with c1:
-                if st.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط"):
-                    st.session_state.challenge_to_show_rules = period.to_dict()
-            with c2:
-                if st.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي"):
-                    st.session_state.challenge_to_delete = period['periods_id']
-                    st.session_state.delete_confirmation_phrase = f"أوافق على حذف {period.get('book_title', 'هذا التحدي')}"
-            st.markdown('</div></div>', unsafe_allow_html=True)
+            with st.container(border=True):
+                is_active = (period['start_date'] <= today_str) and (period['end_date'] >= today_str)
+                c1, c2 = st.columns([4, 1])
+                with c1:
+                    st.markdown(f"""
+                        <div class="challenge-card-info">
+                            <h5>{period.get('book_title', 'غير متوفر')} {'<span style="color: #27AE60;">(الحالي)</span>' if is_active else ''}</h5>
+                            <p>{period.get('book_author', 'غير متوفر')} | {period['start_date']} إلى {period['end_date']}</p>
+                        </div>
+                    """, unsafe_allow_html=True)
+                with c2:
+                    btn_c1, btn_c2 = st.columns(2)
+                    btn_c1.button("ℹ️", key=f"info_{period['periods_id']}", help="عرض نظام النقاط", use_container_width=True)
+                    btn_c2.button("🗑️", key=f"delete_{period['periods_id']}", disabled=is_active, help="حذف التحدي", use_container_width=True)
     else:
         st.info("لا توجد تحديات لعرضها.")
-    
-    st.markdown('</div>', unsafe_allow_html=True) # Close admin-card
 
-# --- Card 2: Advanced Settings & Tools ---
-with st.container():
-    st.markdown('<div class="admin-card">', unsafe_allow_html=True)
-    st.markdown('<div class="card-header"><h3>⚙️ الإعدادات المتقدمة والأدوات</h3></div>', unsafe_allow_html=True)
+# --- Spacer ---
+st.write("") 
+
+# --- Container 2: Advanced Settings & Tools ---
+with st.container(border=True):
+    st.markdown("""
+        <div class="section-header">
+            <h3>⚙️ الإعدادات المتقدمة والأدوات</h3>
+        </div>
+    """, unsafe_allow_html=True)
 
     settings_tab1, settings_tab2, settings_tab3 = st.tabs(["🎯 نظام النقاط", "🔗 الروابط والأدوات", "📝 محرر السجلات"])
 
@@ -457,9 +420,8 @@ with st.container():
                             st.rerun()
                     except Exception as e:
                         st.error(f"حدث خطأ فادح أثناء عملية الحفظ: {e}")
-    st.markdown('</div>', unsafe_allow_html=True) # Close admin-card
 
-# --- Dialogs and Button Logic ---
+# --- Dialogs and Button Logic (Placed at the end for clarity) ---
 
 # --- Member Management Logic ---
 if 'show_add_member_dialog' in st.session_state and st.session_state.show_add_member_dialog:
@@ -506,6 +468,14 @@ for _, member in members_df.iterrows():
             st.rerun()
 
 # --- Challenge Management Logic ---
+for _, period in periods_df.iterrows():
+    period_id = period['periods_id']
+    if st.session_state.get(f"info_{period_id}"):
+        st.session_state.challenge_to_show_rules = period.to_dict()
+    if st.session_state.get(f"delete_{period_id}"):
+        st.session_state.challenge_to_delete = period_id
+        st.session_state.delete_confirmation_phrase = f"أوافق على حذف {period.get('book_title', 'هذا التحدي')}"
+
 if 'challenge_to_show_rules' in st.session_state:
     @st.dialog("نظام النقاط المطبق على التحدي")
     def show_challenge_rules_dialog():
@@ -594,7 +564,7 @@ if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom
             rules['attend_discussion_points'] = st.number_input("نقاط حضور جلسة النقاش:", value=default_settings['attend_discussion_points'], min_value=0)
             if st.form_submit_button("حفظ التحدي بالقوانين المخصصة", type="primary"):
                 success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], rules)
-                if success: st.toast(f"✅ {message}", icon="🎉")
+                if success: st.toast(f"✅ {message}", icon="�")
                 else: st.error(f"❌ {message}")
                 del st.session_state.show_custom_rules_form, st.session_state.new_challenge_data
                 st.cache_data.clear()
