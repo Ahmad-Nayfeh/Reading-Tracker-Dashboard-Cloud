@@ -10,44 +10,159 @@ import gspread
 import time
 import os
 
-# --- Page Configuration and RTL CSS Injection ---
+# --- 1. Page Configuration ---
 st.set_page_config(
     page_title="الصفحة الرئيسية | ماراثون القراءة",
     page_icon="📚",
     layout="wide"
 )
 
-# This CSS snippet enforces RTL layout across the app
+# --- 2. Enhanced CSS Injection (Based on Your Design Guide) ---
+# This block contains all the styling rules to create the modern card design.
 st.markdown("""
     <style>
-        /* Main app container */
+        /* --- Base & RTL --- */
         .stApp {
             direction: rtl;
+            background-color: #f8f9fa; /* Light background for better card contrast */
         }
-        /* Sidebar */
         [data-testid="stSidebar"] {
             direction: rtl;
         }
-        /* Ensure text alignment is right for various elements */
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
+            font-family: 'Inter', sans-serif; /* A modern font choice */
         }
-        /* Fix for radio buttons label alignment */
-        .st-b8 label {
+        .st-b8 label, .st-ae label {
             text-align: right !important;
             display: block;
         }
-        /* Fix for selectbox label alignment */
-        .st-ae label {
-            text-align: right !important;
-            display: block;
+
+        /* --- Main Title --- */
+        .main-title {
+            color: #2c3e50;
+            font-weight: 700;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.05);
+            padding-bottom: 10px;
+            border-bottom: 2px solid #667eea;
         }
+
+        /* --- Elevated Card Design --- */
+        .card {
+            background: linear-gradient(135deg, #ffffff 0%, #fefefe 100%);
+            border: 1px solid #e3e6ea;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            transition: all 0.3s ease;
+            position: relative;
+            padding: 25px;
+            margin-top: 20px;
+            margin-bottom: 20px;
+            overflow: hidden; /* Ensures the accent bar stays within the rounded corners */
+        }
+        .card:hover {
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+            transform: translateY(-3px);
+        }
+        .card::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 5px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
+        }
+
+        /* --- Enhanced Headers inside Cards --- */
+        .enhanced-header {
+            font-size: 1.6em;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 20px;
+            position: relative;
+            padding-right: 20px;
+        }
+        .enhanced-header::before {
+            content: '';
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 6px;
+            height: 24px;
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            border-radius: 3px;
+        }
+
+        /* --- Custom List Styling --- */
+        .custom-list ul {
+            list-style: none;
+            padding-right: 0;
+        }
+        .custom-list li {
+            position: relative;
+            padding-right: 25px;
+            margin-bottom: 15px;
+            font-size: 1.1em;
+            color: #34495e;
+            transition: all 0.2s ease;
+        }
+        .custom-list li:hover {
+            color: #2c3e50;
+            transform: translateX(-3px);
+        }
+        .custom-list li::before {
+            content: '✓'; /* Using a checkmark for a cleaner look */
+            font-weight: bold;
+            position: absolute;
+            right: 0;
+            top: 50%;
+            transform: translateY(-50%);
+            width: 20px;
+            height: 20px;
+            color: #667eea;
+            font-size: 1.2em;
+        }
+
+        /* --- Styling Streamlit Widgets --- */
+        .stButton > button {
+            border-radius: 8px !important;
+            border: 1px solid #667eea !important;
+            background-color: #667eea !important;
+            color: white !important;
+            transition: all 0.3s ease !important;
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        .stButton > button:hover {
+            background-color: #5a67d8 !important;
+            border-color: #5a67d8 !important;
+            box-shadow: 0 6px 20px rgba(102, 126, 234, 0.3);
+            transform: translateY(-2px);
+        }
+        .stButton > button:active {
+            transform: translateY(0);
+            box-shadow: 0 4px 12px rgba(102, 126, 234, 0.2);
+        }
+        
+        /* Secondary Button Style */
+        .stButton [data-testid="baseButton-secondary"] {
+            background-color: transparent !important;
+            color: #667eea !important;
+            border: 1px solid #e3e6ea !important;
+        }
+        .stButton [data-testid="baseButton-secondary"]:hover {
+             background-color: rgba(102, 126, 234, 0.1) !important;
+             border: 1px solid #667eea !important;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
-# --- Main App Authentication and Setup ---
-creds = auth_manager.authenticate()
 
+# --- 3. Main App Authentication and Setup ---
+creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
 user_email = st.session_state.get('user_email')
 
@@ -59,32 +174,30 @@ if not creds or not user_id:
 gc = auth_manager.get_gspread_client(user_id, creds)
 forms_service = build('forms', 'v1', credentials=creds)
 
-# --- Sidebar ---
-st.sidebar.title("لوحة التحكم")
-st.sidebar.success(f"أهلاً بك! {user_email}")
+# --- 4. Sidebar ---
+with st.sidebar:
+    st.title("لوحة التحكم")
+    st.success(f"أهلاً بك! {user_email}")
 
-# Add the logout button
-if st.sidebar.button("🚪 تسجيل الخروج", use_container_width=True):
-    auth_manager.logout()
+    if st.button("🚪 تسجيل الخروج", use_container_width=True):
+        auth_manager.logout()
 
-st.sidebar.divider()
+    st.divider()
 
-if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
-    with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
-        update_log = run_data_update(gc, user_id)
-        st.session_state['update_log'] = update_log
-    st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
+    if st.button("🔄 تحديث وسحب البيانات", type="primary", use_container_width=True):
+        with st.spinner("جاري سحب البيانات من Google Sheet الخاص بك..."):
+            update_log = run_data_update(gc, user_id)
+            st.session_state['update_log'] = update_log
+        st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
 
+    if 'update_log' in st.session_state:
+        st.info("اكتملت عملية المزامنة الأخيرة.")
+        with st.expander("عرض تفاصيل سجل التحديث"):
+            for message in st.session_state.update_log:
+                st.text(message)
+        del st.session_state['update_log']
 
-if 'update_log' in st.session_state:
-    st.sidebar.info("اكتملت عملية المزامنة الأخيرة.")
-    with st.sidebar.expander("عرض تفاصيل سجل التحديث"):
-        for message in st.session_state.update_log:
-            st.text(message)
-    del st.session_state['update_log']
-
-
-# --- Check if setup is complete ---
+# --- 5. Data Loading and Setup Check ---
 user_settings = db.get_user_settings(user_id)
 all_data = db.get_all_data_for_stats(user_id)
 members_df = pd.DataFrame(all_data.get('members', []))
@@ -97,15 +210,19 @@ setup_complete = (
     not periods_df.empty
 )
 
-# --- Main Page Content ---
-if not setup_complete:
-    # --- SETUP WIZARD ---
-    st.title("🚀 مرحباً بك في ماراثون القراءة!")
-    st.info("لتجهيز مساحة العمل الخاصة بك، يرجى اتباع الخطوات التالية:")
+# --- 6. Main Page Content ---
+st.markdown('<h1 class="main-title">🚀 مرحباً بك في ماراثون القراءة!</h1>', unsafe_allow_html=True)
 
+if not setup_complete:
+    st.info("لتجهيز مساحة العمل الخاصة بك، يرجى اتباع الخطوات التالية:")
+    
+    # --- SETUP WIZARD ---
+    # Each step is now wrapped in a "card" for better visual organization.
+    
     # Step 1: Add Members
     if members_df.empty:
-        st.header("الخطوة 1: إضافة أعضاء فريقك")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<h2 class="enhanced-header">الخطوة 1: إضافة أعضاء فريقك</h2>', unsafe_allow_html=True)
         st.warning("قبل المتابعة، يجب إضافة عضو واحد على الأقل.")
         with st.form("initial_members_form"):
             names_str = st.text_area("أدخل أسماء المشاركين (كل اسم في سطر جديد):", height=150, placeholder="خالد\nسارة\n...")
@@ -120,16 +237,19 @@ if not setup_complete:
                     st.rerun()
                 else:
                     st.error("يرجى إدخال اسم واحد على الأقل.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Step 2: Create Google Tools
     elif not user_settings.get("spreadsheet_url") or not user_settings.get("form_url"):
-        st.header("الخطوة 2: إنشاء أدوات جوجل")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<h2 class="enhanced-header">الخطوة 2: إنشاء أدوات جوجل</h2>', unsafe_allow_html=True)
         st.info("سيقوم التطبيق الآن بإنشاء جدول بيانات (Google Sheet) ونموذج تسجيل (Google Form) في حسابك.")
         if 'sheet_title' not in st.session_state:
             st.session_state.sheet_title = f"بيانات ماراثون القراءة - {user_email.split('@')[0]}"
         st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
 
         if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
+            # ... (Logic for creating sheet and form remains unchanged) ...
             with st.spinner("جاري إنشاء جدول البيانات..."):
                 try:
                     spreadsheet = gc.create(st.session_state.sheet_title)
@@ -168,7 +288,7 @@ if not setup_complete:
                     st.error(f"🌐 خطأ في إنشاء الفورم: {e}")
                     st.stop()
 
-            st.header("🔗 الخطوة الأخيرة: الربط والتحقق")
+            st.markdown('<h3 class="enhanced-header" style="font-size: 1.3em;">🔗 الخطوة الأخيرة: الربط والتحقق</h3>', unsafe_allow_html=True)
             st.warning("هذه الخطوات ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
             editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
 
@@ -198,10 +318,12 @@ if not setup_complete:
                         st.error("❌ فشل التحقق. لم نتمكن من العثور على ورقة باسم 'Form Responses 1'. يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط.")
                     except Exception as e:
                         st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
+        st.markdown('</div>', unsafe_allow_html=True)
 
     # Step 3: Create First Challenge
     elif periods_df.empty:
-        st.header("الخطوة 3: إنشاء أول تحدي لك")
+        st.markdown('<div class="card">', unsafe_allow_html=True)
+        st.markdown('<h2 class="enhanced-header">الخطوة 3: إنشاء أول تحدي لك</h2>', unsafe_allow_html=True)
         st.info("أنت على وشك الانتهاء! كل ما عليك فعله هو إضافة تفاصيل أول كتاب وتحدي للبدء.")
         with st.form("new_challenge_form", clear_on_submit=True):
             st.text_input("عنوان الكتاب المشترك الأول", key="book_title")
@@ -227,19 +349,26 @@ if not setup_complete:
                         st.error("لم يتم العثور على الإعدادات الافتراضية في قاعدة البيانات.")
                 else:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
+        st.markdown('</div>', unsafe_allow_html=True)
 
 else:
     # --- MAIN WELCOME PAGE (if setup is complete) ---
-    st.title("📚 أهلاً بك في لوحة تحكم ماراثون القراءة")
-    st.markdown("---")
-    st.info("🎉 اكتمل إعداد حسابك بنجاح!")
-    st.markdown("يمكنك الآن التنقل بين صفحات التطبيق المختلفة باستخدام القائمة الموجودة في الشريط الجانبي.")
-
-    st.subheader("ماذا يمكنك أن تفعل الآن؟")
+    st.markdown('<div class="card">', unsafe_allow_html=True)
+    st.success("🎉 اكتمل إعداد حسابك بنجاح! يمكنك الآن التنقل بين صفحات التطبيق المختلفة باستخدام القائمة الجانبية.")
+    
+    st.markdown('<h2 class="enhanced-header">ماذا يمكنك أن تفعل الآن؟</h2>', unsafe_allow_html=True)
+    
+    # Using the custom list style for a more elegant presentation
     st.markdown("""
-    - **📈 لوحة التحكم العامة:** للحصول على نظرة شاملة على أداء جميع المشاركين في كل التحديات.
-    - **🎯 تحليلات التحديات:** للغوص في تفاصيل تحدي معين ومقارنة أداء المشاركين فيه.
-    - **⚙️ الإدارة والإعدادات:** لإضافة أعضاء جدد، إنشاء تحديات مستقبلية، أو تعديل نظام النقاط.
-    - **❓ عن التطبيق:** لمعرفة المزيد عن المشروع وكيفية عمل نظام النقاط.
-    """)
-    st.success("🚀 **نصيحة:** ابدأ بالذهاب إلى **'Overall Dashboard'** من الشريط الجانبي لرؤية الصورة الكاملة.")
+    <div class="custom-list">
+        <ul>
+            <li><b>📈 لوحة التحكم العامة:</b> للحصول على نظرة شاملة على أداء جميع المشاركين في كل التحديات.</li>
+            <li><b>🎯 تحليلات التحديات:</b> للغوص في تفاصيل تحدي معين ومقارنة أداء المشاركين فيه.</li>
+            <li><b>⚙️ الإدارة والإعدادات:</b> لإضافة أعضاء جدد، إنشاء تحديات مستقبلية، أو تعديل نظام النقاط.</li>
+            <li><b>❓ عن التطبيق:</b> لمعرفة المزيد عن المشروع وكيفية عمل نظام النقاط.</li>
+        </ul>
+    </div>
+    """, unsafe_allow_html=True)
+    
+    st.info("🚀 **نصيحة:** ابدأ بالذهاب إلى **'Overall Dashboard'** من الشريط الجانبي لرؤية الصورة الكاملة.")
+    st.markdown('</div>', unsafe_allow_html=True)
