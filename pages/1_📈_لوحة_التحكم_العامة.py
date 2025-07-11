@@ -474,34 +474,56 @@ charts_col1, charts_col2 = st.columns(2, gap="large")
 
 fig_growth, fig_rhythm = None, None
 
+# --- NEW LOGIC TO EXTEND DATES ---
+today_date = pd.to_datetime(date.today())
+full_date_range_df = pd.DataFrame()
+
+if not logs_df.empty:
+    min_date = logs_df['submission_date_dt'].min()
+    if pd.notna(min_date):
+        # Create a full date range from the first log entry to today
+        all_days = pd.date_range(start=min_date, end=today_date, freq='D')
+        full_date_range_df = pd.DataFrame(all_days, columns=['submission_date_dt'])
+
 with charts_col1:
     st.markdown("##### نمو القراءة التراكمي")
-    if not logs_df.empty:
-        daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index(name='minutes')
-        daily_minutes_growth = daily_minutes_growth.sort_values('submission_date_dt')
-        daily_minutes_growth['cumulative_hours'] = daily_minutes_growth['minutes'].cumsum() / 60
-        fig_growth = px.area(daily_minutes_growth, x='submission_date_dt', y='cumulative_hours', 
+    if not logs_df.empty and not full_date_range_df.empty:
+        # Calculate minutes per day
+        daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index(name='minutes')
+        
+        # Merge with the full date range and fill empty days with 0
+        merged_growth = pd.merge(full_date_range_df, daily_minutes_growth, on='submission_date_dt', how='left').fillna(0)
+        
+        # Calculate cumulative hours AFTER filling zeros
+        merged_growth['cumulative_hours'] = merged_growth['minutes'].cumsum() / 60
+        
+        fig_growth = px.area(merged_growth, x='submission_date_dt', y='cumulative_hours', 
                              labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
                              markers=False, color_discrete_sequence=['#2ECC71'])
-        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'}, xaxis_autorange='reversed') # <-- السطر المعدل
+        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'}, xaxis_autorange='reversed')
         st.plotly_chart(fig_growth, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
 with charts_col2:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
-    if not logs_df.empty:
-        daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index()
-        daily_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
-        daily_team_minutes['مجموع الساعات'] = daily_team_minutes['مجموع الدقائق'] / 60
+    if not logs_df.empty and not full_date_range_df.empty:
+        # Calculate minutes per day
+        daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index()
+
+        # Merge with the full date range and fill empty days with 0
+        merged_team_minutes = pd.merge(full_date_range_df, daily_team_minutes, on='submission_date_dt', how='left').fillna(0)
         
-        fig_rhythm = px.line(daily_team_minutes, x='التاريخ', y='مجموع الساعات',
+        merged_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
+        merged_team_minutes['مجموع الساعات'] = merged_team_minutes['مجموع الدقائق'] / 60
+        
+        fig_rhythm = px.line(merged_team_minutes, x='التاريخ', y='مجموع الساعات',
                              labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
                              markers=True, color_discrete_sequence=['#3498DB'])
         fig_rhythm.update_layout(
             title='', margin=dict(t=20, b=0, l=0, r=0), 
             yaxis={'side': 'right'},
-            xaxis_title="التاريخ", yaxis_title="الساعات", # <-- هنا تم الإصلاح
+            xaxis_title="التاريخ", yaxis_title="الساعات",
             xaxis_autorange='reversed'
         )
         st.plotly_chart(fig_rhythm, use_container_width=True)
