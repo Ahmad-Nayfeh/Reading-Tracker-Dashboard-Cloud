@@ -22,7 +22,7 @@ st.markdown("""
             border: 1px solid #e9ecef;
             border-radius: 12px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
-            margin: 10px 0;
+            margin: 5px 0;
         }
 
         /* Style for the expander header */
