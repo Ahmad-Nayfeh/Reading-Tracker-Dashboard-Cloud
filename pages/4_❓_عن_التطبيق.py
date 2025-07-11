@@ -19,15 +19,15 @@ st.markdown("""
         /* --- Custom Expander Styles (to look like cards) --- */
         div[data-testid="stExpander"] {
             background-color: #ffffff;
-            border: 5px solid #e9ecef;
-            border-radius: 12px;
+            border: 2px solid #e9ecef;
+            border-radius: 24px;
             box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             margin: 5px 0;
         }
 
         /* Style for the expander header */
         div[data-testid="stExpander"] summary {
-            font-size: 2.3em !important;
+            font-size: 5em !important;
             font-weight: bold;
             color: #2c3e50;
             padding: 15px 20px;
