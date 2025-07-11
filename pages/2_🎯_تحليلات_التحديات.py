@@ -14,7 +14,7 @@ st.set_page_config(
 )
 
 
-# This CSS snippet enforces RTL layout across the app
+# This CSS snippet enforces RTL layout and adds custom styles
 st.markdown("""
     <style>
         /* Main app container */
@@ -39,17 +39,56 @@ st.markdown("""
             text-align: right !important;
             display: block;
         }
+        
+        /* --- Professional News Ticker Styles --- */
+        .news-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden; /* Important for rounded corners on children */
+        }
+        .news-header {
+            background-color: #2980b9;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1.3em;
+            font-weight: bold;
+        }
+        .news-body {
+            padding: 15px 20px;
+        }
+        .news-body ul {
+            list-style-type: none;
+            padding-right: 0;
+            margin: 0;
+        }
+        .news-body li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 1.1em;
+            color: #34495e;
+        }
+        .news-body li:last-child {
+            border-bottom: none;
+        }
+        .news-body li b {
+            color: #2c3e50;
+        }
+        .news-body .no-news {
+            color: #7f8c8d;
+            font-style: italic;
+        }
     </style>
 """, unsafe_allow_html=True)
 
 
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
-# This is the new, robust authentication block that will be used on all pages.
 creds = auth_manager.authenticate()
 user_id = st.session_state.get('user_id')
 
-# If authentication fails, auth_manager would have already stopped the app.
-# But as a safeguard:
 if not creds or not user_id:
     st.error("مصادقة المستخدم مطلوبة. يرجى العودة إلى الصفحة الرئيسية وتسجيل الدخول.")
     st.stop()
@@ -118,72 +157,58 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
     )
     return fig
 
-def generate_challenge_headline(podium_df, period_achievements_df, members_df, end_date_obj):
+def generate_challenge_news(period_achievements_df, members_df, start_date_obj, end_date_obj, book_title):
+    news_list = []
     today = date.today()
-    highlight_style = "color: #2980b9; font-weight: bold;"
+
+    # Case 1: Challenge hasn't started yet
+    if today < start_date_obj:
+        news_list.append(f"⏳ <b>الاستعدادات جارية:</b> سينطلق تحدي '{book_title}' في تاريخ {start_date_obj.strftime('%Y-%m-%d')}.")
+        return news_list
+
+    finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
+    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], on='member_id', how='left')
+    finishers_df.sort_values(by='achievement_date_dt', inplace=True)
     
-    quoter_part = ""
-    if not podium_df.empty and podium_df['quotes'].sum() > 0:
-        top_quoter = podium_df.loc[podium_df['quotes'].idxmax()]
-        quoter_part = f"<span style='{highlight_style}'>{top_quoter['name']}</span> يتصدر سباق الاقتباسات"
+    total_finishers = len(finishers_df)
 
-    finishers_part = ""
-    if not period_achievements_df.empty:
-        finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].sort_values(by='achievement_date')
-        if not finishers_df.empty:
-            finisher_ids = finishers_df['member_id'].tolist()
-            finisher_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in finisher_ids if mid in members_df['members_id'].values]
-            n = len(finisher_names)
-            names_hl = [f"<span style='{highlight_style}'>{name}</span>" for name in finisher_names]
-            
-            if n == 1:
-                finishers_part = f"وعلى الطرف الآخر {names_hl[0]} كان أول من أنهى الكتاب"
-            elif n == 2:
-                finishers_part = f"وعلى الطرف الآخر {names_hl[0]} كان أول من أنهى الكتاب، وتبعه في ذلك {names_hl[1]}"
-            elif n == 3:
-                finishers_part = f"وعلى الطرف الآخر {names_hl[0]} كان أول من أنهى الكتاب، وتبعه في ذلك {names_hl[1]}، ثم {names_hl[2]}"
-            else: # n >= 4
-                finishers_part = f"وعلى الطرف الآخر <span style='{highlight_style}'>{n}</span> أعضاء أنهوا الكتاب وعلى رأسهم {names_hl[0]}"
-
-    discussion_part = ""
-    if today > end_date_obj:
-        if not period_achievements_df.empty:
-            attendees_df = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION']
-            attendee_ids = attendees_df['member_id'].tolist()
-            attendee_names = [members_df[members_df['members_id'] == mid].iloc[0]['name'] for mid in attendee_ids if mid in members_df['members_id'].values]
-            n_attendees = len(attendee_names)
-            names_hl = [f"<span style='{highlight_style}'>{name}</span>" for name in attendee_names]
-
-            if n_attendees == 0:
-                discussion_part = "ولكن للأسف لم تنعقد جلسة النقاش"
-            elif n_attendees == 1:
-                discussion_part = f"ولكن لسبب غريب لم يحضر إلا {names_hl[0]} إلى جلسة النقاش"
-            elif n_attendees == 2:
-                discussion_part = f"ولكن لم يحضر إلا {names_hl[0]} و {names_hl[1]} إلى جلسة النقاش"
-            elif n_attendees == 3:
-                discussion_part = f"وانعقدت جلسة النقاش وحضرها {names_hl[0]} و {names_hl[1]} و {names_hl[2]}"
-            elif 4 <= n_attendees <= 10:
-                discussion_part = f"وانعقدت جلسة النقاش وحضرها <span style='{highlight_style}'>{n_attendees}</span> أعضاء"
-            else: # n_attendees >= 11
-                discussion_part = f"وانعقدت جلسة النقاش وحضرها <span style='{highlight_style}'>{n_attendees}</span> عضو"
-
-    final_parts = [p for p in [quoter_part, finishers_part] if p]
-    
-    if len(final_parts) == 0:
-        final_text = "التحدي في بدايته، كل الإنجازات ممكنة"
-    elif len(final_parts) == 1:
-        final_text = final_parts[0]
-    elif len(final_parts) == 2:
-        final_text = f"{final_parts[0]}، {final_parts[1]}"
-
-    if discussion_part:
-        if final_text == "التحدي في بدايته، كل الإنجازات ممكنة":
-             final_text = discussion_part
+    # Case 2: Challenge is active or finished, but no one has finished the book yet
+    if finishers_df.empty:
+        news_list.append(f"🏃‍♂️ <b>السباق محتدم:</b> لا يزال الجميع يتنافس لإنهاء كتاب '{book_title}'. من سيكون أول المنجزين؟")
+    else:
+        # Find the latest achievement day
+        latest_achievement_date = finishers_df['achievement_date_dt'].max().date()
+        finishers_on_latest_day = finishers_df[finishers_df['achievement_date_dt'].dt.date == latest_achievement_date]
+        
+        names_on_latest_day = [f"<b>{name}</b>" for name in finishers_on_latest_day['name']]
+        
+        # Craft the news for the latest achievement
+        if len(names_on_latest_day) > 1:
+            news_list.append(f"🎉 <b>إنجاز جماعي:</b> { ' و '.join(names_on_latest_day)} أنهوا الكتاب معًا في يوم {latest_achievement_date.strftime('%Y-%m-%d')}.")
         else:
-            final_text = f"{final_text}، {discussion_part}"
-    
-    style = "background-color: #eaf2f8; padding: 15px; border-radius: 10px; text-align: center; font-size: 1.1em; color: #1c2833;"
-    return f"<div style='{style}'>{final_text}</div>"
+            first_ever_finisher = finishers_df.iloc[0]
+            if first_ever_finisher['member_id'] == finishers_on_latest_day.iloc[0]['member_id']:
+                 news_list.append(f"🏁 <b>شرارة الإنجاز الأولى:</b> {names_on_latest_day[0]} هو أول من عبر خط النهاية وأنهى الكتاب!")
+            else:
+                news_list.append(f"👍 <b>ويستمر السباق:</b> {names_on_latest_day[0]} ينضم إلى قائمة المنجزين.")
+
+        # Add a summary news item
+        if total_finishers == 1:
+            news_list.append("بطل واحد فقط وصل إلى خط النهاية حتى الآن.")
+        else:
+            news_list.append(f"<b>ملخص:</b> {total_finishers} أبطال أتموا قراءة الكتاب بنجاح حتى الآن.")
+
+    # Case 3: Challenge has finished, check for discussion attendees
+    if today > end_date_obj:
+        attendees_df = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION'].copy()
+        if not attendees_df.empty:
+            attendees_df = pd.merge(attendees_df, members_df[['members_id', 'name']], on='member_id', how='left')
+            attendee_names = [f"<b>{name}</b>" for name in attendees_df['name']]
+            news_list.append(f"🗣️ <b>جلسة نقاش مثمرة:</b> نُشيد بحضور { ' و '.join(attendee_names)} للجلسة الختامية.")
+        else:
+            news_list.append("ℹ️ <b>ملاحظة:</b> لم يتم تسجيل حضور لأي عضو في جلسة النقاش الختامية.")
+            
+    return news_list
 
 # --- Data Loading ---
 @st.cache_data(ttl=300)
@@ -256,7 +281,8 @@ st.markdown("---")
 
 if selected_period_id:
     selected_challenge_data = challenge_options_map[selected_period_id]
-    st.subheader(f"تحليلات تحدي: {selected_challenge_data.get('book_title', 'N/A')}")
+    book_title = selected_challenge_data.get('book_title', 'N/A')
+    st.subheader(f"تحليلات تحدي: {book_title}")
 
     start_date_obj = datetime.strptime(selected_challenge_data['start_date'], '%Y-%m-%d').date()
     end_date_obj = datetime.strptime(selected_challenge_data['end_date'], '%Y-%m-%d').date()
@@ -320,12 +346,28 @@ if selected_period_id:
     tab1, tab2 = st.tabs(["📝 ملخص التحدي", "🧑‍💻 بطاقة القارئ"])
 
     with tab1:
-        if period_logs_df.empty:
-            st.info("لا توجد بيانات مسجلة لهذا التحدي بعد.")
+        # --- NEW News Ticker Section ---
+        news_items = generate_challenge_news(period_achievements_df, members_df, start_date_obj, end_date_obj, book_title)
+        news_html = '<div class="news-container">'
+        news_html += f'<div class="news-header">🎯 آخر أخبار تحدي "{book_title}"</div>'
+        news_html += '<div class="news-body">'
+        if news_items:
+            news_html += '<ul>'
+            for item in news_items:
+                news_html += f'<li>{item}</li>'
+            news_html += '</ul>'
         else:
-            st.markdown(generate_challenge_headline(podium_df, period_achievements_df, members_df, end_date_obj), unsafe_allow_html=True)
-            st.markdown("---")
+            news_html += '<p class="no-news">لا توجد أخبار جديدة حالياً لهذا التحدي.</p>'
+        news_html += '</div></div>'
+        st.markdown(news_html, unsafe_allow_html=True)
+        # --- End of News Ticker Section ---
 
+        if period_logs_df.empty and today >= start_date_obj:
+            st.info("لا توجد بيانات مسجلة لهذا التحدي بعد.")
+        elif today < start_date_obj:
+            st.info(f"هذا التحدي لم يبدأ بعد. موعد الانطلاق: {start_date_obj.strftime('%Y-%m-%d')}")
+        else:
+            st.markdown("---")
             col1, col2 = st.columns([1, 1.5], gap="large")
             with col1:
                 st.subheader("مؤشر التقدم")
@@ -371,6 +413,69 @@ if selected_period_id:
                 st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
             st.markdown("---")
             
+            # --- NEW SECTION: Daily Race and Finish Line ---
+            st.subheader("🏁 تحليلات المنافسة اليومية")
+            race_col1, race_col2 = st.columns(2, gap="large")
+
+            with race_col1:
+                st.markdown("##### 🏁 خط النهاية")
+                finishers_df = pd.DataFrame()
+                if not period_achievements_df.empty:
+                    finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
+                
+                if not finishers_df.empty:
+                    finishers_df = pd.merge(finishers_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+                    
+                    finishers_df['achievement_date_dt'] = pd.to_datetime(finishers_df['achievement_date_dt'], errors='coerce')
+                    finishers_df.dropna(subset=['achievement_date_dt'], inplace=True)
+                    
+                    finishers_df['days_to_finish'] = (finishers_df['achievement_date_dt'].dt.date - start_date_obj).apply(lambda x: x.days)
+
+                    finishers_df.sort_values('days_to_finish', ascending=False, inplace=True)
+
+                    fig_finish_line = px.bar(finishers_df, 
+                                             x='days_to_finish', y='name', 
+                                             orientation='h',
+                                             text='days_to_finish',
+                                             labels={'days_to_finish': 'الأيام المستغرقة لإنهاء الكتاب', 'name': ''},
+                                             color_discrete_sequence=['#3498db'])
+                    fig_finish_line.update_traces(texttemplate='بعد %{text} يوم', textposition='inside')
+                    fig_finish_line.update_layout(yaxis={'side': 'right'}, xaxis_title="الأيام المستغرقة")
+                    st.plotly_chart(fig_finish_line, use_container_width=True)
+                else:
+                    st.info("لم يقم أي عضو بإنهاء الكتاب المشترك بعد.")
+
+            with race_col2:
+                st.markdown("##### 🏃‍♂️ سباق الصدارة اليومي")
+                period_logs_with_names = pd.merge(period_logs_df, members_df[['members_id', 'name']], left_on='member_id', right_on='members_id', how='left')
+                
+                all_days = pd.to_datetime(period_logs_with_names['submission_date_dt'].unique()).sort_values()
+                if not all_days.empty:
+                    selected_day = st.select_slider(
+                        "اختر يوماً لعرض أبطاله:",
+                        options=[d.strftime('%Y-%m-%d') for d in all_days],
+                        value=all_days[-1].strftime('%Y-%m-%d') # Default to the last day with logs
+                    )
+                    
+                    daily_leaders = period_logs_with_names[period_logs_with_names['submission_date_dt'].dt.strftime('%Y-%m-%d') == selected_day]
+                    daily_summary = daily_leaders.groupby('name')['total_minutes'].sum().sort_values(ascending=False).head(5).reset_index()
+
+                    if not daily_summary.empty and daily_summary['total_minutes'].sum() > 0:
+                        fig_daily_race = px.bar(daily_summary.sort_values('total_minutes', ascending=True),
+                                                x='total_minutes', y='name',
+                                                orientation='h',
+                                                text='total_minutes',
+                                                labels={'total_minutes': 'دقائق القراءة', 'name': ''},
+                                                color_discrete_sequence=['#F39C12'])
+                        fig_daily_race.update_traces(texttemplate='%{text} دقيقة', textposition='outside')
+                        fig_daily_race.update_layout(yaxis={'side': 'right'}, xaxis_title="الدقائق")
+                        st.plotly_chart(fig_daily_race, use_container_width=True)
+                    else:
+                        st.info(f"لا توجد سجلات قراءة في يوم {selected_day}.")
+                else:
+                    st.info("لا توجد أيام مسجلة لعرضها.")
+            st.markdown("---")
+
 
             st.subheader("🏆 قوائم المتصدرين في التحدي")
             col5, col6 = st.columns(2, gap="large")
