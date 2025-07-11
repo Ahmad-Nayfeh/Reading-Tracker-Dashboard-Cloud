@@ -8,7 +8,7 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet enforces RTL and adds custom styles for the new card-based layout
+# This CSS snippet enforces RTL and adds custom styles for the expander component
 st.markdown("""
     <style>
         /* --- Base RTL and Font Fixes --- */
@@ -16,42 +16,29 @@ st.markdown("""
         [data-testid="stSidebar"] { direction: rtl; }
         h1, h2, h3, h4, h5, h6, p, li { text-align: right !important; }
 
-        /* --- Custom Section Card Styles --- */
-        .section-card {
+        /* --- Custom Expander Styles (to look like cards) --- */
+        div[data-testid="stExpander"] {
             background-color: #ffffff;
             border: 1px solid #e9ecef;
-            border-radius: 10px;
+            border-radius: 12px;
+            box-shadow: 0 5px 15px rgba(0, 0, 0, 0.05);
             margin: 20px 0;
-            box-shadow: 0 4px 8px rgba(0, 0, 0, 0.04);
-            overflow: hidden; /* Ensures child elements conform to border radius */
         }
-        
-        .section-header {
-            display: flex;
-            align-items: center;
-            justify-content: flex-start;
-            background-color: #f8f9fa;
-            border-bottom: 1px solid #e9ecef;
-            padding: 12px 20px;
-        }
-        
-        .section-header .icon {
-            font-size: 1.5em;
-            margin-left: 12px;
-            color: #2980b9;
-        }
-        
-        .section-header h3 {
+
+        /* Style for the expander header */
+        div[data-testid="stExpander"] summary {
             font-size: 1.3em !important;
             font-weight: bold;
             color: #2c3e50;
-            margin: 0;
+            padding: 15px 20px;
         }
         
-        .section-content {
-            padding: 20px 25px;
+        /* Style for the expander content area */
+        div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
+            padding: 0px 25px 20px 25px;
         }
 
+        /* --- Styles for the content inside the expander --- */
         .section-content h4 {
             color: #1a5276;
             font-size: 1.15em;
@@ -85,7 +72,7 @@ st.markdown("""
         .section-content b, .section-content strong {
             color: #21618c;
         }
-
+        
         .contact-links a {
             text-decoration: none;
             color: #2980b9;
@@ -95,7 +82,7 @@ st.markdown("""
             text-decoration: underline;
         }
 
-        /* --- Two-column layout for Hall of Fame --- */
+        /* Two-column layout for Hall of Fame */
         .two-column-container {
             display: flex;
             flex-wrap: wrap;
@@ -122,17 +109,13 @@ if not creds or not user_id:
 
 # --- Page Title ---
 st.title("❓ عن تطبيق ماراثون القراءة")
-st.markdown("<p style='font-size: 1.1em; text-align: center; color: #5D6D7E;'>أهلاً بك في الدليل الشامل! هنا، ستجد كل ما تحتاج لمعرفته حول كيفية عمل التطبيق.</p>", unsafe_allow_html=True)
+st.markdown("<p style='font-size: 1.1em; text-align: center; color: #5D6D7E;'>أهلاً بك في الدليل الشامل! انقر على أي قسم أدناه لعرض تفاصيله.</p>", unsafe_allow_html=True)
 st.divider()
 
 
 # --- Section 1: Philosophy of Points ---
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">🎯</span>
-        <h3>نظام المسابقات والنقاط: فلسفة التحفيز الذكي</h3>
-    </div>
+with st.expander("🎯 نظام المسابقات والنقاط: فلسفة التحفيز الذكي"):
+    st.markdown("""
     <div class="section-content">
         <p>هذا هو قلب المشروع النابض، وهو مصمم لتحقيق توازن دقيق بين القراءة الجماعية المنظمة والقراءة الفردية الحرة، لخلق جو حماسي ومرن.</p>
         <h4>حرية الاختيار هي الأساس</h4>
@@ -147,49 +130,44 @@ st.markdown("""
             <li><b>لتشجيع القراءة العميقة:</b> إضافة <strong>اقتباس</strong> يمنح نقاطًا إضافية.</li>
         </ul>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 
 # --- Section 2: Hall of Fame Explained ---
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">🌟</span>
-        <h3>فك شفرة الأبطال: شرح لوحة الشرف</h3>
-    </div>
+with st.expander("🌟 فك شفرة الأبطال: شرح لوحة الشرف"):
+    st.markdown("""
     <div class="section-content">
         <p>لوحة شرف الأبطال هي احتفاء بالإنجازات المتميزة في الماراثون. إليك معنى كل لقب:</p>
-        <div class="two-column-container">
-            <div class="column">
-                <ul>
-                    <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
-                    <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
-                    <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
-                    <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
-                </ul>
-            </div>
-            <div class="column">
-                <ul>
-                    <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
-                    <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
-                    <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
-                    <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
-                </ul>
-            </div>
-        </div>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
+    col1, col2 = st.columns(2)
+    with col1:
+        st.markdown("""
+        <div class="section-content" style="padding: 0;">
+            <ul>
+                <li><b>🧠 العقل المدبّر:</b> أعلى عدد من <strong>النقاط</strong>.</li>
+                <li><b>⏳ سيد الساعات:</b> أطول <strong>وقت قراءة</strong> إجمالي.</li>
+                <li><b>📚 الديدان القارئ:</b> أكبر <strong>عدد من الكتب</strong> المنهَاة.</li>
+                <li><b>💎 صائد الدرر:</b> أكبر عدد من <strong>الاقتباسات</strong>.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
+    with col2:
+        st.markdown("""
+        <div class="section-content" style="padding: 0;">
+            <ul>
+                <li><b>🏃‍♂️ صاحب النَفَس الطويل:</b> أكبر عدد من <strong>أيام القراءة</strong>.</li>
+                <li><b>⚡ العدّاء السريع:</b> أعلى قراءة في <strong>يوم واحد</strong>.</li>
+                <li><b>⭐ نجم الأسبوع:</b> أعلى قراءة خلال <strong>أسبوع واحد</strong>.</li>
+                <li><b>💪 عملاق الشهر:</b> أعلى قراءة خلال <strong>شهر واحد</strong>.</li>
+            </ul>
+        </div>
+        """, unsafe_allow_html=True)
 
 
 # --- Section 3: News Ticker Explained ---
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">📰</span>
-        <h3>نشرة الماراثون: كيف تعمل "آخر الأخبار"؟</h3>
-    </div>
+with st.expander("📰 نشرة الماراثون: كيف تعمل \"آخر الأخبار\"؟"):
+    st.markdown("""
     <div class="section-content">
         <p>شريط الأخبار هو نافذتك على أحدث المستجدات في الماراثون، ويعمل بطريقتين مختلفتين حسب الصفحة:</p>
         <h4>في لوحة التحكم العامة</h4>
@@ -203,17 +181,12 @@ st.markdown("""
             <li>الهدف هو متابعة التقدم والإنجازات داخل كل تحدي على حدة.</li>
         </ul>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 
 # --- Section 4: Q&A ---
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">🤔</span>
-        <h3>أسئلة شائعة</h3>
-    </div>
+with st.expander("🤔 أسئلة شائعة"):
+    st.markdown("""
     <div class="section-content">
         <h4>كيف يتم حساب النقاط بالضبط؟</h4>
         <p>يتم حساب النقاط بناءً على نظام النقاط الافتراضي الذي يمكنك تعديله من صفحة "الإدارة والإعدادات".</p>
@@ -222,17 +195,12 @@ st.markdown("""
         <h4>ماذا لو نسيت تسجيل قراءتي ليوم ما؟</h4>
         <p>لا تقلق. يمكن لمدير الماراثون الذهاب إلى "الإدارة والإعدادات" ثم "محرر السجلات" لتعديل أي سجل سابق. بعد الحفظ، يجب إعادة مزامنة البيانات.</p>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
 
 
 # --- Section 5: About the Developer ---
-st.markdown("""
-<div class="section-card">
-    <div class="section-header">
-        <span class="icon">🧑‍💻</span>
-        <h3>عن المطور</h3>
-    </div>
+with st.expander("🧑‍💻 عن المطور"):
+    st.markdown("""
     <div class="section-content contact-links">
         <p><strong>الاسم:</strong> احمد نايفه</p>
         <p><strong>الهدف من المشروع:</strong> توفير أداة عصرية ومحفزة للمجموعات القرائية في الوطن العربي، لتعزيز ثقافة القراءة وجعلها تجربة تفاعلية وممتعة.</p>
@@ -243,5 +211,4 @@ st.markdown("""
             <li><strong>LinkedIn:</strong> <a href="https://www.linkedin.com/in/ahmad-nayfeh2000/" target="_blank">in/ahmad-nayfeh2000</a></li>
         </ul>
     </div>
-</div>
-""", unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
