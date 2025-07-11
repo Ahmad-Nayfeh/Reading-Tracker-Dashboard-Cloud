@@ -87,24 +87,49 @@ st.markdown("""
             font-size: 1.0em;
             color: #7f8c8d; /* Gray for the number */
         }
-        /* Custom styles for the news ticker */
-        .news-ticker {
-            background-color: #f0f2f6;
-            padding: 15px;
-            border-radius: 10px;
-            border-left: 5px solid #2980b9;
+        
+        /* --- NEW Professional News Ticker Styles --- */
+        .news-container {
+            background-color: #ffffff;
+            border-radius: 12px;
+            padding: 0;
+            margin-bottom: 20px;
+            border: 1px solid #e0e0e0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            overflow: hidden; /* Important for rounded corners on children */
         }
-        .news-ticker-title {
-            font-size: 1.2em;
+        .news-header {
+            background-color: #2980b9;
+            color: white;
+            padding: 12px 20px;
+            font-size: 1.3em;
             font-weight: bold;
-            color: #1c2833;
-            margin-bottom: 10px;
         }
-        .news-item {
-            font-size: 1.05em;
+        .news-body {
+            padding: 15px 20px;
+        }
+        .news-body ul {
+            list-style-type: none;
+            padding-right: 0;
+            margin: 0;
+        }
+        .news-body li {
+            padding: 8px 0;
+            border-bottom: 1px solid #f0f0f0;
+            font-size: 1.1em;
             color: #34495e;
-            margin-bottom: 5px;
         }
+        .news-body li:last-child {
+            border-bottom: none;
+        }
+        .news-body li b {
+            color: #2c3e50;
+        }
+        .news-body .no-news {
+            color: #7f8c8d;
+            font-style: italic;
+        }
+
     </style>
 """, unsafe_allow_html=True)
 
@@ -211,17 +236,19 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
 def generate_headline_news(logs_df, achievements_df, members_df):
     today = date.today()
     last_week_date = today - timedelta(days=7)
-    news = []
+    news_list = []
 
     # Ensure data is ready for processing
     if logs_df.empty or (today - logs_df['submission_date_dt'].min().date()).days < 7:
-        return ["أهلاً بكم في ماراثون القراءة! نتطلع لرؤية إنجازاتكم."]
+        news_list.append("أهلاً بكم في ماراثون القراءة! نتطلع لرؤية إنجازاتكم.")
+        return news_list
 
     heroes_today = get_heroes_at_date(today, logs_df, achievements_df, members_df)
     heroes_last_week = get_heroes_at_date(last_week_date, logs_df, achievements_df, members_df)
 
     if not heroes_today or not heroes_last_week:
-        return ["جاري تحليل البيانات الأسبوعية..."]
+        news_list.append("جاري تحليل البيانات الأسبوعية...")
+        return news_list
     
     # Compare heroes
     for title, current_winners in heroes_today.items():
@@ -236,26 +263,26 @@ def generate_headline_news(logs_df, achievements_df, members_df):
 
         # Case 1: First ever winner(s) for this title
         if not last_week_set and current_set:
-            names = " و ".join(current_winners)
-            news.append(f"🏆 **إنجاز غير مسبوق:** {names} أصبح أول من يحصل على لقب '{title}'!")
+            names = " و ".join([f"<b>{name}</b>" for name in current_winners])
+            news_list.append(f"🏆 <b>إنجاز غير مسبوق:</b> {names} أصبح أول من يحصل على لقب '{title}'!")
             continue
 
         # Case 2: Change in leadership
         if current_set != last_week_set:
             newly_joined = current_set - last_week_set
             if newly_joined:
-                new_names = " و ".join(list(newly_joined))
+                new_names = " و ".join([f"<b>{name}</b>" for name in list(newly_joined)])
                 # Subcase 2a: Someone new joined an existing leader
                 if last_week_set.issubset(current_set):
-                     news.append(f"🤝 **منافسة على القمة:** {new_names} ينضم إلى الصدارة في لقب '{title}'!")
+                     news_list.append(f"🤝 <b>منافسة على القمة:</b> {new_names} ينضم إلى الصدارة في لقب '{title}'!")
                 # Subcase 2b: A completely new leader
                 else:
-                    news.append(f"🥇 **صعود جديد:** {new_names} يتصدر قائمة '{title}' هذا الأسبوع!")
+                    news_list.append(f"🥇 <b>صعود جديد:</b> {new_names} يتصدر قائمة '{title}' هذا الأسبوع!")
 
-    if not news:
-        return ["الأبطال يحافظون على مواقعهم! استمروا في العطاء هذا الأسبوع."]
+    if not news_list:
+        news_list.append("الأبطال يحافظون على مواقعهم! استمروا في العطاء هذا الأسبوع.")
 
-    return news
+    return news_list
 
 
 # --- Data Loading ---
@@ -291,13 +318,24 @@ st.header("📈 لوحة التحكم العامة")
 
 # --- Dynamic Headline ---
 st.markdown("---")
-# Generate and display news
+# Generate news items
 news_items = generate_headline_news(logs_df.copy(), achievements_df.copy(), members_df.copy())
-st.markdown('<div class="news-ticker">', unsafe_allow_html=True)
-st.markdown('<div class="news-ticker-title">📰 آخر أخبار الماراثون (آخر 7 أيام)</div>', unsafe_allow_html=True)
-for item in news_items:
-    st.markdown(f'<div class="news-item">• {item}</div>', unsafe_allow_html=True)
-st.markdown('</div>', unsafe_allow_html=True)
+
+# Build the HTML string for the entire news ticker
+news_html = '<div class="news-container">'
+news_html += '<div class="news-header">📰 آخر أخبار الماراثون (آخر 7 أيام)</div>'
+news_html += '<div class="news-body">'
+if news_items:
+    news_html += '<ul>'
+    for item in news_items:
+        news_html += f'<li>{item}</li>'
+    news_html += '</ul>'
+else:
+    news_html += '<p class="no-news">لا توجد أخبار جديدة حالياً.</p>'
+news_html += '</div></div>'
+
+# Display the entire block with a single markdown command
+st.markdown(news_html, unsafe_allow_html=True)
 st.markdown("---")
 
 
