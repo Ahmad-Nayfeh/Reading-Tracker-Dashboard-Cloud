@@ -5,7 +5,5 @@ client_secret.json
 firebase_service_account.json
 logo.jpg
 logo.png
-firebase_config_old.py
-auth_manager_old.py
 app_old.py
 .streamlit/
