@@ -13,54 +13,64 @@ st.set_page_config(
     layout="wide"
 )
 
+# --- NEW: Color Palette Definition ---
+COLOR_ACCENT = "#2980B9"  # Main Accent Blue
+COLOR_GREEN = "#2ECC71"
+COLOR_PURPLE = "#9b59b6"
+COLOR_ORANGE = "#e67e22"
+COLOR_YELLOW = "#f1c40f"
+COLOR_TEXT = "#2c3e50"     # Dark Slate
+COLOR_GRID = "#eAEAEA"     # Light Grey for grids
+CARD_BG_COLOR = "#F8F9F9"  # A very light grey for card backgrounds
+
 # This CSS snippet enforces RTL layout and adds custom styles for the hero cards
-st.markdown("""
+st.markdown(f"""
     <style>
         /* Main app container */
-        .stApp {
+        .stApp {{
             direction: rtl;
-        }
+        }}
         /* Sidebar */
-        [data-testid="stSidebar"] {
+        [data-testid="stSidebar"] {{
             direction: rtl;
-        }
+        }}
         /* Ensure text alignment is right for various elements */
-        h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
+        h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {{
             text-align: right !important;
-        }
+        }}
         /* Fix for radio buttons label alignment */
-        .st-b8 label {
+        .st-b8 label {{
             text-align: right !important;
             display: block;
-        }
+        }}
         /* Fix for selectbox label alignment */
-        .st-ae label {
+        .st-ae label {{
             text-align: right !important;
             display: block;
-        }
+        }}
         /* Custom styles for the main KPI cards */
-        .main-kpi-card {
-            background-color: #FFFFFF;
+        .main-kpi-card {{
+            background-color: {CARD_BG_COLOR};
             border-radius: 10px;
             padding: 20px;
             text-align: center;
             border: 1px solid #e6e6e6;
             box-shadow: 0 4px 6px rgba(0, 0, 0, 0.04);
-        }
-        .main-kpi-card .label {
+        }}
+        .main-kpi-card .label {{
             font-size: 1.2em;
             font-weight: bold;
             color: #5D6D7E;
-        }
-        .main-kpi-card .value {
+        }}
+        .main-kpi-card .value {{
             font-size: 2.5em;
             font-weight: bold;
-            color: #2980B9;
+            color: {COLOR_ACCENT};
             margin: 10px 0;
-        }
+        }}
         /* Custom styles for the hero metric cards */
-        .metric-card {
-            background-color: #f9f9f9;
+        .metric-card {{
+            background-color: {CARD_BG_COLOR};
             border-radius: 10px;
             padding: 15px;
             text-align: center;
@@ -70,26 +80,26 @@ st.markdown("""
             display: flex;
             flex-direction: column;
             justify-content: center;
-        }
-        .metric-card .label {
+        }}
+        .metric-card .label {{
             font-size: 1.1em;
             font-weight: bold;
-            color: #2980b9; /* Accent color for the title */
-        }
-        .metric-card .value {
+            color: {COLOR_ACCENT}; /* Accent color for the title */
+        }}
+        .metric-card .value {{
             font-size: 1.5em;
-            color: #2c3e50; /* Darker color for the name */
+            color: {COLOR_TEXT}; /* Darker color for the name */
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
-        }
-        .metric-card .sub-value {
+        }}
+        .metric-card .sub-value {{
             font-size: 1.0em;
             color: #7f8c8d; /* Gray for the number */
-        }
+        }}
         
         /* --- NEW Professional News Ticker Styles --- */
-        .news-container {
+        .news-container {{
             background-color: #ffffff;
             border-radius: 12px;
             padding: 0;
@@ -97,38 +107,38 @@ st.markdown("""
             border: 1px solid #e0e0e0;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
             overflow: hidden; /* Important for rounded corners on children */
-        }
-        .news-header {
-            background-color: #2980b9;
+        }}
+        .news-header {{
+            background-color: {COLOR_ACCENT};
             color: white;
             padding: 12px 20px;
             font-size: 1.3em;
             font-weight: bold;
-        }
-        .news-body {
+        }}
+        .news-body {{
             padding: 15px 20px;
-        }
-        .news-body ul {
+        }}
+        .news-body ul {{
             list-style-type: none;
             padding-right: 0;
             margin: 0;
-        }
-        .news-body li {
+        }}
+        .news-body li {{
             padding: 8px 0;
             border-bottom: 1px solid #f0f0f0;
             font-size: 1.1em;
             color: #34495e;
-        }
-        .news-body li:last-child {
+        }}
+        .news-body li:last-child {{
             border-bottom: none;
-        }
-        .news-body li b {
-            color: #2c3e50;
-        }
-        .news-body .no-news {
+        }}
+        .news-body li b {{
+            color: {COLOR_TEXT};
+        }}
+        .news-body .no-news {{
             color: #7f8c8d;
             font-style: italic;
-        }
+        }}
 
     </style>
 """, unsafe_allow_html=True)
@@ -148,14 +158,14 @@ if not creds or not user_id:
 def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
     """Calculates all hero stats up to a specific date."""
     if logs_df.empty or members_df.empty:
-        return {}
+        return {{}}
 
     # Filter data up to the target date
     logs_past = logs_df[logs_df['submission_date_dt'].dt.date <= target_date]
     achievements_past = achievements_df[achievements_df['achievement_date_dt'].dt.date <= target_date]
 
     if logs_past.empty:
-        return {}
+        return {{}}
 
     # Calculate stats
     # 1. Total Points and Reading Minutes from logs
@@ -188,7 +198,7 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
     # Calculate more complex stats
     # Consistency
     consistency = logs_past.groupby('name')['submission_date_dt'].nunique().reset_index()
-    consistency.rename(columns={'submission_date_dt': 'days_read'}, inplace=True)
+    consistency.rename(columns={{'submission_date_dt': 'days_read'}}, inplace=True)
     member_stats = pd.merge(member_stats, consistency, on='name', how='left')
 
     # Best single day/week/month
@@ -211,8 +221,8 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
     # Here, we'll just add a placeholder for total_points
     member_stats['total_points'] = member_stats['total_reading_minutes'] / 10 # Example proxy
 
-    heroes = {}
-    hero_metrics = {
+    heroes = {{}}
+    hero_metrics = {{
         "🧠 العقل المدبّر": "total_points",
         "⏳ سيد الساعات": "total_reading_minutes",
         "📚 الديدان القارئ": "total_books_read",
@@ -221,7 +231,7 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
         "⚡ العدّاء السريع": "max_daily",
         "⭐ نجم الأسبوع": "max_weekly",
         "💪 عملاق الشهر": "max_monthly",
-    }
+    }}
     
     for hero_title, metric_col in hero_metrics.items():
         if metric_col in member_stats.columns:
@@ -263,21 +273,21 @@ def generate_headline_news(logs_df, achievements_df, members_df):
 
         # Case 1: First ever winner(s) for this title
         if not last_week_set and current_set:
-            names = " و ".join([f"<b>{name}</b>" for name in current_winners])
-            news_list.append(f"🏆 <b>إنجاز غير مسبوق:</b> {names} أصبح أول من يحصل على لقب '{title}'!")
+            names = " و ".join([f"<b>{{name}}</b>" for name in current_winners])
+            news_list.append(f"🏆 <b>إنجاز غير مسبوق:</b> {{names}} أصبح أول من يحصل على لقب '{{title}}'!")
             continue
 
         # Case 2: Change in leadership
         if current_set != last_week_set:
             newly_joined = current_set - last_week_set
             if newly_joined:
-                new_names = " و ".join([f"<b>{name}</b>" for name in list(newly_joined)])
+                new_names = " و ".join([f"<b>{{name}}</b>" for name in list(newly_joined)])
                 # Subcase 2a: Someone new joined an existing leader
                 if last_week_set.issubset(current_set):
-                     news_list.append(f"🤝 <b>منافسة على القمة:</b> {new_names} ينضم إلى الصدارة في لقب '{title}'!")
+                     news_list.append(f"🤝 <b>منافسة على القمة:</b> {{new_names}} ينضم إلى الصدارة في لقب '{{title}}'!")
                 # Subcase 2b: A completely new leader
                 else:
-                    news_list.append(f"🥇 <b>صعود جديد:</b> {new_names} يتصدر قائمة '{title}' هذا الأسبوع!")
+                    news_list.append(f"🥇 <b>صعود جديد:</b> {{new_names}} يتصدر قائمة '{{title}}' هذا الأسبوع!")
 
     if not news_list:
         news_list.append("الأبطال يحافظون على مواقعهم! استمروا في العطاء هذا الأسبوع.")
@@ -309,7 +319,7 @@ if not achievements_df.empty:
     achievements_df['achievement_date_dt'] = pd.to_datetime(achievements_df['achievement_date'], errors='coerce')
     
 if not member_stats_df.empty and not members_df.empty:
-    member_stats_df.rename(columns={'member_stats_id': 'members_id'}, inplace=True, errors='ignore')
+    member_stats_df.rename(columns={{'member_stats_id': 'members_id'}}, inplace=True, errors='ignore')
     member_stats_df = pd.merge(member_stats_df, members_df[['members_id', 'name']], on='members_id', how='left')
 
 
@@ -328,7 +338,7 @@ news_html += '<div class="news-body">'
 if news_items:
     news_html += '<ul>'
     for item in news_items:
-        news_html += f'<li>{item}</li>'
+        news_html += f'<li>{{item}}</li>'
     news_html += '</ul>'
 else:
     news_html += '<p class="no-news">لا توجد أخبار جديدة حالياً.</p>'
@@ -346,8 +356,8 @@ def display_main_kpi(col, label, value):
     with col:
         st.markdown(f"""
         <div class="main-kpi-card">
-            <div class="label">{label}</div>
-            <div class="value">{value}</div>
+            <div class="label">{{label}}</div>
+            <div class="value">{{value}}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -364,20 +374,20 @@ completed_challenges_count_val = 0
 
 if not member_stats_df.empty:
     total_minutes = member_stats_df['total_reading_minutes_common'].sum() + member_stats_df['total_reading_minutes_other'].sum()
-    total_hours_val = f"{int(total_minutes // 60):,}"
-    total_books_finished_val = f"{int(member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()):,}"
-    total_quotes_val = f"{int(member_stats_df['total_quotes_submitted'].sum()):,}"
+    total_hours_val = f"{{int(total_minutes // 60):,}}"
+    total_books_finished_val = f"{{int(member_stats_df['total_common_books_read'].sum() + member_stats_df['total_other_books_read'].sum()):,}}"
+    total_quotes_val = f"{{int(member_stats_df['total_quotes_submitted'].sum()):,}}"
 
 if not members_df.empty:
-    active_members_count_val = f"{len(members_df[members_df['is_active'] == True])}"
+    active_members_count_val = f"{{len(members_df[members_df['is_active'] == True])}}"
 
 if not logs_df.empty:
-    total_reading_days_val = f"{logs_df['submission_date_dt'].nunique()}"
+    total_reading_days_val = f"{{logs_df['submission_date_dt'].nunique()}}"
 
 if not periods_df.empty:
     today_date = date.today()
     periods_df['end_date_dt'] = pd.to_datetime(periods_df['end_date']).dt.date
-    completed_challenges_count_val = f"{len(periods_df[periods_df['end_date_dt'] < today_date])}"
+    completed_challenges_count_val = f"{{len(periods_df[periods_df['end_date_dt'] < today_date])}}"
 
 # Display KPIs
 display_main_kpi(kpi_col1, "⏳ إجمالي ساعات القراءة", total_hours_val)
@@ -396,9 +406,9 @@ def display_hero(col, title, name, value_str):
     with col:
         st.markdown(f"""
         <div class="metric-card">
-            <div class="label">{title}</div>
-            <div class="value" title="{name}">{name}</div>
-            <div class="sub-value">{value_str}</div>
+            <div class="label">{{title}}</div>
+            <div class="value" title="{{name}}">{{name}}</div>
+            <div class="sub-value">{{value_str}}</div>
         </div>
         """, unsafe_allow_html=True)
 
@@ -427,42 +437,42 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
 
     # 1. Mastermind (Points)
     winner_name, max_val = get_winners(member_stats_df, 'total_points')
-    display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, f"{int(max_val)} نقطة")
+    display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, f"{{int(max_val)}} نقطة")
 
     # 2. Lord of the Hours (Total Reading Time)
     member_stats_df['total_reading_minutes'] = member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']
     winner_name, max_val = get_winners(member_stats_df, 'total_reading_minutes')
-    display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, f"{max_val / 60:.1f} ساعة")
+    display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, f"{{max_val / 60:.1f}} ساعة")
 
     # 3. Bookworm (Total Books)
     member_stats_df['total_books_read'] = member_stats_df['total_common_books_read'] + member_stats_df['total_other_books_read']
     winner_name, max_val = get_winners(member_stats_df, 'total_books_read')
-    display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, f"{int(max_val)} كتب")
+    display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, f"{{int(max_val)}} كتب")
 
     # 4. Pearl Hunter (Total Quotes)
     winner_name, max_val = get_winners(member_stats_df, 'total_quotes_submitted')
-    display_hero(heroes_col4, "💎 صائد الدرر", winner_name, f"{int(max_val)} اقتباساً")
+    display_hero(heroes_col4, "💎 صائد الدرر", winner_name, f"{{int(max_val)}} اقتباساً")
 
     # 5. The Long-Hauler (Consistency)
     consistency = logs_with_names.groupby('name')['submission_date_dt'].nunique().reset_index()
-    consistency.rename(columns={'submission_date_dt': 'days_read'}, inplace=True)
+    consistency.rename(columns={{'submission_date_dt': 'days_read'}}, inplace=True)
     winner_name, max_val = get_winners(consistency, 'days_read')
-    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, f"{int(max_val)} يوم قراءة")
+    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, f"{{int(max_val)}} يوم قراءة")
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(daily_sum, 'total_minutes')
-    display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, f"{max_val / 60:.1f} ساعة في يوم")
+    display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, f"{{max_val / 60:.1f}} ساعة في يوم")
 
     # 7. Star of the Week (Best Single Week)
     weekly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(weekly_sum, 'total_minutes')
-    display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, f"{max_val / 60:.1f} ساعة في أسبوع")
+    display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, f"{{max_val / 60:.1f}} ساعة في أسبوع")
 
     # 8. Giant of the Month (Best Single Month)
     monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(monthly_sum, 'total_minutes')
-    display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, f"{max_val / 60:.1f} ساعة في شهر")
+    display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, f"{{max_val / 60:.1f}} ساعة في شهر")
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
 st.markdown("---")
@@ -480,10 +490,22 @@ with charts_col1:
         daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index(name='minutes')
         daily_minutes_growth = daily_minutes_growth.sort_values('submission_date_dt')
         daily_minutes_growth['cumulative_hours'] = daily_minutes_growth['minutes'].cumsum() / 60
+        
+        # MODIFIED: Chart styling
         fig_growth = px.area(daily_minutes_growth, x='submission_date_dt', y='cumulative_hours', 
-                             labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'},
-                             markers=False, color_discrete_sequence=['#2ECC71'])
-        fig_growth.update_layout(title='', margin=dict(t=20, b=0, l=0, r=0), yaxis={'side': 'right'}, xaxis_autorange='reversed') # <-- السطر المعدل
+                             labels={{'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'}},
+                             markers=False, color_discrete_sequence=[COLOR_GREEN])
+        fig_growth.update_layout(
+            title='', 
+            margin=dict(t=20, b=0, l=0, r=0), 
+            yaxis={{'side': 'right'}}, 
+            xaxis_autorange='reversed',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color=COLOR_TEXT,
+            xaxis=dict(gridcolor=COLOR_GRID),
+            yaxis=dict(gridcolor=COLOR_GRID)
+        )
         st.plotly_chart(fig_growth, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
@@ -492,17 +514,24 @@ with charts_col2:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
     if not logs_df.empty:
         daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'].dt.date)['total_minutes'].sum().reset_index()
-        daily_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
+        daily_team_minutes.rename(columns={{'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}}, inplace=True)
         daily_team_minutes['مجموع الساعات'] = daily_team_minutes['مجموع الدقائق'] / 60
         
+        # MODIFIED: Chart styling
         fig_rhythm = px.line(daily_team_minutes, x='التاريخ', y='مجموع الساعات',
-                             labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
-                             markers=True, color_discrete_sequence=['#3498DB'])
+                             labels={{'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'}},
+                             markers=True, color_discrete_sequence=[COLOR_ACCENT])
+        fig_rhythm.update_traces(marker=dict(size=8, symbol="circle"))
         fig_rhythm.update_layout(
             title='', margin=dict(t=20, b=0, l=0, r=0), 
-            yaxis={'side': 'right'},
-            xaxis_title="التاريخ", yaxis_title="الساعات", # <-- هنا تم الإصلاح
-            xaxis_autorange='reversed'
+            yaxis={{'side': 'right'}},
+            xaxis_title="التاريخ", yaxis_title="الساعات",
+            xaxis_autorange='reversed',
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color=COLOR_TEXT,
+            xaxis=dict(gridcolor=COLOR_GRID),
+            yaxis=dict(gridcolor=COLOR_GRID)
         )
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
@@ -519,15 +548,22 @@ fig_points_leaderboard, fig_donut, fig_hours_leaderboard = None, None, None
 with leader_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
     if not member_stats_df.empty and 'name' in member_stats_df.columns:
-        points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
+        points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={{'name': 'الاسم', 'total_points': 'النقاط'}})
+        
+        # MODIFIED: Chart styling
         fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
-                                        text='النقاط', color_discrete_sequence=['#9b59b6'])
+                                        text='النقاط', color_discrete_sequence=[COLOR_PURPLE])
         fig_points_leaderboard.update_traces(textposition='outside')
         fig_points_leaderboard.update_layout(
             title='', 
-            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+            yaxis={{'side': 'right', 'autorange': 'reversed'}}, 
             xaxis_autorange='reversed', 
-            margin=dict(t=20, b=0, l=0, r=0)
+            margin=dict(t=20, b=0, l=0, r=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color=COLOR_TEXT,
+            xaxis=dict(showgrid=True, gridcolor=COLOR_GRID, zeroline=False),
+            yaxis=dict(showgrid=False)
         )
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
@@ -541,9 +577,19 @@ with leader_col2:
         if total_common_minutes > 0 or total_other_minutes > 0:
             donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
             donut_values = [total_common_minutes, total_other_minutes]
-            colors = ['#3498db', '#f1c40f']
+            
+            # MODIFIED: Chart styling
+            colors = [COLOR_ACCENT, COLOR_YELLOW]
             fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.5, marker_colors=colors)])
-            fig_donut.update_layout(showlegend=True, legend=dict(x=0.5, y=-0.2, xanchor='center', yanchor='bottom', orientation='h'), margin=dict(t=20, b=20, l=20, r=20), annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=14, showarrow=False)])
+            fig_donut.update_layout(
+                showlegend=True, 
+                legend=dict(x=0.5, y=-0.2, xanchor='center', yanchor='bottom', orientation='h'), 
+                margin=dict(t=20, b=20, l=20, r=20), 
+                annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=14, showarrow=False)],
+                paper_bgcolor='rgba(0,0,0,0)',
+                plot_bgcolor='rgba(0,0,0,0)',
+                font_color=COLOR_TEXT
+            )
             st.plotly_chart(fig_donut, use_container_width=True)
         else:
             st.info("لا توجد بيانات.")
@@ -554,16 +600,23 @@ with leader_col3:
     st.markdown("##### ⏳ المتصدرون بالساعات")
     if not member_stats_df.empty and 'name' in member_stats_df.columns:
         member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
-        hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
+        hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={{'name': 'الاسم', 'total_hours': 'الساعات'}})
         hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
+        
+        # MODIFIED: Chart styling
         fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
-                                       text='الساعات', color_discrete_sequence=['#e67e22'])
-        fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+                                       text='الساعات', color_discrete_sequence=[COLOR_ORANGE])
+        fig_hours_leaderboard.update_traces(texttemplate='%{{text:.1f}}', textposition='outside')
         fig_hours_leaderboard.update_layout(
             title='', 
-            yaxis={'side': 'right', 'autorange': 'reversed'}, 
+            yaxis={{'side': 'right', 'autorange': 'reversed'}}, 
             xaxis_autorange='reversed', 
-            margin=dict(t=20, b=0, l=0, r=0)
+            margin=dict(t=20, b=0, l=0, r=0),
+            paper_bgcolor='rgba(0,0,0,0)',
+            plot_bgcolor='rgba(0,0,0,0)',
+            font_color=COLOR_TEXT,
+            xaxis=dict(showgrid=True, gridcolor=COLOR_GRID, zeroline=False),
+            yaxis=dict(showgrid=False)
         )
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
     else:
@@ -579,7 +632,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
         with st.spinner("جاري إنشاء التقرير..."):
             pdf = PDFReporter()
             
-            champions_data = {}
+            champions_data = {{}}
             if not member_stats_df.empty and 'name' in member_stats_df.columns:
                 king_of_reading = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
                 king_of_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
@@ -590,23 +643,23 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 champions_data["📚 ملك الكتب"] = king_of_books.get('name', 'N/A')
                 champions_data["✍️ ملك الاقتباسات"] = king_of_quotes.get('name', 'N/A')
 
-            kpis_main_pdf = {
+            kpis_main_pdf = {{
                 "⏳ إجمالي ساعات القراءة": total_hours_val,
                 "📚 إجمالي الكتب المنهَاة": total_books_finished_val,
                 "✍️ إجمالي الاقتباسات": total_quotes_val
-            }
-            kpis_secondary_pdf = {
+            }}
+            kpis_secondary_pdf = {{
                 "👥 الأعضاء النشطون": active_members_count_val,
                 "🏁 التحديات المكتملة": completed_challenges_count_val,
                 "🗓️ أيام القراءة": total_reading_days_val
-            }
-            group_stats_for_pdf = {
+            }}
+            group_stats_for_pdf = {{
                 "total": len(members_df),
                 "active": int(active_members_count_val) if active_members_count_val else 0,
                 "inactive": len(members_df) - (int(active_members_count_val) if active_members_count_val else 0),
-            }
+            }}
             
-            dashboard_data = {
+            dashboard_data = {{
                 "kpis_main": kpis_main_pdf,
                 "kpis_secondary": kpis_secondary_pdf,
                 "champions_data": champions_data,
@@ -617,7 +670,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 "fig_hours_leaderboard": fig_hours_leaderboard,
                 "group_stats": group_stats_for_pdf,
                 "periods_df": periods_df
-            }
+            }}
             pdf.add_dashboard_report(dashboard_data)
 
             pdf_output = bytes(pdf.output())
