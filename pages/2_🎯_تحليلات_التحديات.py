@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 from datetime import date, datetime, timedelta
 import db_manager as db
-import plotly.express as px
-import plotly.graph_objects as go
+import chart_generator as charts # <-- استيراد الوحدة الجديدة
 from pdf_reporter import PDFReporter
 import auth_manager
-from utils import apply_chart_theme, CHART_COLORS # <-- استيراد الدالة والألوان
-import style_manager  # <-- السطر الأول
+import style_manager
 
-style_manager.apply_sidebar_styles()  # <-- السطر الثاني
+style_manager.apply_sidebar_styles()
 
 st.set_page_config(
     page_title="تحليلات التحديات",
@@ -169,7 +167,7 @@ def create_activity_heatmap(df, start_date, end_date, title_text=''):
         hoverongaps=False,
         customdata=hover_pivot,
         hovertemplate='%{customdata}<extra></extra>',
-        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15, tickfont=dict(color=CHART_COLORS['text_light']))
+        colorbar=dict(x=-0.15, y=0.5, yanchor='middle', thickness=15)
     ))
 
     fig = apply_chart_theme(fig) # Apply the base theme
@@ -372,11 +370,16 @@ if selected_period_id:
             total_hours = total_minutes / 60
             total_quotes = common_quotes + other_quotes
 
-            podium_data.append({'member_id': member_id, 'name': member['name'], 'points': int(points), 'hours': total_hours, 'quotes': int(total_quotes)})
+            podium_data.append({
+                'member_id': member_id, 
+                'name': member['name'], 
+                'total_points': int(points), 
+                'total_reading_minutes_common': common_minutes,
+                'total_reading_minutes_other': other_minutes,
+                'total_quotes_submitted': total_quotes
+            })
         podium_df = pd.DataFrame(podium_data)
 
-    fig_gauge, fig_area, heatmap_fig, fig_hours, fig_points = None, None, None, None, None
-    total_period_hours, active_participants, total_period_quotes, avg_daily_reading = 0, 0, 0, 0
     finishers_names, attendees_names = [], []
 
     tab1, tab2 = st.tabs(["📝 ملخص التحدي", "🧑‍💻 بطاقة القارئ"])
@@ -417,7 +420,7 @@ if selected_period_id:
                     fig_gauge = go.Figure(go.Indicator(
                         mode="gauge+number", value=progress, number={'suffix': '%', 'font': {'color': "#1E2A78"}},
                         title={'text': f"انقضى {days_passed} من {total_days} يوم", 'font': {'size': 16, 'color': '#1E2A78'}},
-                        gauge={'axis': {'range': [None, 100]}, 'bar': {'color': CHART_COLORS['primary']}}))
+                        gauge={'axis': {'range': [None, 100]}, 'bar': {'color': '#2980B9'}}))
                     fig_gauge.update_layout(height=250, margin=dict(l=20, r=20, t=50, b=20), paper_bgcolor='rgba(0,0,0,0)')
                     st.plotly_chart(fig_gauge, use_container_width=True)
 
@@ -459,59 +462,83 @@ if selected_period_id:
                     </div>
                     """, unsafe_allow_html=True)
             
+            # --- ############################################# ---
+            # --- ###      NEW CHARTS SECTION START         ### ---
+            # --- ############################################# ---
             with st.container(border=True):
-                st.markdown('<p class="card-title">التحليلات البيانية</p>', unsafe_allow_html=True)
-                r1c1, r1c2 = st.columns(2, gap="large")
-                with r1c1:
-                    st.markdown('<h4>مجموع ساعات القراءة التراكمي</h4>', unsafe_allow_html=True)
-                    chart_end_date = min(date.today(), end_date_obj)
-                    all_challenge_days = pd.date_range(start=start_date_obj, end=chart_end_date, freq='D')
-                    full_challenge_range_df = pd.DataFrame(all_challenge_days, columns=['submission_date_dt'])
-                    daily_minutes = period_logs_df.groupby('submission_date_dt')['total_minutes'].sum().reset_index()
-                    merged_daily_minutes = pd.merge(full_challenge_range_df, daily_minutes, on='submission_date_dt', how='left').fillna(0)
-                    merged_daily_minutes['total_hours'] = merged_daily_minutes['total_minutes'].cumsum() / 60
-                    
-                    fig_area = px.area(merged_daily_minutes, x='submission_date_dt', y='total_hours', title='', labels={'submission_date_dt': 'تاريخ التحدي', 'total_hours': 'مجموع الساعات'})
-                    fig_area = apply_chart_theme(fig_area, 'area')
-                    fig_area.update_layout(xaxis_autorange='reversed', yaxis={'side': 'right'}, font_color='#1E2A78')
-                    st.plotly_chart(fig_area, use_container_width=True)
+                st.markdown('<p class="card-title">التحليلات البيانية للتحدي</p>', unsafe_allow_html=True)
 
-                with r1c2:
-                    st.markdown('<h4>خريطة الالتزام الحرارية</h4>', unsafe_allow_html=True)
-                    heatmap_fig = create_activity_heatmap(period_logs_df, start_date_obj, end_date_obj, title_text="")
-                    st.plotly_chart(heatmap_fig, use_container_width=True, key="group_heatmap")
+                # --- Data Preparation for Charts ---
+                chart_end_date = min(date.today(), end_date_obj)
+                challenge_date_range_df = pd.DataFrame(
+                    pd.date_range(start=start_date_obj, end=chart_end_date, freq='D'),
+                    columns=['submission_date_dt']
+                )
 
-                r2c1, r2c2 = st.columns(2, gap="large")
-                with r2c1:
-                    st.markdown('<h4>🏆 المتصدرون بالساعات</h4>', unsafe_allow_html=True)
-                    if not podium_df.empty:
-                        hours_chart_df = podium_df.sort_values('hours', ascending=True).tail(10)
-                        fig_hours = px.bar(hours_chart_df, x='hours', y='name', orientation='h', title="", labels={'hours': 'مجموع الساعات', 'name': ''}, text='hours', color_discrete_sequence=[CHART_COLORS['accent_2']])
-                        fig_hours = apply_chart_theme(fig_hours, 'bar')
-                        fig_hours.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-                        fig_hours.update_layout(
-                            yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                            xaxis_autorange='reversed', font_color='#1E2A78'
-                        )
-                        st.plotly_chart(fig_hours, use_container_width=True)
+                # --- Generate all charts using the chart_generator module ---
+                fig_growth = charts.create_growth_chart(period_logs_df, challenge_date_range_df)
+                fig_weekly_activity = charts.create_weekly_activity_chart(period_logs_df)
+                fig_rhythm = charts.create_rhythm_chart(period_logs_df, challenge_date_range_df)
+                fig_points_leaderboard = charts.create_points_leaderboard(podium_df)
+                fig_hours_leaderboard = charts.create_hours_leaderboard(podium_df)
+                fig_donut = charts.create_focus_donut(podium_df)
+
+                # --- Display all charts in a structured layout ---
+                st.markdown('<div style="color: #1E2A78;">', unsafe_allow_html=True)
+                
+                # --- Row 1: Main Analytical Charts ---
+                row1_col1, row1_col2, row1_col3 = st.columns(3, gap="large") 
+                with row1_col1:
+                    st.markdown("<h6>نمو القراءة التراكمي</h6>", unsafe_allow_html=True)
+                    if fig_growth:
+                        st.plotly_chart(fig_growth, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات لعرض المخطط.")
+
+                with row1_col2:
+                    st.markdown("<h6>نشاط القراءة الأسبوعي</h6>", unsafe_allow_html=True)
+                    if fig_weekly_activity:
+                        st.plotly_chart(fig_weekly_activity, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات كافية.")
+
+                with row1_col3:
+                    st.markdown("<h6>إيقاع القراءة اليومي</h6>", unsafe_allow_html=True)
+                    if fig_rhythm:
+                        st.plotly_chart(fig_rhythm, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات لعرض المخطط.")
+
+                st.markdown("<br>", unsafe_allow_html=True) 
+
+                # --- Row 2: Leaderboards and Focus Chart ---
+                row2_col1, row2_col2, row2_col3 = st.columns([2, 1, 2], gap="large")
+                with row2_col1:
+                    st.markdown("<h6>⭐ المتصدرون بالنقاط</h6>", unsafe_allow_html=True)
+                    if fig_points_leaderboard:
+                        st.plotly_chart(fig_points_leaderboard, use_container_width=True)
                     else:
                         st.info("لا توجد بيانات.")
 
-                with r2c2:
-                    st.markdown('<h4>⭐ المتصدرون بالنقاط</h4>', unsafe_allow_html=True)
-                    if not podium_df.empty:
-                        points_chart_df = podium_df.sort_values('points', ascending=True).tail(10)
-                        fig_points = px.bar(points_chart_df, x='points', y='name', orientation='h', title="", labels={'points': 'مجموع النقاط', 'name': ''}, text='points', color_discrete_sequence=[CHART_COLORS['secondary']])
-                        fig_points = apply_chart_theme(fig_points, 'bar')
-                        fig_points.update_traces(textposition='outside')
-                        fig_points.update_layout(
-                            yaxis={'side': 'right', 'autorange': 'reversed'}, 
-                            xaxis_autorange='reversed', font_color='#1E2A78'
-                        )
-                        st.plotly_chart(fig_points, use_container_width=True)
+                with row2_col2:
+                    st.markdown("<h6>🎯 تركيز القراءة</h6>", unsafe_allow_html=True)
+                    if fig_donut:
+                        st.plotly_chart(fig_donut, use_container_width=True)
                     else:
                         st.info("لا توجد بيانات.")
-        
+
+                with row2_col3:
+                    st.markdown("<h6>⏳ المتصدرون بالساعات</h6>", unsafe_allow_html=True)
+                    if fig_hours_leaderboard:
+                        st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
+                    else:
+                        st.info("لا توجد بيانات.")
+                
+                st.markdown('</div>', unsafe_allow_html=True)
+            # --- ########################################### ---
+            # --- ###      NEW CHARTS SECTION END           ### ---
+            # --- ########################################### ---
+
         st.markdown('</div>', unsafe_allow_html=True) # Close the summary-tab-content div
 
     with tab2:
@@ -533,15 +560,16 @@ if selected_period_id:
                         <div class="reader-kpi-box">
                             <div class="icon">⭐</div>
                             <div class="label">النقاط</div>
-                            <div class="value">{int(member_data['points'])}</div>
+                            <div class="value">{int(member_data['total_points'])}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     with kpi_cols[1]:
+                        total_hours = (member_data['total_reading_minutes_common'] + member_data['total_reading_minutes_other']) / 60
                         st.markdown(f"""
                         <div class="reader-kpi-box">
                             <div class="icon">⏳</div>
                             <div class="label">ساعات القراءة</div>
-                            <div class="value">{member_data['hours']:.1f}</div>
+                            <div class="value">{total_hours:.1f}</div>
                         </div>
                         """, unsafe_allow_html=True)
                     with kpi_cols[2]:
@@ -549,7 +577,7 @@ if selected_period_id:
                         <div class="reader-kpi-box">
                             <div class="icon">✍️</div>
                             <div class="label">الاقتباسات</div>
-                            <div class="value">{int(member_data['quotes'])}</div>
+                            <div class="value">{int(member_data['total_quotes_submitted'])}</div>
                         </div>
                         """, unsafe_allow_html=True)
 
@@ -563,7 +591,7 @@ if selected_period_id:
                         member_achievements = period_achievements_df[period_achievements_df['member_id'] == member_id] if not period_achievements_df.empty else pd.DataFrame()
 
                         badges_unlocked = []
-                        if member_data['quotes'] > 10: 
+                        if member_data['total_quotes_submitted'] > 10: 
                             badges_unlocked.append(('✍️', 'وسام الفيلسوف: إرسال أكثر من 10 اقتباسات.'))
                         if not member_achievements.empty:
                             finish_common_ach = member_achievements[member_achievements['achievement_type'] == 'FINISHED_COMMON_BOOK']
@@ -633,26 +661,25 @@ if selected_period_id:
                         points_source_filtered = {k: v for k, v in points_source.items() if v > 0}
                         if points_source_filtered:
                             color_map = {
-                                'قراءة الكتاب المشترك': CHART_COLORS['primary'], 'قراءة كتب أخرى': CHART_COLORS['accent_2'],
-                                'اقتباسات (الكتاب المشترك)': CHART_COLORS['accent_1'], 'اقتباسات (كتب أخرى)': '#f39c12',
-                                'إنهاء الكتاب المشترك': CHART_COLORS['secondary'], 'حضور النقاش': CHART_COLORS['accent_3'],
+                                'قراءة الكتاب المشترك': '#2980B9', 'قراءة كتب أخرى': '#F39C12',
+                                'اقتباسات (الكتاب المشترك)': '#27AE60', 'اقتباسات (كتب أخرى)': '#f39c12',
+                                'إنهاء الكتاب المشترك': '#8E44AD', 'حضور النقاش': '#E74C3C',
                                 'إنهاء كتب أخرى': '#16a085'
                             }
                             chart_labels = list(points_source_filtered.keys())
                             chart_colors = [color_map.get(label, '#bdc3c7') for label in chart_labels]
 
-                            fig_donut = go.Figure(data=[go.Pie(
+                            fig_donut_individual = go.Figure(data=[go.Pie(
                                 labels=chart_labels, values=list(points_source_filtered.values()), 
                                 hole=.6, textinfo='percent', insidetextorientation='radial',
                                 marker_colors=chart_colors
                             )])
-                            fig_donut = apply_chart_theme(fig_donut, 'pie')
-                            fig_donut.update_layout(
+                            fig_donut_individual.update_layout(
                                 showlegend=True,
                                 legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'),
                                 margin=dict(t=20, b=20, l=20, r=20)
                             )
-                            st.plotly_chart(fig_donut, use_container_width=True)
+                            st.plotly_chart(fig_donut_individual, use_container_width=True)
                         else: st.info("لا توجد نقاط مسجلة لعرض مصادرها.")
     
     st.markdown("---")
@@ -673,6 +700,13 @@ if selected_period_id:
                         finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
                         attendees_names = members_df[members_df['members_id'].isin(attendee_ids)]['name'].tolist()
                     
+                    total_period_minutes = period_logs_df['total_minutes'].sum()
+                    total_period_hours = int(total_period_minutes // 60)
+                    active_participants = period_logs_df['member_id'].nunique()
+                    days_passed = (date.today() - start_date_obj).days if date.today() >= start_date_obj else 0
+                    avg_daily_reading = (total_period_minutes / days_passed / active_participants) if days_passed > 0 and active_participants > 0 else 0
+                    total_period_quotes = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
+
                     challenge_kpis = {
                         "⏳ مجموع ساعات القراءة": f"{total_period_hours:,}",
                         "👥 المشاركون الفعليون": f"{active_participants}",
@@ -689,9 +723,9 @@ if selected_period_id:
                         "finishers": finishers_names,
                         "attendees": attendees_names,
                         "kpis": challenge_kpis,
-                        "fig_area": fig_area,
-                        "fig_hours": fig_hours,
-                        "fig_points": fig_points
+                        "fig_area": charts.create_growth_chart(period_logs_df, challenge_date_range_df),
+                        "fig_hours": charts.create_hours_leaderboard(podium_df),
+                        "fig_points": charts.create_points_leaderboard(podium_df)
                     }
                     
                     pdf.add_challenge_report(challenge_data_for_pdf)
