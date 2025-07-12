@@ -553,7 +553,11 @@ if not logs_df.empty:
         )
         fig_weekly_activity = apply_chart_theme(fig_weekly_activity, 'bar')
         fig_weekly_activity.update_traces(textposition='outside')
-        fig_weekly_activity.update_layout(yaxis_title="النسبة المئوية للنشاط")
+        # CORRECTED: Added yaxis={'side': 'right'}
+        fig_weekly_activity.update_layout(
+            yaxis_title="النسبة المئوية للنشاط",
+            yaxis={'side': 'right'}
+        )
 
 
 # Rhythm Chart Data
@@ -607,8 +611,9 @@ if not member_stats_df.empty and 'name' in member_stats_df.columns:
 
 # --- Display all charts in a structured layout ---
 
-# --- Row 1: Larger Charts ---
-row1_col1, row1_col2 = st.columns(2, gap="large")
+# --- Row 1: Main Analytical Charts ---
+# CORRECTED: Changed to 3 columns
+row1_col1, row1_col2, row1_col3 = st.columns(3, gap="large") 
 with row1_col1:
     st.markdown("##### نمو القراءة التراكمي")
     if fig_growth:
@@ -616,42 +621,42 @@ with row1_col1:
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
+# CORRECTED: Added the new chart to the middle column
 with row1_col2:
+    st.markdown("##### نشاط القراءة الأسبوعي")
+    if fig_weekly_activity:
+        st.plotly_chart(fig_weekly_activity, use_container_width=True)
+    else:
+        st.info("لا توجد بيانات كافية لعرض نشاط الأسبوع.")
+
+# CORRECTED: Moved the rhythm chart to the third column
+with row1_col3:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
     if fig_rhythm:
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
-st.markdown("<br>", unsafe_allow_html=True) 
-
-# --- Row 2: NEW Weekly Activity Chart ---
-st.markdown("##### نشاط القراءة الأسبوعي")
-if fig_weekly_activity:
-    st.plotly_chart(fig_weekly_activity, use_container_width=True)
-else:
-    st.info("لا توجد بيانات كافية لعرض نشاط الأسبوع.")
-
 
 st.markdown("<br>", unsafe_allow_html=True) 
 
-# --- Row 3: Leaderboards and Focus Chart ---
-row3_col1, row3_col2, row3_col3 = st.columns([2, 1, 2], gap="large")
-with row3_col1:
+# --- Row 2: Leaderboards and Focus Chart ---
+row2_col1, row2_col2, row2_col3 = st.columns([2, 1, 2], gap="large")
+with row2_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
     if fig_points_leaderboard:
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with row3_col2:
+with row2_col2:
     st.markdown("##### 🎯 تركيز القراءة")
     if fig_donut:
         st.plotly_chart(fig_donut, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with row3_col3:
+with row2_col3:
     st.markdown("##### ⏳ المتصدرون بالساعات")
     if fig_hours_leaderboard:
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
@@ -685,7 +690,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
 
             kpis_main_pdf = {
                 "⏳ إجمالي ساعات القراءة": total_hours_val,
-                "📚 إجمالي الكتب المنهَاة": total_books_finished_val,
+                "� إجمالي الكتب المنهَاة": total_books_finished_val,
                 "✍️ إجمالي الاقتباسات": total_quotes_val
             }
             kpis_secondary_pdf = {
@@ -707,7 +712,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 "champions_data": champions_data,
                 "fig_growth": fig_growth, 
                 "fig_donut": fig_donut,
-                "fig_bar_days": None, # This chart was removed in a previous version
+                "fig_bar_days": fig_weekly_activity, # Pass the new chart here if you want it in the PDF
                 "fig_points_leaderboard": fig_points_leaderboard,
                 "fig_hours_leaderboard": fig_hours_leaderboard,
                 "group_stats": group_stats_for_pdf,
