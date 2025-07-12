@@ -73,9 +73,10 @@ st.markdown("""
             padding: 15px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 15px;
-            height: 160px; 
-            display: grid;
-            place-items: center;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
         }
         
         .kpi-metric .icon { font-size: 2.5em; }
