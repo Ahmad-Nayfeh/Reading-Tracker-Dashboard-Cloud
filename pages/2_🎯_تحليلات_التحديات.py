@@ -385,6 +385,12 @@ if selected_period_id:
         podium_df = pd.DataFrame(podium_data)
 
     finishers_names, attendees_names = [], []
+    if not period_achievements_df.empty:
+        finisher_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK']['member_id'].unique()
+        attendee_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION']['member_id'].unique()
+        finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
+        attendees_names = members_df[members_df['members_id'].isin(attendee_ids)]['name'].tolist()
+
 
     tab1, tab2 = st.tabs(["📝 ملخص التحدي", "🧑‍💻 بطاقة القارئ"])
 
@@ -667,8 +673,10 @@ if selected_period_id:
     
     st.markdown("---")
     with st.expander("🖨️ تصدير تقرير أداء التحدي (PDF)"):
-        if period_logs_df.empty:
+        if period_logs_df.empty and today >= start_date_obj:
             st.warning("لا يمكن تصدير تقرير لتحدي لا يحتوي على أي سجلات.")
+        elif today < start_date_obj:
+            st.warning("لا يمكن تصدير تقرير لتحدي لم يبدأ بعد.")
         else:
             if st.button("🚀 إنشاء وتصدير تقرير التحدي", key="export_challenge_pdf", use_container_width=True, type="primary"):
                 with st.spinner("جاري إنشاء تقرير التحدي..."):
@@ -676,12 +684,6 @@ if selected_period_id:
                     
                     challenge_duration = (end_date_obj - start_date_obj).days
                     challenge_period_str = f"{start_date_obj.strftime('%Y-%m-%d')} إلى {end_date_obj.strftime('%Y-%m-%d')}"
-                    
-                    if not period_achievements_df.empty:
-                        finisher_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK']['member_id'].unique()
-                        attendee_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION']['member_id'].unique()
-                        finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
-                        attendees_names = members_df[members_df['members_id'].isin(attendee_ids)]['name'].tolist()
                     
                     total_period_minutes_pdf = period_logs_df['total_minutes'].sum()
                     total_period_hours_pdf = int(total_period_minutes_pdf // 60)
@@ -691,35 +693,40 @@ if selected_period_id:
                     total_period_quotes_pdf = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
                     challenge_kpis = {
-                        "⏳ مجموع ساعات القراءة": f"{total_period_hours_pdf:,}",
-                        "👥 المشاركون الفعليون": f"{active_participants_pdf}",
-                        "✍️ الاقتباسات المرسلة": f"{int(total_period_quotes_pdf)}",
-                        "📊 متوسط القراءة اليومي/عضو": f"{avg_daily_reading_pdf:.1f} د"
+                        "مجموع ساعات القراءة": f"{total_period_hours_pdf:,}",
+                        "المشاركون الفعليون": f"{active_participants_pdf}",
+                        "الاقتباسات المرسلة": f"{int(total_period_quotes_pdf)}",
+                        "متوسط القراءة اليومي/عضو": f"{avg_daily_reading_pdf:.1f} د"
                     }
 
+                    chart_end_date_pdf = min(date.today(), end_date_obj)
                     challenge_date_range_df_pdf = pd.DataFrame(
-                        pd.date_range(start=start_date_obj, end=min(date.today(), end_date_obj), freq='D'),
+                        pd.date_range(start=start_date_obj, end=chart_end_date_pdf, freq='D'),
                         columns=['submission_date_dt']
                     )
 
                     challenge_data_for_pdf = {
-                        "title": selected_challenge_data.get('book_title', ''),
-                        "author": selected_challenge_data.get('book_author', ''),
+                        "title": selected_challenge_data.get('book_title', 'غير متوفر'),
+                        "author": selected_challenge_data.get('book_author', 'غير متوفر'),
                         "period": challenge_period_str,
                         "duration": challenge_duration,
                         "all_participants": all_participants_names,
                         "finishers": finishers_names,
                         "attendees": attendees_names,
                         "kpis": challenge_kpis,
-                        "fig_area": charts.create_growth_chart(period_logs_df, challenge_date_range_df_pdf),
+                        "fig_growth": charts.create_growth_chart(period_logs_df, challenge_date_range_df_pdf),
+                        "fig_weekly_activity": charts.create_weekly_activity_chart(period_logs_df),
+                        "fig_rhythm": charts.create_rhythm_chart(period_logs_df, challenge_date_range_df_pdf),
+                        "fig_points": charts.create_points_leaderboard(podium_df),
                         "fig_hours": charts.create_hours_leaderboard(podium_df),
-                        "fig_points": charts.create_points_leaderboard(podium_df)
+                        "fig_donut": charts.create_focus_donut(podium_df, 'total_reading_minutes_common', 'total_reading_minutes_other')
                     }
                     
                     pdf.add_challenge_report(challenge_data_for_pdf)
                     
                     pdf_output = bytes(pdf.output())
                     st.session_state.pdf_file_challenge = pdf_output
+                    st.toast("تم إنشاء ملف PDF بنجاح!", icon="📄")
                     st.rerun()
 
             if 'pdf_file_challenge' in st.session_state:
@@ -727,7 +734,7 @@ if selected_period_id:
                 st.download_button(
                     label="📥 تحميل تقرير التحدي الآن",
                     data=pdf_file_challenge,
-                    file_name=f"ReadingMarathon_Report_Challenge_{date.today()}.pdf",
+                    file_name=f"ReadingMarathon_Report_Challenge_{book_title.replace(' ', '_')}_{date.today()}.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
