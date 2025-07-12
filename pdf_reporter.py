@@ -457,22 +457,15 @@ class PDFReporter(FPDF):
         self.add_kpi_grid(data.get('kpis', {}), num_cols=3)
         self.ln(10)
 
-        # Split page for Badges and Points Source
-        y_start_split = self.get_y()
-        
-        # Left side: Points Source Chart
-        self.set_y(y_start_split)
-        self.set_x(self.l_margin)
-        with self.unbreakable_block(w=self._get_drawable_width() / 2 - 5):
-            self.add_section_title("مصادر النقاط")
-            self.add_plot(data.get('fig_points_source'), width_percent=100)
+        # --- FIX: Use sequential layout instead of columns ---
+        # Section: Points Source
+        self.add_section_title("مصادر النقاط")
+        self.add_plot(data.get('fig_points_source'), width_percent=80)
+        self.ln(10)
 
-        # Right side: Badges
-        self.set_y(y_start_split)
-        self.set_x(self.l_margin + self._get_drawable_width() / 2 + 5)
-        with self.unbreakable_block(w=self._get_drawable_width() / 2 - 5):
-            self.add_section_title("الأوسمة والشارات")
-            self.add_badges_list(data.get('badges', []))
+        # Section: Badges
+        self.add_section_title("الأوسمة والشارات")
+        self.add_badges_list(data.get('badges', []))
         
         # --- SUBSEQUENT PAGES: CHARTS ---
         reader_charts = {
