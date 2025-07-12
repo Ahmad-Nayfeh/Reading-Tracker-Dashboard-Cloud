@@ -56,7 +56,7 @@ st.markdown("""
             padding: 25px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             color: #1E2A78;
-            margin-top: 40px;
+            margin-top: 20px;
         }
 
         .card-title {
@@ -73,10 +73,9 @@ st.markdown("""
             padding: 15px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 15px;
-            height: 160px;
-            display: flex;
-            flex-direction: column;
-            justify-content: center;
+            height: 160px; 
+            display: grid;
+            place-items: center;
         }
         
         .kpi-metric .icon { font-size: 2.5em; }
