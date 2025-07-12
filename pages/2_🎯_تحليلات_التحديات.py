@@ -123,6 +123,46 @@ if not creds or not user_id:
 
 
 # --- Helper Functions ---
+def calculate_detailed_points_sources(member_id, member_logs_df, member_achievements_df, periods_map):
+    """Calculates the detailed sources of points for a specific member."""
+    points_breakdown = {
+        'قراءة الكتاب المشترك': 0,
+        'قراءة كتب أخرى': 0,
+        'اقتباسات (الكتاب المشترك)': 0,
+        'اقتباسات (كتب أخرى)': 0,
+        'إنهاء الكتاب المشترك': 0,
+        'إنهاء كتب أخرى': 0,
+        'حضور النقاش': 0,
+    }
+
+    if not member_logs_df.empty:
+        for _, log in member_logs_df.iterrows():
+            log_date = log['submission_date_dt'].date()
+            log_period = next((p for p in periods_map.values() if datetime.strptime(p['start_date'], '%Y-%m-%d').date() <= log_date <= datetime.strptime(p['end_date'], '%Y-%m-%d').date()), None)
+            
+            if log_period:
+                if log_period.get('minutes_per_point_common', 0) > 0:
+                    points_breakdown['قراءة الكتاب المشترك'] += log['common_book_minutes'] // log_period['minutes_per_point_common']
+                if log_period.get('minutes_per_point_other', 0) > 0:
+                    points_breakdown['قراءة كتب أخرى'] += log['other_book_minutes'] // log_period['minutes_per_point_other']
+                
+                points_breakdown['اقتباسات (الكتاب المشترك)'] += log['submitted_common_quote'] * log_period.get('quote_common_book_points', 0)
+                points_breakdown['اقتباسات (كتب أخرى)'] += log['submitted_other_quote'] * log_period.get('quote_other_book_points', 0)
+
+    if not member_achievements_df.empty:
+        for _, ach in member_achievements_df.iterrows():
+            period_id = ach.get('period_id')
+            if period_id in periods_map:
+                ach_period_rules = periods_map[period_id]
+                ach_type = ach['achievement_type']
+                if ach_type == 'FINISHED_COMMON_BOOK':
+                    points_breakdown['إنهاء الكتاب المشترك'] += ach_period_rules.get('finish_common_book_points', 0)
+                elif ach_type == 'FINISHED_OTHER_BOOK':
+                    points_breakdown['إنهاء كتب أخرى'] += ach_period_rules.get('finish_other_book_points', 0)
+                elif ach_type == 'ATTENDED_DISCUSSION':
+                    points_breakdown['حضور النقاش'] += ach_period_rules.get('attend_discussion_points', 0)
+    
+    return points_breakdown
 
 def create_activity_heatmap(df, start_date, end_date, title_text=''):
     df = df.copy()
@@ -523,6 +563,59 @@ if selected_period_id:
                     else: st.info("لا توجد بيانات.")
                 
                 st.markdown('</div>', unsafe_allow_html=True)
+            
+            st.markdown("---")
+            with st.expander("🖨️ تصدير تقرير أداء التحدي (PDF)"):
+                if st.button("🚀 إنشاء وتصدير تقرير التحدي", key="export_challenge_pdf", use_container_width=True, type="primary"):
+                    with st.spinner("جاري إنشاء تقرير التحدي..."):
+                        pdf = PDFReporter()
+                        
+                        challenge_duration = (end_date_obj - start_date_obj).days
+                        challenge_period_str = f"{start_date_obj.strftime('%Y-%m-%d')} إلى {end_date_obj.strftime('%Y-%m-%d')}"
+                        
+                        challenge_kpis = {
+                            "مجموع ساعات القراءة": f"{total_period_hours:,}",
+                            "المشاركون الفعليون": f"{active_participants}",
+                            "الاقتباسات المرسلة": f"{int(total_period_quotes)}",
+                            "متوسط القراءة اليومي/عضو": f"{avg_daily_reading:.1f} د"
+                        }
+
+                        challenge_data_for_pdf = {
+                            "title": selected_challenge_data.get('book_title', 'غير متوفر'),
+                            "author": selected_challenge_data.get('book_author', 'غير متوفر'),
+                            "period": challenge_period_str,
+                            "duration": challenge_duration,
+                            "all_participants": all_participants_names,
+                            "finishers": finishers_names,
+                            "attendees": attendees_names,
+                            "kpis": challenge_kpis,
+                            "fig_growth": fig_growth,
+                            "fig_weekly_activity": fig_weekly_activity,
+                            "fig_rhythm": fig_rhythm,
+                            "fig_points": fig_points_leaderboard,
+                            "fig_hours": fig_hours_leaderboard,
+                            "fig_donut": fig_donut
+                        }
+                        
+                        pdf.add_challenge_report(challenge_data_for_pdf)
+                        
+                        pdf_output = bytes(pdf.output())
+                        st.session_state.pdf_file_challenge = pdf_output
+                        st.toast("تم إنشاء ملف PDF بنجاح!", icon="📄")
+                        st.rerun()
+
+                if 'pdf_file_challenge' in st.session_state:
+                    pdf_file_challenge = st.session_state.pdf_file_challenge
+                    st.download_button(
+                        label="📥 تحميل تقرير التحدي الآن",
+                        data=pdf_file_challenge,
+                        file_name=f"ReadingMarathon_Report_Challenge_{book_title.replace(' ', '_')}_{date.today()}.pdf",
+                        mime="application/pdf",
+                        use_container_width=True
+                    )
+                    if st.button("إغلاق", key="close_challenge_pdf"):
+                        del st.session_state.pdf_file_challenge
+                        st.rerun()
 
         st.markdown('</div>', unsafe_allow_html=True)
 
@@ -539,8 +632,8 @@ if selected_period_id:
                     member_info = member_stats_df[member_stats_df['name'] == selected_member_name].iloc[0]
                     member_id = member_info['members_id']
                     
-                    member_logs_all_time = logs_df[logs_df['member_id'] == member_id]
-                    member_achievements_all_time = achievements_df[achievements_df['member_id'] == member_id]
+                    member_logs_all_time = logs_df[logs_df['member_id'] == member_id] if not logs_df.empty else pd.DataFrame()
+                    member_achievements_all_time = achievements_df[achievements_df['member_id'] == member_id] if not achievements_df.empty else pd.DataFrame()
 
                     # --- KPIs for the selected reader ---
                     kpi_cols = st.columns(3)
@@ -612,14 +705,14 @@ if selected_period_id:
 
                     with col2:
                         st.markdown('<div class="card-subheader">📊 مصادر النقاط</div>', unsafe_allow_html=True)
-                        points_source_data = {}
-                        # This part needs the full rules for all periods, which is complex.
-                        # For simplicity, we'll approximate based on the main stats.
-                        # A more accurate way would be to re-calculate from scratch, which is computationally expensive here.
-                        points_source_data['قراءة الكتب'] = (member_info['total_reading_minutes_common'] // 10) + (member_info['total_reading_minutes_other'] // 5) # Approximation
-                        points_source_data['إنهاء الكتب'] = (member_info['total_common_books_read'] * 50) + (member_info['total_other_books_read'] * 25) # Approximation
-                        points_source_data['الاقتباسات'] = member_info['total_quotes_submitted'] * 2 # Approximation
-                        points_source_data['حضور النقاش'] = member_info.get('meetings_attended', 0) * 25 # Approximation
+                        
+                        # --- FIX: Calculate detailed points ---
+                        points_source_data = calculate_detailed_points_sources(
+                            member_id, 
+                            member_logs_all_time, 
+                            member_achievements_all_time, 
+                            challenge_options_map
+                        )
                         
                         fig_points_source = charts.create_points_source_donut(points_source_data)
                         if fig_points_source:
@@ -629,9 +722,10 @@ if selected_period_id:
                     
                     st.markdown("---")
 
-                    # --- NEW: Unified Charts Section for the Reader ---
+                    # --- Unified Charts Section for the Reader ---
                     st.markdown('<div class="card-subheader">التحليلات البيانية لأداء القارئ</div>', unsafe_allow_html=True)
                     
+                    fig_growth_reader, fig_weekly_activity_reader, fig_rhythm_reader = None, None, None
                     if not member_logs_all_time.empty:
                         min_date_reader = member_logs_all_time['submission_date_dt'].min()
                         reader_date_range_df = pd.DataFrame(
@@ -659,85 +753,58 @@ if selected_period_id:
                     else:
                         st.info("لا توجد سجلات قراءة لهذا العضو لعرض التحليلات البيانية.")
 
-
                     st.markdown("---")
                     
                     st.markdown(f'<div class="card-subheader">خريطة التزام: {selected_member_name}</div>', unsafe_allow_html=True)
+                    fig_heatmap = None
                     if not member_logs_all_time.empty:
                         min_date_reader = member_logs_all_time['submission_date_dt'].min().date()
                         max_date_reader = member_logs_all_time['submission_date_dt'].max().date()
-                        individual_heatmap = create_activity_heatmap(member_logs_all_time, min_date_reader, max_date_reader, title_text="")
-                        st.plotly_chart(individual_heatmap, use_container_width=True, key="individual_heatmap")
+                        fig_heatmap = create_activity_heatmap(member_logs_all_time, min_date_reader, max_date_reader, title_text="")
+                        st.plotly_chart(fig_heatmap, use_container_width=True, key="individual_heatmap")
                     else:
                         st.info("لا توجد سجلات قراءة لهذا العضو لعرض الخريطة الحرارية.")
-    
-    st.markdown("---")
-    with st.expander("🖨️ تصدير تقرير أداء التحدي (PDF)"):
-        if period_logs_df.empty and today >= start_date_obj:
-            st.warning("لا يمكن تصدير تقرير لتحدي لا يحتوي على أي سجلات.")
-        elif today < start_date_obj:
-            st.warning("لا يمكن تصدير تقرير لتحدي لم يبدأ بعد.")
-        else:
-            if st.button("🚀 إنشاء وتصدير تقرير التحدي", key="export_challenge_pdf", use_container_width=True, type="primary"):
-                with st.spinner("جاري إنشاء تقرير التحدي..."):
-                    pdf = PDFReporter()
-                    
-                    challenge_duration = (end_date_obj - start_date_obj).days
-                    challenge_period_str = f"{start_date_obj.strftime('%Y-%m-%d')} إلى {end_date_obj.strftime('%Y-%m-%d')}"
-                    
-                    total_period_minutes_pdf = period_logs_df['total_minutes'].sum()
-                    total_period_hours_pdf = int(total_period_minutes_pdf // 60)
-                    active_participants_pdf = period_logs_df['member_id'].nunique()
-                    days_passed_pdf = (date.today() - start_date_obj).days if date.today() >= start_date_obj else 0
-                    avg_daily_reading_pdf = (total_period_minutes_pdf / days_passed_pdf / active_participants_pdf) if days_passed_pdf > 0 and active_participants_pdf > 0 else 0
-                    total_period_quotes_pdf = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
-                    challenge_kpis = {
-                        "مجموع ساعات القراءة": f"{total_period_hours_pdf:,}",
-                        "المشاركون الفعليون": f"{active_participants_pdf}",
-                        "الاقتباسات المرسلة": f"{int(total_period_quotes_pdf)}",
-                        "متوسط القراءة اليومي/عضو": f"{avg_daily_reading_pdf:.1f} د"
-                    }
+                    # --- NEW: PDF Export for Reader Card ---
+                    st.markdown("---")
+                    with st.expander("🖨️ تصدير تقرير أداء القارئ (PDF)"):
+                        if st.button("🚀 إنشاء وتصدير تقرير القارئ", key="export_reader_pdf", use_container_width=True, type="primary"):
+                            with st.spinner("جاري إنشاء تقرير القارئ..."):
+                                pdf = PDFReporter()
+                                
+                                reader_kpis_pdf = {
+                                    "إجمالي النقاط": (int(member_info['total_points']), "⭐"),
+                                    "إجمالي الساعات": (f"{total_hours:.1f}", "⏳"),
+                                    "إجمالي الاقتباسات": (int(member_info['total_quotes_submitted']), "✍️")
+                                }
 
-                    chart_end_date_pdf = min(date.today(), end_date_obj)
-                    challenge_date_range_df_pdf = pd.DataFrame(
-                        pd.date_range(start=start_date_obj, end=chart_end_date_pdf, freq='D'),
-                        columns=['submission_date_dt']
-                    )
+                                reader_data_for_pdf = {
+                                    "reader_name": selected_member_name,
+                                    "kpis": reader_kpis_pdf,
+                                    "badges": badges_unlocked,
+                                    "fig_points_source": fig_points_source,
+                                    "fig_growth_reader": fig_growth_reader,
+                                    "fig_weekly_activity_reader": fig_weekly_activity_reader,
+                                    "fig_rhythm_reader": fig_rhythm_reader,
+                                    "fig_heatmap": fig_heatmap
+                                }
+                                
+                                pdf.add_reader_report(reader_data_for_pdf)
+                                
+                                pdf_output = bytes(pdf.output())
+                                st.session_state.pdf_file_reader = pdf_output
+                                st.toast("تم إنشاء ملف PDF الخاص بالقارئ بنجاح!", icon="📄")
+                                st.rerun()
 
-                    challenge_data_for_pdf = {
-                        "title": selected_challenge_data.get('book_title', 'غير متوفر'),
-                        "author": selected_challenge_data.get('book_author', 'غير متوفر'),
-                        "period": challenge_period_str,
-                        "duration": challenge_duration,
-                        "all_participants": all_participants_names,
-                        "finishers": finishers_names,
-                        "attendees": attendees_names,
-                        "kpis": challenge_kpis,
-                        "fig_growth": charts.create_growth_chart(period_logs_df, challenge_date_range_df_pdf),
-                        "fig_weekly_activity": charts.create_weekly_activity_chart(period_logs_df),
-                        "fig_rhythm": charts.create_rhythm_chart(period_logs_df, challenge_date_range_df_pdf),
-                        "fig_points": charts.create_points_leaderboard(podium_df),
-                        "fig_hours": charts.create_hours_leaderboard(podium_df),
-                        "fig_donut": charts.create_focus_donut(podium_df, 'total_reading_minutes_common', 'total_reading_minutes_other')
-                    }
-                    
-                    pdf.add_challenge_report(challenge_data_for_pdf)
-                    
-                    pdf_output = bytes(pdf.output())
-                    st.session_state.pdf_file_challenge = pdf_output
-                    st.toast("تم إنشاء ملف PDF بنجاح!", icon="📄")
-                    st.rerun()
-
-            if 'pdf_file_challenge' in st.session_state:
-                pdf_file_challenge = st.session_state.pdf_file_challenge
-                st.download_button(
-                    label="📥 تحميل تقرير التحدي الآن",
-                    data=pdf_file_challenge,
-                    file_name=f"ReadingMarathon_Report_Challenge_{book_title.replace(' ', '_')}_{date.today()}.pdf",
-                    mime="application/pdf",
-                    use_container_width=True
-                )
-                if st.button("إغلاق", key="close_challenge_pdf"):
-                    del st.session_state.pdf_file_challenge
-                    st.rerun()
+                        if 'pdf_file_reader' in st.session_state:
+                            pdf_file_reader = st.session_state.pdf_file_reader
+                            st.download_button(
+                                label="📥 تحميل تقرير القارئ الآن",
+                                data=pdf_file_reader,
+                                file_name=f"ReadingMarathon_Report_Reader_{selected_member_name.replace(' ', '_')}_{date.today()}.pdf",
+                                mime="application/pdf",
+                                use_container_width=True
+                            )
+                            if st.button("إغلاق", key="close_reader_pdf"):
+                                del st.session_state.pdf_file_reader
+                                st.rerun()
