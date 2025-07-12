@@ -440,6 +440,7 @@ def get_winners(df, column, name_col='name'):
 
 
 heroes_col1, heroes_col2, heroes_col3, heroes_col4 = st.columns(4)
+heroes_data_for_pdf = {}
 
 if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df.columns:
     # Use the full stats calculated and stored in the database for the hall of fame
@@ -448,42 +449,58 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
 
     # 1. Mastermind (Points)
     winner_name, max_val = get_winners(member_stats_df, 'total_points')
-    display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, f"{int(max_val)} نقطة")
+    value_str = f"{int(max_val)} نقطة"
+    display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, value_str)
+    heroes_data_for_pdf["🧠 العقل المدبّر"] = (winner_name, value_str)
 
     # 2. Lord of the Hours (Total Reading Time)
     member_stats_df['total_reading_minutes'] = member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']
     winner_name, max_val = get_winners(member_stats_df, 'total_reading_minutes')
-    display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, f"{max_val / 60:.1f} ساعة")
+    value_str = f"{max_val / 60:.1f} ساعة"
+    display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, value_str)
+    heroes_data_for_pdf["⏳ سيد الساعات"] = (winner_name, value_str)
 
     # 3. Bookworm (Total Books)
     member_stats_df['total_books_read'] = member_stats_df['total_common_books_read'] + member_stats_df['total_other_books_read']
     winner_name, max_val = get_winners(member_stats_df, 'total_books_read')
-    display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, f"{int(max_val)} كتب")
+    value_str = f"{int(max_val)} كتب"
+    display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, value_str)
+    heroes_data_for_pdf["📚 الديدان القارئ"] = (winner_name, value_str)
 
     # 4. Pearl Hunter (Total Quotes)
     winner_name, max_val = get_winners(member_stats_df, 'total_quotes_submitted')
-    display_hero(heroes_col4, "💎 صائد الدرر", winner_name, f"{int(max_val)} اقتباساً")
+    value_str = f"{int(max_val)} اقتباساً"
+    display_hero(heroes_col4, "💎 صائد الدرر", winner_name, value_str)
+    heroes_data_for_pdf["💎 صائد الدرر"] = (winner_name, value_str)
 
     # 5. The Long-Hauler (Consistency)
     consistency = logs_with_names.groupby('name')['submission_date_dt'].nunique().reset_index()
     consistency.rename(columns={'submission_date_dt': 'days_read'}, inplace=True)
     winner_name, max_val = get_winners(consistency, 'days_read')
-    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, f"{int(max_val)} يوم قراءة")
+    value_str = f"{int(max_val)} يوم قراءة"
+    display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, value_str)
+    heroes_data_for_pdf["🏃‍♂️ صاحب النَفَس الطويل"] = (winner_name, value_str)
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(daily_sum, 'total_minutes')
-    display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, f"{max_val / 60:.1f} ساعة في يوم")
+    value_str = f"{max_val / 60:.1f} ساعة في يوم"
+    display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, value_str)
+    heroes_data_for_pdf["⚡ العدّاء السريع"] = (winner_name, value_str)
 
     # 7. Star of the Week (Best Single Week)
     weekly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(weekly_sum, 'total_minutes')
-    display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, f"{max_val / 60:.1f} ساعة في أسبوع")
+    value_str = f"{max_val / 60:.1f} ساعة في أسبوع"
+    display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, value_str)
+    heroes_data_for_pdf["⭐ نجم الأسبوع"] = (winner_name, value_str)
 
     # 8. Giant of the Month (Best Single Month)
     monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(monthly_sum, 'total_minutes')
-    display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, f"{max_val / 60:.1f} ساعة في شهر")
+    value_str = f"{max_val / 60:.1f} ساعة في شهر"
+    display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, value_str)
+    heroes_data_for_pdf["💪 عملاق الشهر"] = (winner_name, value_str)
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
 st.markdown("---")
@@ -578,49 +595,31 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
         with st.spinner("جاري إنشاء التقرير..."):
             pdf = PDFReporter()
             
-            champions_data = {}
-            if not member_stats_df.empty and 'name' in member_stats_df.columns:
-                member_stats_df_for_pdf = member_stats_df.copy()
-                member_stats_df_for_pdf['total_reading_minutes'] = member_stats_df_for_pdf['total_reading_minutes_common'] + member_stats_df_for_pdf['total_reading_minutes_other']
-                member_stats_df_for_pdf['total_books_read'] = member_stats_df_for_pdf['total_common_books_read'] + member_stats_df_for_pdf['total_other_books_read']
-                
-                king_of_reading = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_reading_minutes'].idxmax()]
-                king_of_points = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_points'].idxmax()]
-                king_of_books = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_books_read'].idxmax()]
-                king_of_quotes = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_quotes_submitted'].idxmax()]
-                champions_data["👑 ملك القراءة"] = king_of_reading.get('name', 'N/A')
-                champions_data["⭐ ملك النقاط"] = king_of_points.get('name', 'N/A')
-                champions_data["📚 ملك الكتب"] = king_of_books.get('name', 'N/A')
-                champions_data["✍️ ملك الاقتباسات"] = king_of_quotes.get('name', 'N/A')
-
-            kpis_main_pdf = {
-                "⏳ إجمالي ساعات القراءة": total_hours_val,
-                "📚 إجمالي الكتب المنهَاة": total_books_finished_val,
-                "✍️ إجمالي الاقتباسات": total_quotes_val
-            }
-            kpis_secondary_pdf = {
-                "👥 الأعضاء النشطون": active_members_count_val,
-                "🏁 التحديات المكتملة": completed_challenges_count_val,
-                "🗓️ أيام القراءة": total_reading_days_val
-            }
-            group_stats_for_pdf = {
-                "total": len(members_df),
-                "active": int(active_members_count_val) if active_members_count_val else 0,
-                "inactive": len(members_df) - (int(active_members_count_val) if active_members_count_val else 0),
+            # Prepare all data for the PDF report
+            kpis_for_pdf = {
+                "إجمالي ساعات القراءة": (total_hours_val, "⏳"),
+                "إجمالي الكتب المنهَاة": (total_books_finished_val, "📚"),
+                "إجمالي الاقتباسات": (total_quotes_val, "✍️"),
+                "الأعضاء النشطون": (active_members_count_val, "👥"),
+                "إجمالي أيام القراءة": (total_reading_days_val, "🗓️"),
+                "التحديات المكتملة": (completed_challenges_count_val, "🏁")
             }
             
-            dashboard_data = {
-                "kpis_main": kpis_main_pdf,
-                "kpis_secondary": kpis_secondary_pdf,
-                "champions_data": champions_data,
-                "fig_growth": fig_growth, 
-                "fig_donut": fig_donut,
-                "fig_bar_days": fig_weekly_activity,
-                "fig_points_leaderboard": fig_points_leaderboard,
-                "fig_hours_leaderboard": fig_hours_leaderboard,
-                "group_stats": group_stats_for_pdf,
-                "periods_df": periods_df
+            charts_for_pdf = {
+                "نمو القراءة التراكمي": fig_growth,
+                "نشاط القراءة الأسبوعي": fig_weekly_activity,
+                "إيقاع القراءة اليومي للفريق": fig_rhythm,
+                "المتصدرون بالنقاط": fig_points_leaderboard,
+                "تركيز القراءة": fig_donut,
+                "المتصدرون بالساعات": fig_hours_leaderboard
             }
+
+            dashboard_data = {
+                "kpis": kpis_for_pdf,
+                "heroes": heroes_data_for_pdf,
+                "charts": charts_for_pdf
+            }
+            
             pdf.add_dashboard_report(dashboard_data)
 
             pdf_output = bytes(pdf.output())
