@@ -66,10 +66,10 @@ class PDFReporter(FPDF):
             st.error(f"Could not process background image: {e}")
             self.processed_background = None
 
-    def add_page_with_background(self):
-        """Adds a new page and applies the background if it exists."""
+    def add_page_with_background(self, use_background=True):
+        """Adds a new page and applies the background if it exists and is requested."""
         super().add_page()
-        if self.processed_background and self.page_no() == 1:
+        if self.processed_background and use_background:
             try:
                 self.image(self.processed_background, 0, 0, w=A4_WIDTH, h=A4_HEIGHT)
             except Exception as e:
@@ -86,21 +86,18 @@ class PDFReporter(FPDF):
             return str(text)
 
     def set_font(self, family, style="", size=0):
-        # --- FINAL FIX: Check if 'family' and 'style' are strings before calling methods on them ---
         is_amiri = isinstance(family, str) and family.lower() == "amiri"
         is_bold_style = isinstance(style, str) and style.upper() == 'B'
 
         if self.font_loaded and is_amiri:
-            # Prevent using bold style if only regular font is loaded
             if is_bold_style:
                 style = ''
             super().set_font(family, style, size)
         else:
-            # Let FPDF handle its internal objects (like TextEmphasis) or other fonts
             super().set_font(family, style, size)
 
     def footer(self):
-        if not self.font_loaded: return
+        if not self.font_loaded or self.page_no() == 1: return # لا تضف تذييل في صفحة الغلاف
         try:
             self.set_y(-15)
             self.set_font("Amiri", "", 10)
@@ -118,9 +115,8 @@ class PDFReporter(FPDF):
     def _style_figure_for_arabic(self, fig: go.Figure):
         if not self.font_loaded: return fig
         try:
-            # تحويل الألوان إلى صيغة RGB string للـ Plotly
             fig.update_layout(
-                font=dict(family="Arial", size=12, color=PLOTLY_TEXT_COLOR),  # استخدام Arial بدلاً من Amiri
+                font=dict(family="Arial", size=12, color=PLOTLY_TEXT_COLOR),
                 paper_bgcolor='rgba(0,0,0,0)',
                 plot_bgcolor='rgba(250,250,250,0.8)',
                 title=dict(
@@ -131,16 +127,12 @@ class PDFReporter(FPDF):
                 xaxis=dict(
                     title=dict(font=dict(family="Arial", size=14)), 
                     tickfont=dict(family="Arial", size=12), 
-                    showgrid=True, 
-                    gridcolor="lightgray", 
-                    gridwidth=0.5
+                    showgrid=True, gridcolor="lightgray", gridwidth=0.5
                 ),
                 yaxis=dict(
                     title=dict(font=dict(family="Arial", size=14)), 
                     tickfont=dict(family="Arial", size=12), 
-                    showgrid=True, 
-                    gridcolor="lightgray", 
-                    gridwidth=0.5
+                    showgrid=True, gridcolor="lightgray", gridwidth=0.5
                 ),
                 margin=dict(l=60, r=60, t=80, b=60)
             )
@@ -153,14 +145,12 @@ class PDFReporter(FPDF):
         if not self.font_loaded or not fig: return None, 0
         try:
             styled_fig = self._style_figure_for_arabic(fig)
-            
-            # إعدادات Kaleido
             try:
                 pio.kaleido.scope.chromium_args = ["--no-sandbox", "--disable-dev-shm-usage"]
             except:
-                pass  # في حالة عدم توفر kaleido
+                pass
             
-            img_bytes = styled_fig.to_image(format="png", scale=2, width=800, height=500)
+            img_bytes = styled_fig.to_image(format="png", scale=2, width=800, height=450) # تعديل الارتفاع قليلا
 
             img_file = io.BytesIO(img_bytes)
             pil_img = Image.open(img_file)
@@ -170,7 +160,7 @@ class PDFReporter(FPDF):
             img_height_mm = img_width_mm * aspect_ratio
             
             if self.get_y() + img_height_mm > (self.h - self.b_margin):
-                self.add_page_with_background()
+                self.add_page_with_background(use_background=False) # لا تستخدم صورة الغلاف للصفحات الداخلية
                 
             x_pos = (self.w - img_width_mm) / 2
             img_file.seek(0)
@@ -182,10 +172,10 @@ class PDFReporter(FPDF):
             return None, 0
 
     def add_section_title(self, title):
-        """Adds a styled title for a new section."""
         try:
-            if self.get_y() > 200: # Add a new page if the title is too low
-                self.add_page_with_background()
+            # Check if there is enough space for the title and at least one line of content
+            if self.get_y() > (self.h - self.b_margin - 30): 
+                self.add_page_with_background(use_background=False)
                 
             self.ln(10)
             self.set_font("Amiri", "", 22)
@@ -198,16 +188,12 @@ class PDFReporter(FPDF):
             st.warning(f"Section title error: {e}")
 
     def add_kpi_grid(self, kpis: dict):
-        """Adds a 3x2 grid of Key Performance Indicators."""
         if not kpis: return
-        
         try:
             col_width = self._get_drawable_width() / 3
             cell_height = 30
             icon_size = 18
-            
             kpi_list = list(kpis.items())
-            
             for i in range(0, len(kpi_list), 3):
                 self.set_x(self.l_margin)
                 for j in range(3):
@@ -215,38 +201,29 @@ class PDFReporter(FPDF):
                         label, (value, icon) = kpi_list[i+j]
                         x = self.get_x()
                         y = self.get_y()
-                        
                         self.rect(x, y, col_width - 5, cell_height, 'F')
-                        
                         self.set_font("Amiri", "", icon_size)
                         self.set_xy(x + 5, y + (cell_height / 2) - (icon_size/2) + 2)
                         self.cell(icon_size, icon_size, self._process_text(icon))
-
                         self.set_font("Amiri", "", 16)
                         self.set_text_color(*TITLE_COLOR)
                         self.set_xy(x + icon_size + 10, y + 5)
                         self.cell(col_width - icon_size - 20, 10, self._process_text(str(value)), align="R")
-
                         self.set_font("Amiri", "", 11)
                         self.set_text_color(*KPI_TEXT_COLOR)
                         self.set_xy(x + icon_size + 10, y + 15)
                         self.cell(col_width - icon_size - 20, 10, self._process_text(label), align="R")
-
                         self.set_x(x + col_width)
                 self.ln(cell_height + 5)
         except Exception as e:
             st.warning(f"KPI grid error: {e}")
 
     def add_hall_of_fame_grid(self, heroes: dict):
-        """Adds a 4x2 grid for the Hall of Fame."""
         if not heroes: return
-        
         try:
             col_width = self._get_drawable_width() / 4
             cell_height = 35
-            
             heroes_list = list(heroes.items())
-
             for i in range(0, len(heroes_list), 4):
                 self.set_x(self.l_margin)
                 for j in range(4):
@@ -254,67 +231,92 @@ class PDFReporter(FPDF):
                         title, (name, value) = heroes_list[i+j]
                         x = self.get_x()
                         y = self.get_y()
-                        
                         self.rect(x, y, col_width - 4, cell_height, 'F')
-
                         self.set_font("Amiri", "", 12)
                         self.set_text_color(*ACCENT_COLOR)
                         self.set_xy(x + 2, y + 4)
                         self.multi_cell(col_width - 8, 8, self._process_text(title), align="C")
-
                         self.set_font("Amiri", "", 14) 
                         self.set_text_color(*TITLE_COLOR)
                         self.set_xy(x + 2, y + 15)
                         self.multi_cell(col_width - 8, 8, self._process_text(name), align="C")
-
                         self.set_font("Amiri", "", 10)
                         self.set_text_color(*KPI_TEXT_COLOR)
                         self.set_xy(x + 2, y + 25)
                         self.multi_cell(col_width - 8, 8, self._process_text(value), align="C")
-                        
                         self.set_x(x + col_width)
                 self.ln(cell_height + 5)
         except Exception as e:
             st.warning(f"Hall of fame grid error: {e}")
 
-    def add_charts_page(self, charts: dict):
-        """Adds a page for each chart provided."""
+    # --- جديد: دالة لوضع مخططين في كل صفحة ---
+    def add_dual_chart_pages(self, charts: dict):
+        """Adds pages with two charts each."""
         if not charts:
             return
-            
-        for title, fig in charts.items():
-            if fig is not None:
-                try:
-                    self.add_page_with_background()
-                    self.add_section_title(title)
-                    self.add_plot(fig)
-                except Exception as e:
-                    st.warning(f"Error adding chart '{title}': {e}")
 
+        # تحويل القاموس إلى قائمة لضمان الترتيب
+        chart_list = [(title, fig) for title, fig in charts.items() if fig is not None]
+        
+        for i in range(0, len(chart_list), 2):
+            # ابدأ صفحة جديدة لكل زوج من المخططات
+            self.add_page_with_background(use_background=False)
+            
+            # المخطط الأول (العلوي)
+            title1, fig1 = chart_list[i]
+            self.add_section_title(title1)
+            self.add_plot(fig1)
+            self.ln(10) # مسافة فاصلة
+
+            # المخطط الثاني (السفلي)، إذا كان موجودًا
+            if i + 1 < len(chart_list):
+                title2, fig2 = chart_list[i+1]
+                self.add_section_title(title2)
+                self.add_plot(fig2)
+
+    # --- تعديل: إعادة تصميم دالة تقرير لوحة التحكم ---
     def add_dashboard_report(self, data: dict):
-        """Generates a full dashboard report that mirrors the web page."""
+        """Generates a full dashboard report with the new structured layout."""
         if not self.font_loaded: return
         
         try:
-            self.add_page_with_background()
-            self.set_font("Amiri", "", 32)
+            # --- الصفحة 1: الغلاف ---
+            self.add_page_with_background(use_background=True)
+            self.set_y(A4_HEIGHT / 2 - 40) # البدء من نقطة قريبة من منتصف الصفحة
+            self.set_font("Amiri", "", 40)
             self.set_text_color(*TITLE_COLOR)
-            self.cell(0, 25, self._process_text("تقرير لوحة التحكم العامة"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-            self.ln(5)
+            self.cell(0, 25, self._process_text("تقرير ماراثون القراءة"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.set_font("Amiri", "", 24)
+            self.set_text_color(*ACCENT_COLOR)
+            self.cell(0, 15, self._process_text("لوحة التحكم العامة"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+            self.ln(10)
+            self.set_font("Amiri", "", 14)
+            self.set_text_color(*KPI_TEXT_COLOR)
+            today_str = self._process_text(f"تاريخ الإصدار: {date.today().strftime('%Y-%m-%d')}")
+            self.cell(0, 10, today_str, align="C")
 
+            # --- الصفحة 2: الملخص (KPIs ولوحة الشرف) ---
+            self.add_page_with_background(use_background=False) # صفحة بيضاء
+            
+            # قسم مؤشرات الأداء
             self.add_section_title("📊 مؤشرات الأداء الرئيسية")
             self.set_fill_color(245, 245, 245)
             self.add_kpi_grid(data.get('kpis', {}))
+            
+            self.ln(15) # مسافة أكبر بين القسمين
 
-            self.add_page_with_background()
+            # قسم لوحة الشرف
             self.add_section_title("🌟 لوحة شرف الأبطال")
             self.set_fill_color(248, 249, 250)
             self.add_hall_of_fame_grid(data.get('heroes', {}))
-            
-            self.add_charts_page(data.get('charts', {}))
+
+            # --- الصفحات التالية: الرسوم البيانية (اثنان في كل صفحة) ---
+            self.add_dual_chart_pages(data.get('charts', {}))
+
         except Exception as e:
             st.error(f"Error generating dashboard report: {e}")
 
+    # --- باقي الدوال تبقى كما هي ---
     def add_challenge_report(self, data: dict):
         if not self.font_loaded: return
         try:
