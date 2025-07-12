@@ -320,7 +320,8 @@ if periods_df.empty:
     st.stop()
 
 today = date.today()
-challenge_options_map = {period['periods_id']: period for index, period in periods_df.iterrows()}
+# --- FIX: Convert period Series to dict to prevent ValueError ---
+challenge_options_map = {period['periods_id']: period.to_dict() for index, period in periods_df.iterrows()}
 active_challenges, past_challenges, future_challenges = [], [], []
 
 for period_id, period_data in challenge_options_map.items():
@@ -773,15 +774,18 @@ if selected_period_id:
                                 pdf = PDFReporter()
                                 
                                 reader_kpis_pdf = {
-                                    "إجمالي النقاط": (int(member_info['total_points']), "⭐"),
-                                    "إجمالي الساعات": (f"{total_hours:.1f}", "⏳"),
-                                    "إجمالي الاقتباسات": (int(member_info['total_quotes_submitted']), "✍️")
+                                    "إجمالي النقاط": (int(member_info['total_points']), "النقاط"),
+                                    "إجمالي الساعات": (f"{total_hours:.1f}", "الساعات"),
+                                    "إجمالي الاقتباسات": (int(member_info['total_quotes_submitted']), "الاقتباسات")
                                 }
+                                
+                                # Convert badges with emojis to text-only for PDF
+                                badges_for_pdf = [text for icon, text in badges_unlocked]
 
                                 reader_data_for_pdf = {
                                     "reader_name": selected_member_name,
                                     "kpis": reader_kpis_pdf,
-                                    "badges": badges_unlocked,
+                                    "badges": badges_for_pdf,
                                     "fig_points_source": fig_points_source,
                                     "fig_growth_reader": fig_growth_reader,
                                     "fig_weekly_activity_reader": fig_weekly_activity_reader,
