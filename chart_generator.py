@@ -139,19 +139,21 @@ def create_hours_leaderboard(member_stats_df):
     fig.update_layout(yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed')
     return fig
 
-def create_focus_donut(member_stats_df):
+def create_focus_donut(stats_df, common_col='total_reading_minutes_common', other_col='total_reading_minutes_other'):
     """
     Generates the reading focus donut chart.
     Args:
-        member_stats_df (pd.DataFrame): DataFrame with aggregated stats per member.
+        stats_df (pd.DataFrame): DataFrame with aggregated stats. Can be for one or more members.
+        common_col (str): The name of the column for common book minutes.
+        other_col (str): The name of the column for other book minutes.
     Returns:
         go.Figure or None: The generated Plotly figure, or None if data is insufficient.
     """
-    if member_stats_df.empty:
+    if stats_df.empty:
         return None
 
-    total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
-    total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
+    total_common_minutes = stats_df[common_col].sum()
+    total_other_minutes = stats_df[other_col].sum()
     
     if total_common_minutes == 0 and total_other_minutes == 0:
         return None
@@ -166,5 +168,37 @@ def create_focus_donut(member_stats_df):
         legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'), 
         margin=dict(t=20, b=20, l=20, r=20), 
         annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=16, showarrow=False)]
+    )
+    return fig
+
+def create_points_source_donut(points_source_data):
+    """
+    Generates the points source donut chart for an individual reader.
+    Args:
+        points_source_data (dict): A dictionary with point sources as keys and point values as values.
+    Returns:
+        go.Figure or None: The generated Plotly figure, or None if data is insufficient.
+    """
+    points_source_filtered = {k: v for k, v in points_source_data.items() if v > 0}
+    if not points_source_filtered:
+        return None
+
+    color_map = {
+        'قراءة الكتاب المشترك': '#2980B9', 'قراءة كتب أخرى': '#F39C12',
+        'اقتباسات (الكتاب المشترك)': '#27AE60', 'اقتباسات (كتب أخرى)': '#f39c12',
+        'إنهاء الكتاب المشترك': '#8E44AD', 'حضور النقاش': '#E74C3C',
+        'إنهاء كتب أخرى': '#16a085'
+    }
+    chart_labels = list(points_source_filtered.keys())
+    chart_colors = [color_map.get(label, '#bdc3c7') for label in chart_labels]
+
+    fig = go.Figure(data=[go.Pie(
+        labels=chart_labels, values=list(points_source_filtered.values()), 
+        hole=.6, textinfo='percent+label', insidetextorientation='radial',
+        marker_colors=chart_colors
+    )])
+    fig.update_layout(
+        showlegend=False,
+        margin=dict(t=20, b=20, l=20, r=20)
     )
     return fig
