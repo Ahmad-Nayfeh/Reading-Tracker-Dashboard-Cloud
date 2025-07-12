@@ -211,7 +211,7 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
     # Best single day/week/month
     daily_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
     weekly_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
-    monthly_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
+    monthly_sum = logs_past.groupby(['name', pd.Grouper(key='submission_date_dt', freq='ME')])['total_minutes'].sum().reset_index()
 
     def get_max_for_member(df, value_col):
         if df.empty: return pd.Series()
@@ -230,14 +230,14 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
 
     heroes = {}
     hero_metrics = {
-        "🧠 العقل المدبّر": "total_points",
-        "⏳ سيد الساعات": "total_reading_minutes",
-        "📚 الديدان القارئ": "total_books_read",
-        "💎 صائد الدرر": "total_quotes_submitted",
-        "🏃‍♂️ صاحب النَفَس الطويل": "days_read",
-        "⚡ العدّاء السريع": "max_daily",
-        "⭐ نجم الأسبوع": "max_weekly",
-        "💪 عملاق الشهر": "max_monthly",
+        "العقل المدبّر": "total_points",
+        "سيد الساعات": "total_reading_minutes",
+        "الديدان القارئ": "total_books_read",
+        "صائد الدرر": "total_quotes_submitted",
+        "صاحب النَفَس الطويل": "days_read",
+        "العدّاء السريع": "max_daily",
+        "نجم الأسبوع": "max_weekly",
+        "عملاق الشهر": "max_monthly",
     }
     
     for hero_title, metric_col in hero_metrics.items():
@@ -451,27 +451,27 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
     winner_name, max_val = get_winners(member_stats_df, 'total_points')
     value_str = f"{int(max_val)} نقطة"
     display_hero(heroes_col1, "🧠 العقل المدبّر", winner_name, value_str)
-    heroes_data_for_pdf["🧠 العقل المدبّر"] = (winner_name, value_str)
+    heroes_data_for_pdf["العقل المدبّر"] = (winner_name, value_str)
 
     # 2. Lord of the Hours (Total Reading Time)
     member_stats_df['total_reading_minutes'] = member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']
     winner_name, max_val = get_winners(member_stats_df, 'total_reading_minutes')
     value_str = f"{max_val / 60:.1f} ساعة"
     display_hero(heroes_col2, "⏳ سيد الساعات", winner_name, value_str)
-    heroes_data_for_pdf["⏳ سيد الساعات"] = (winner_name, value_str)
+    heroes_data_for_pdf["سيد الساعات"] = (winner_name, value_str)
 
     # 3. Bookworm (Total Books)
     member_stats_df['total_books_read'] = member_stats_df['total_common_books_read'] + member_stats_df['total_other_books_read']
     winner_name, max_val = get_winners(member_stats_df, 'total_books_read')
     value_str = f"{int(max_val)} كتب"
     display_hero(heroes_col3, "📚 الديدان القارئ", winner_name, value_str)
-    heroes_data_for_pdf["📚 الديدان القارئ"] = (winner_name, value_str)
+    heroes_data_for_pdf["الديدان القارئ"] = (winner_name, value_str)
 
     # 4. Pearl Hunter (Total Quotes)
     winner_name, max_val = get_winners(member_stats_df, 'total_quotes_submitted')
     value_str = f"{int(max_val)} اقتباساً"
     display_hero(heroes_col4, "💎 صائد الدرر", winner_name, value_str)
-    heroes_data_for_pdf["💎 صائد الدرر"] = (winner_name, value_str)
+    heroes_data_for_pdf["صائد الدرر"] = (winner_name, value_str)
 
     # 5. The Long-Hauler (Consistency)
     consistency = logs_with_names.groupby('name')['submission_date_dt'].nunique().reset_index()
@@ -479,28 +479,28 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
     winner_name, max_val = get_winners(consistency, 'days_read')
     value_str = f"{int(max_val)} يوم قراءة"
     display_hero(heroes_col1, "🏃‍♂️ صاحب النَفَس الطويل", winner_name, value_str)
-    heroes_data_for_pdf["🏃‍♂️ صاحب النَفَس الطويل"] = (winner_name, value_str)
+    heroes_data_for_pdf["صاحب النَفَس الطويل"] = (winner_name, value_str)
 
     # 6. The Sprinter (Best Single Day)
     daily_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='D')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(daily_sum, 'total_minutes')
     value_str = f"{max_val / 60:.1f} ساعة في يوم"
     display_hero(heroes_col2, "⚡ العدّاء السريع", winner_name, value_str)
-    heroes_data_for_pdf["⚡ العدّاء السريع"] = (winner_name, value_str)
+    heroes_data_for_pdf["العدّاء السريع"] = (winner_name, value_str)
 
     # 7. Star of the Week (Best Single Week)
     weekly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='W-SAT')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(weekly_sum, 'total_minutes')
     value_str = f"{max_val / 60:.1f} ساعة في أسبوع"
     display_hero(heroes_col3, "⭐ نجم الأسبوع", winner_name, value_str)
-    heroes_data_for_pdf["⭐ نجم الأسبوع"] = (winner_name, value_str)
+    heroes_data_for_pdf["نجم الأسبوع"] = (winner_name, value_str)
 
     # 8. Giant of the Month (Best Single Month)
-    monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='M')])['total_minutes'].sum().reset_index()
+    monthly_sum = logs_with_names.groupby(['name', pd.Grouper(key='submission_date_dt', freq='ME')])['total_minutes'].sum().reset_index()
     winner_name, max_val = get_winners(monthly_sum, 'total_minutes')
     value_str = f"{max_val / 60:.1f} ساعة في شهر"
     display_hero(heroes_col4, "💪 عملاق الشهر", winner_name, value_str)
-    heroes_data_for_pdf["💪 عملاق الشهر"] = (winner_name, value_str)
+    heroes_data_for_pdf["عملاق الشهر"] = (winner_name, value_str)
 else:
     st.info("لا توجد بيانات كافية لعرض لوحة شرف الأبطال بعد.")
 st.markdown("---")
@@ -597,12 +597,12 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
             
             # Prepare all data for the PDF report
             kpis_for_pdf = {
-                "إجمالي ساعات القراءة": (total_hours_val, "⏳"),
-                "إجمالي الكتب المنهَاة": (total_books_finished_val, "📚"),
-                "إجمالي الاقتباسات": (total_quotes_val, "✍️"),
-                "الأعضاء النشطون": (active_members_count_val, "👥"),
-                "إجمالي أيام القراءة": (total_reading_days_val, "🗓️"),
-                "التحديات المكتملة": (completed_challenges_count_val, "🏁")
+                "إجمالي ساعات القراءة": total_hours_val,
+                "إجمالي الكتب المنهَاة": total_books_finished_val,
+                "إجمالي الاقتباسات": total_quotes_val,
+                "الأعضاء النشطون": active_members_count_val,
+                "إجمالي أيام القراءة": total_reading_days_val,
+                "التحديات المكتملة": completed_challenges_count_val
             }
             
             charts_for_pdf = {
