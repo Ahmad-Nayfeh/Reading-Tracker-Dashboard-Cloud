@@ -76,6 +76,9 @@ class PDFReporter(FPDF):
 
     def set_font(self, family, style="", size=0):
         if self.font_loaded and family.lower() == "amiri":
+            # Prevent using bold style if only regular font is loaded
+            if style.upper() == 'B':
+                style = ''
             super().set_font(family, style, size)
         else:
             super().set_font("helvetica", style, size)
@@ -158,13 +161,10 @@ class PDFReporter(FPDF):
                     
                     self.rect(x, y, col_width - 5, cell_height, 'F')
                     
-                    # Icon
-                    # --- FIX: Use the Amiri font for icons (emojis) ---
                     self.set_font("Amiri", "", icon_size)
                     self.set_xy(x + 5, y + (cell_height / 2) - (icon_size/2) + 2)
                     self.cell(icon_size, icon_size, self._process_text(icon))
 
-                    # Text
                     self.set_font("Amiri", "", 16)
                     self.set_text_color(*TITLE_COLOR)
                     self.set_xy(x + icon_size + 10, y + 5)
@@ -197,19 +197,17 @@ class PDFReporter(FPDF):
                     
                     self.rect(x, y, col_width - 4, cell_height, 'F')
 
-                    # Title
                     self.set_font("Amiri", "", 12)
                     self.set_text_color(*ACCENT_COLOR)
                     self.set_xy(x + 2, y + 4)
                     self.multi_cell(col_width - 8, 8, self._process_text(title), align="C")
 
-                    # Name
-                    self.set_font("Amiri", "B", 14)
+                    # --- FIX: Changed from "B" (Bold) to "" (Regular) ---
+                    self.set_font("Amiri", "", 14) 
                     self.set_text_color(*TITLE_COLOR)
                     self.set_xy(x + 2, y + 15)
                     self.multi_cell(col_width - 8, 8, self._process_text(name), align="C")
 
-                    # Value
                     self.set_font("Amiri", "", 10)
                     self.set_text_color(*KPI_TEXT_COLOR)
                     self.set_xy(x + 2, y + 25)
@@ -230,7 +228,6 @@ class PDFReporter(FPDF):
         """Generates a full dashboard report that mirrors the web page."""
         if not self.font_loaded: return
         
-        # Page 1: Title and KPIs
         self.add_page_with_background()
         self.set_font("Amiri", "", 32)
         self.set_text_color(*TITLE_COLOR)
@@ -241,13 +238,11 @@ class PDFReporter(FPDF):
         self.set_fill_color(245, 245, 245)
         self.add_kpi_grid(data.get('kpis', {}))
 
-        # Page 2: Hall of Fame
         self.add_page_with_background()
         self.add_section_title("🌟 لوحة شرف الأبطال")
         self.set_fill_color(248, 249, 250)
         self.add_hall_of_fame_grid(data.get('heroes', {}))
         
-        # Subsequent Pages: Charts
         self.add_charts_page(data.get('charts', {}))
 
     def add_challenge_report(self, data: dict):
