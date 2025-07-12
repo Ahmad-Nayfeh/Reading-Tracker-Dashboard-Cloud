@@ -56,7 +56,7 @@ st.markdown("""
             padding: 25px;
             box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
             color: #1E2A78;
-            margin-top: 20px;
+            margin-top: 40px;
         }
 
         .card-title {
