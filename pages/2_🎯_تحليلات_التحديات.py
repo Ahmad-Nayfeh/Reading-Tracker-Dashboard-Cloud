@@ -348,7 +348,7 @@ if selected_period_id:
         period_rules = selected_challenge_data
 
         for _, member in period_members_df.iterrows():
-            member_id = member['member_id']
+            member_id = member['members_id']
             member_logs = period_logs_df[period_logs_df['member_id'] == member_id]
             member_achievements = pd.DataFrame()
             if not period_achievements_df.empty:
