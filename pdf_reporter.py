@@ -186,8 +186,7 @@ class PDFReporter(FPDF):
         drawable_width = self._get_drawable_width()
         gap = 5  # The space between cards
         col_width = (drawable_width - (num_cols - 1) * gap) / num_cols
-        card_height = 30
-        icon_size = 18
+        card_height = 25 # Reduced height as icon is removed
         
         kpi_list = list(kpis.items())
         for i in range(0, len(kpi_list), num_cols):
@@ -196,7 +195,7 @@ class PDFReporter(FPDF):
 
             row_items = kpi_list[i : i + num_cols]
             
-            for j, (label, (value, icon)) in enumerate(row_items):
+            for j, (label, value) in enumerate(row_items):
                 x0 = self.l_margin + j * (col_width + gap)
                 
                 self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
@@ -205,20 +204,17 @@ class PDFReporter(FPDF):
                 self.set_draw_color(41, 128, 185) # ACCENT_COLOR
                 self.line(x0 + col_width, y0, x0 + col_width, y0 + card_height)
 
-                self.set_font("Amiri", "", icon_size)
-                self.set_text_color(41, 128, 185) # ACCENT_COLOR
-                self.set_xy(x0 + col_width - icon_size - 5, y0 + (card_height - icon_size) / 2)
-                self.cell(icon_size, icon_size, self._process_text(icon))
-
+                # KPI Value (Large Font)
                 self.set_font("Amiri", "", 16)
                 self.set_text_color(44, 62, 80) # TITLE_COLOR
-                self.set_xy(x0 + 5, y0 + 5)
-                self.cell(col_width - icon_size - 15, 10, self._process_text(str(value)), align="R")
+                self.set_xy(x0 + 5, y0 + 2)
+                self.cell(col_width - 10, 10, self._process_text(str(value)), align="R")
 
+                # KPI Label (Smaller Font)
                 self.set_font("Amiri", "", 11)
                 self.set_text_color(93, 109, 126) # KPI_TEXT_COLOR
-                self.set_xy(x0 + 5, y0 + 15)
-                self.cell(col_width - icon_size - 15, 10, self._process_text(label), align="R")
+                self.set_xy(x0 + 5, y0 + 12)
+                self.cell(col_width - 10, 10, self._process_text(label), align="R")
                 
             self.set_y(y0 + card_height + gap)
 
@@ -304,12 +300,12 @@ class PDFReporter(FPDF):
 
         self.add_page_with_background(use_background=False)
         
-        self.add_section_title("📊 مؤشرات الأداء الرئيسية")
+        self.add_section_title("مؤشرات الأداء الرئيسية")
         self.add_kpi_grid(data.get('kpis', {}))
         
         self.ln(15)
 
-        self.add_section_title("🌟 لوحة شرف الأبطال")
+        self.add_section_title("لوحة شرف الأبطال")
         self.add_hall_of_fame_grid(data.get('heroes', {}))
 
         self.add_dual_chart_pages(data.get('charts', {}))
@@ -383,10 +379,8 @@ class PDFReporter(FPDF):
             self.add_page_with_background(use_background=False)
             
             # KPIs Section for the challenge
-            self.add_section_title("📊 مؤشرات أداء التحدي")
-            # Convert the simple dict to the format expected by add_kpi_grid
-            kpis_with_icons = {k: (v, "⭐") for k, v in data.get('kpis', {}).items()}
-            self.add_kpi_grid(kpis_with_icons)
+            self.add_section_title("مؤشرات أداء التحدي")
+            self.add_kpi_grid(data.get('kpis', {}))
             
             self.ln(10)
 
@@ -398,7 +392,6 @@ class PDFReporter(FPDF):
             )
 
             # --- SUBSEQUENT PAGES: CHARTS ---
-            # Prepare a dictionary of charts for the challenge
             challenge_charts = {
                 "نمو القراءة التراكمي للتحدي": data.get('fig_growth'),
                 "المتصدرون بالنقاط في التحدي": data.get('fig_points'),
@@ -419,15 +412,16 @@ class PDFReporter(FPDF):
             self.multi_cell(0, 10, self._process_text("لا توجد أوسمة بعد."), align="R")
             return
 
-        for icon, text in badges:
-            # Save Y position
+        for text in badges:
+            # Draw a bullet point
             y1 = self.get_y()
-            # Badge Icon
-            self.set_font("Amiri", "", 16)
-            self.set_text_color(*ACCENT_COLOR)
-            self.cell(10, 10, self._process_text(icon))
+            self.set_font("Arial", "", 12)
+            self.cell(5, 10, "-")
+            
             # Set Y back to start of line for the text
             self.set_y(y1)
+            self.set_x(self.get_x() + 5) # Move cursor after bullet
+            
             # Badge Text
             self.set_font("Amiri", "", 12)
             self.set_text_color(*TITLE_COLOR)
@@ -459,7 +453,7 @@ class PDFReporter(FPDF):
 
         # --- PAGE 2: SUMMARY PAGE ---
         self.add_page_with_background(use_background=False)
-        self.add_section_title("📊 المؤشرات الإجمالية")
+        self.add_section_title("المؤشرات الإجمالية")
         self.add_kpi_grid(data.get('kpis', {}), num_cols=3)
         self.ln(10)
 
@@ -477,7 +471,7 @@ class PDFReporter(FPDF):
         self.set_y(y_start_split)
         self.set_x(self.l_margin + self._get_drawable_width() / 2 + 5)
         with self.unbreakable_block(w=self._get_drawable_width() / 2 - 5):
-            self.add_section_title("🏅 الأوسمة والشارات")
+            self.add_section_title("الأوسمة والشارات")
             self.add_badges_list(data.get('badges', []))
         
         # --- SUBSEQUENT PAGES: CHARTS ---
@@ -493,4 +487,3 @@ class PDFReporter(FPDF):
             self.add_page_with_background(use_background=False)
             self.add_section_title(f"خريطة التزام: {reader_name}")
             self.add_plot(data.get('fig_heatmap'))
-
