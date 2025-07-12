@@ -677,41 +677,31 @@ if selected_period_id:
                     challenge_duration = (end_date_obj - start_date_obj).days
                     challenge_period_str = f"{start_date_obj.strftime('%Y-%m-%d')} إلى {end_date_obj.strftime('%Y-%m-%d')}"
                     
-                    finishers_names = []
-                    attendees_names = []
                     if not period_achievements_df.empty:
                         finisher_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK']['member_id'].unique()
                         attendee_ids = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION']['member_id'].unique()
                         finishers_names = members_df[members_df['members_id'].isin(finisher_ids)]['name'].tolist()
                         attendees_names = members_df[members_df['members_id'].isin(attendee_ids)]['name'].tolist()
                     
-                    # --- REVISED: Collect KPIs and Charts for PDF ---
                     total_period_minutes_pdf = period_logs_df['total_minutes'].sum()
                     total_period_hours_pdf = int(total_period_minutes_pdf // 60)
                     active_participants_pdf = period_logs_df['member_id'].nunique()
-                    days_passed_pdf = max(0, (min(date.today(), end_date_obj) - start_date_obj).days)
+                    days_passed_pdf = (date.today() - start_date_obj).days if date.today() >= start_date_obj else 0
                     avg_daily_reading_pdf = (total_period_minutes_pdf / days_passed_pdf / active_participants_pdf) if days_passed_pdf > 0 and active_participants_pdf > 0 else 0
                     total_period_quotes_pdf = period_logs_df['submitted_common_quote'].sum() + period_logs_df['submitted_other_quote'].sum()
 
-                    # Create a dictionary for KPIs to pass to the reporter
-                    challenge_kpis_for_pdf = {
-                        "مجموع ساعات القراءة": (f"{total_period_hours_pdf:,}", "⏳"),
-                        "المشاركون الفعليون": (f"{active_participants_pdf}", "👥"),
-                        "الاقتباسات المرسلة": (f"{int(total_period_quotes_pdf)}", "✍️"),
-                        "متوسط القراءة/عضو": (f"{avg_daily_reading_pdf:.1f} د/يوم", "📊")
+                    challenge_kpis = {
+                        "⏳ مجموع ساعات القراءة": f"{total_period_hours_pdf:,}",
+                        "👥 المشاركون الفعليون": f"{active_participants_pdf}",
+                        "✍️ الاقتباسات المرسلة": f"{int(total_period_quotes_pdf)}",
+                        "📊 متوسط القراءة اليومي/عضو": f"{avg_daily_reading_pdf:.1f} د"
                     }
 
-                    # Create a dictionary for ALL charts
-                    charts_for_pdf = {
-                        "نمو القراءة التراكمي": fig_growth,
-                        "نشاط القراءة الأسبوعي": fig_weekly_activity,
-                        "إيقاع القراءة اليومي للفريق": fig_rhythm,
-                        "المتصدرون بالنقاط": fig_points_leaderboard,
-                        "المتصدرون بالساعات": fig_hours_leaderboard,
-                        "تركيز القراءة في التحدي": fig_donut
-                    }
+                    challenge_date_range_df_pdf = pd.DataFrame(
+                        pd.date_range(start=start_date_obj, end=min(date.today(), end_date_obj), freq='D'),
+                        columns=['submission_date_dt']
+                    )
 
-                    # Assemble the final data payload
                     challenge_data_for_pdf = {
                         "title": selected_challenge_data.get('book_title', ''),
                         "author": selected_challenge_data.get('book_author', ''),
@@ -720,15 +710,16 @@ if selected_period_id:
                         "all_participants": all_participants_names,
                         "finishers": finishers_names,
                         "attendees": attendees_names,
-                        "kpis": challenge_kpis_for_pdf, # Pass the new KPI dictionary
-                        "charts": charts_for_pdf        # Pass the new charts dictionary
+                        "kpis": challenge_kpis,
+                        "fig_area": charts.create_growth_chart(period_logs_df, challenge_date_range_df_pdf),
+                        "fig_hours": charts.create_hours_leaderboard(podium_df),
+                        "fig_points": charts.create_points_leaderboard(podium_df)
                     }
                     
                     pdf.add_challenge_report(challenge_data_for_pdf)
                     
                     pdf_output = bytes(pdf.output())
                     st.session_state.pdf_file_challenge = pdf_output
-                    st.toast("تم إنشاء تقرير التحدي بنجاح!", icon="📄")
                     st.rerun()
 
             if 'pdf_file_challenge' in st.session_state:
@@ -736,7 +727,7 @@ if selected_period_id:
                 st.download_button(
                     label="📥 تحميل تقرير التحدي الآن",
                     data=pdf_file_challenge,
-                    file_name=f"ReadingMarathon_Report_Challenge_{selected_challenge_data.get('book_title', 'Export')}_{date.today()}.pdf",
+                    file_name=f"ReadingMarathon_Report_Challenge_{date.today()}.pdf",
                     mime="application/pdf",
                     use_container_width=True
                 )
