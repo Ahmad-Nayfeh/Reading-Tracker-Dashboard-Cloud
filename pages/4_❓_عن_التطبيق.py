@@ -188,16 +188,6 @@ st.markdown("""
             margin-bottom: 10px;
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
-        /* Code elements styling */
-        code {
-            background-color: #f1f3f4;
-            padding: 2px 6px;
-            border-radius: 4px;
-            font-family: 'Courier New', monospace;
-            color: #d73a49;
-            font-size: 0.9em;
-        }
     </style>
 """, unsafe_allow_html=True)
 
