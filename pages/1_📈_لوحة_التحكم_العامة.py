@@ -492,11 +492,14 @@ else:
 st.markdown("---")
 
 
-# --- Analytical Charts Section ---
-st.subheader("📈 الرسوم البيانية التحليلية")
-charts_col1, charts_col2 = st.columns(2, gap="large")
+# --- ############################################# ---
+# --- ###      MODIFIED CHARTS SECTION START      ### ---
+# --- ############################################# ---
 
-fig_growth, fig_rhythm = None, None
+st.subheader("📊 التحليلات الشاملة والمتصدرون")
+
+# --- Initialize Figure Variables ---
+fig_growth, fig_rhythm, fig_points_leaderboard, fig_donut, fig_hours_leaderboard = None, None, None, None, None
 
 # --- NEW LOGIC TO EXTEND DATES ---
 today_date_obj = pd.to_datetime(date.today())
@@ -509,123 +512,113 @@ if not logs_df.empty:
         all_days = pd.date_range(start=min_date, end=today_date_obj, freq='D')
         full_date_range_df = pd.DataFrame(all_days, columns=['submission_date_dt'])
 
-with charts_col1:
+# --- Calculate data for all charts first ---
+
+# Growth Chart Data
+if not logs_df.empty and not full_date_range_df.empty:
+    daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index(name='minutes')
+    merged_growth = pd.merge(full_date_range_df, daily_minutes_growth, on='submission_date_dt', how='left').fillna(0)
+    merged_growth['cumulative_hours'] = merged_growth['minutes'].cumsum() / 60
+    fig_growth = px.area(merged_growth, x='submission_date_dt', y='cumulative_hours', 
+                         labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'})
+    fig_growth = apply_chart_theme(fig_growth, 'area')
+    fig_growth.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+
+# Rhythm Chart Data
+if not logs_df.empty and not full_date_range_df.empty:
+    daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index()
+    merged_team_minutes = pd.merge(full_date_range_df, daily_team_minutes, on='submission_date_dt', how='left').fillna(0)
+    merged_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
+    merged_team_minutes['مجموع الساعات'] = merged_team_minutes['مجموع الدقائق'] / 60
+    fig_rhythm = px.line(merged_team_minutes, x='التاريخ', y='مجموع الساعات',
+                         labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
+                         markers=True)
+    fig_rhythm = apply_chart_theme(fig_rhythm, 'line')
+    fig_rhythm.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+
+# Points Leaderboard Data
+if not member_stats_df.empty and 'name' in member_stats_df.columns:
+    points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
+    fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
+                                    text='النقاط', color_discrete_sequence=['#8E44AD'])
+    fig_points_leaderboard = apply_chart_theme(fig_points_leaderboard, 'bar')
+    fig_points_leaderboard.update_traces(textposition='outside')
+    fig_points_leaderboard.update_layout(yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed')
+
+# Donut Chart Data
+if not member_stats_df.empty:
+    total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
+    total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
+    if total_common_minutes > 0 or total_other_minutes > 0:
+        donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
+        donut_values = [total_common_minutes, total_other_minutes]
+        fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.6)])
+        fig_donut = apply_chart_theme(fig_donut, 'pie')
+        fig_donut.update_layout(
+            showlegend=True, 
+            legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'), 
+            margin=dict(t=20, b=20, l=20, r=20), 
+            annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=16, showarrow=False)]
+        )
+
+# Hours Leaderboard Data
+if not member_stats_df.empty and 'name' in member_stats_df.columns:
+    member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
+    hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
+    hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
+    fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
+                                   text='الساعات', color_discrete_sequence=['#F39C12'])
+    fig_hours_leaderboard = apply_chart_theme(fig_hours_leaderboard, 'bar')
+    fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
+    fig_hours_leaderboard.update_layout(yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed')
+
+
+# --- Display all charts in a structured layout ---
+
+# --- Row 1: Larger Charts ---
+row1_col1, row1_col2 = st.columns(2, gap="large")
+with row1_col1:
     st.markdown("##### نمو القراءة التراكمي")
-    if not logs_df.empty and not full_date_range_df.empty:
-        # Calculate minutes per day
-        daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index(name='minutes')
-        
-        # Merge with the full date range and fill empty days with 0
-        merged_growth = pd.merge(full_date_range_df, daily_minutes_growth, on='submission_date_dt', how='left').fillna(0)
-        
-        # Calculate cumulative hours AFTER filling zeros
-        merged_growth['cumulative_hours'] = merged_growth['minutes'].cumsum() / 60
-        
-        fig_growth = px.area(merged_growth, x='submission_date_dt', y='cumulative_hours', 
-                             labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'})
-        
-        # Apply the new theme
-        fig_growth = apply_chart_theme(fig_growth, 'area')
-        fig_growth.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
-        
+    if fig_growth:
         st.plotly_chart(fig_growth, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
-with charts_col2:
+with row1_col2:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
-    if not logs_df.empty and not full_date_range_df.empty:
-        # Calculate minutes per day
-        daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index()
-
-        # Merge with the full date range and fill empty days with 0
-        merged_team_minutes = pd.merge(full_date_range_df, daily_team_minutes, on='submission_date_dt', how='left').fillna(0)
-        
-        merged_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
-        merged_team_minutes['مجموع الساعات'] = merged_team_minutes['مجموع الدقائق'] / 60
-        
-        fig_rhythm = px.line(merged_team_minutes, x='التاريخ', y='مجموع الساعات',
-                             labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
-                             markers=True)
-        
-        # Apply the new theme
-        fig_rhythm = apply_chart_theme(fig_rhythm, 'line')
-        fig_rhythm.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
-
+    if fig_rhythm:
         st.plotly_chart(fig_rhythm, use_container_width=True)
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
-st.markdown("---")
 
+st.markdown("<br>", unsafe_allow_html=True) # Adding a little vertical space
 
-# --- Leaderboards & Focus Section ---
-st.subheader("🏆 قوائم المتصدرين وتركيز القراءة")
-leader_col1, leader_col2, leader_col3 = st.columns([2, 1, 2], gap="large")
-
-fig_points_leaderboard, fig_donut, fig_hours_leaderboard = None, None, None
-
-with leader_col1:
+# --- Row 2: Leaderboards and Focus Chart ---
+row2_col1, row2_col2, row2_col3 = st.columns([2, 1, 2], gap="large")
+with row2_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
-    if not member_stats_df.empty and 'name' in member_stats_df.columns:
-        points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
-        fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
-                                        text='النقاط', color_discrete_sequence=['#8E44AD']) # Using secondary color
-        
-        # Apply the new theme
-        fig_points_leaderboard = apply_chart_theme(fig_points_leaderboard, 'bar')
-        fig_points_leaderboard.update_traces(textposition='outside')
-        fig_points_leaderboard.update_layout(
-            yaxis={'side': 'right', 'autorange': 'reversed'}, 
-            xaxis_autorange='reversed'
-        )
+    if fig_points_leaderboard:
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with leader_col2:
+with row2_col2:
     st.markdown("##### 🎯 تركيز القراءة")
-    if not member_stats_df.empty:
-        total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
-        total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
-        if total_common_minutes > 0 or total_other_minutes > 0:
-            donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
-            donut_values = [total_common_minutes, total_other_minutes]
-            
-            fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.6)])
-            
-            # Apply the new theme
-            fig_donut = apply_chart_theme(fig_donut, 'pie')
-            fig_donut.update_layout(
-                showlegend=True, 
-                legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'), 
-                margin=dict(t=20, b=20, l=20, r=20), 
-                annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=16, showarrow=False)]
-            )
-            st.plotly_chart(fig_donut, use_container_width=True)
-        else:
-            st.info("لا توجد بيانات.")
+    if fig_donut:
+        st.plotly_chart(fig_donut, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with leader_col3:
+with row2_col3:
     st.markdown("##### ⏳ المتصدرون بالساعات")
-    if not member_stats_df.empty and 'name' in member_stats_df.columns:
-        member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
-        hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
-        hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
-        fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
-                                       text='الساعات', color_discrete_sequence=['#F39C12']) # Using accent color
-        
-        # Apply the new theme
-        fig_hours_leaderboard = apply_chart_theme(fig_hours_leaderboard, 'bar')
-        fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-        fig_hours_leaderboard.update_layout(
-            yaxis={'side': 'right', 'autorange': 'reversed'}, 
-            xaxis_autorange='reversed'
-        )
+    if fig_hours_leaderboard:
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
+
+# --- ########################################### ---
+# --- ###      MODIFIED CHARTS SECTION END      ### ---
+# --- ########################################### ---
 
 
 # --- PDF Export Section ---
