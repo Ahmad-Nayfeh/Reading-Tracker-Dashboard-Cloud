@@ -119,7 +119,6 @@ class PDFReporter(FPDF):
         img_width_mm = page_width * (width_percent / 100)
         img_height_mm = img_width_mm * aspect_ratio
         
-        # Check if plot fits, if not, add new page
         if self.get_y() + img_height_mm > (self.h - self.b_margin):
             self.add_page_with_background()
             
@@ -160,9 +159,10 @@ class PDFReporter(FPDF):
                     self.rect(x, y, col_width - 5, cell_height, 'F')
                     
                     # Icon
-                    self.set_font("helvetica", "B", icon_size) # Using a standard font for emoji
+                    # --- FIX: Use the Amiri font for icons (emojis) ---
+                    self.set_font("Amiri", "", icon_size)
                     self.set_xy(x + 5, y + (cell_height / 2) - (icon_size/2) + 2)
-                    self.cell(icon_size, icon_size, icon)
+                    self.cell(icon_size, icon_size, self._process_text(icon))
 
                     # Text
                     self.set_font("Amiri", "", 16)
@@ -252,7 +252,6 @@ class PDFReporter(FPDF):
 
     def add_challenge_report(self, data: dict):
         if not self.font_loaded: return
-        # This function remains for future tasks, no changes needed for now.
         self.add_challenge_title_page(
             title=data.get('title', ''), author=data.get('author', ''),
             period=data.get('period', ''), duration=data.get('duration', 0)
@@ -261,10 +260,6 @@ class PDFReporter(FPDF):
             all_participants=data.get('all_participants', []),
             finishers=data.get('finishers', []), attendees=data.get('attendees', [])
         )
-        # Placeholder for KPIs and charts for challenge report
-        # self._add_kpis_page({"kpis_main": data.get('kpis', {})}, title="ملخص الأداء")
-        # self._add_single_plot_page(data.get('fig_area'), "مجموع ساعات القراءة التراكمي")
-        # self._add_dual_plot_page(data.get('fig_hours'), "ساعات قراءة الأعضاء", data.get('fig_points'), "نقاط الأعضاء")
 
     def add_challenge_title_page(self, title, author, period, duration):
         if not self.font_loaded: return
