@@ -192,48 +192,35 @@ class PDFReporter(FPDF):
         
         kpi_list = list(kpis.items())
         for i in range(0, len(kpi_list), num_cols):
-            # --- START OF FIX ---
-            # 1. Save the Y position at the START of the row
             y0 = self.get_y()
-            # Reset X position to the left margin for the row
             self.set_x(self.l_margin)
-            # --- END OF FIX ---
 
             row_items = kpi_list[i : i + num_cols]
             
             for j, (label, (value, icon)) in enumerate(row_items):
-                # Calculate the X position for each card manually
                 x0 = self.l_margin + j * (col_width + gap)
                 
-                # Draw the card background
                 self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
-                # 2. Use the saved y0 for the card's vertical position
                 self.rect(x0, y0, col_width, card_height, 'F')
                 
-                # Draw the accent line on the right
                 self.set_draw_color(41, 128, 185) # ACCENT_COLOR
                 self.line(x0 + col_width, y0, x0 + col_width, y0 + card_height)
 
-                # Icon
                 self.set_font("Amiri", "", icon_size)
                 self.set_text_color(41, 128, 185) # ACCENT_COLOR
-                # 3. Use y0 for all positioning calculations
                 self.set_xy(x0 + col_width - icon_size - 5, y0 + (card_height - icon_size) / 2)
                 self.cell(icon_size, icon_size, self._process_text(icon))
 
-                # KPI Value (Large Font)
                 self.set_font("Amiri", "", 16)
                 self.set_text_color(44, 62, 80) # TITLE_COLOR
                 self.set_xy(x0 + 5, y0 + 5)
                 self.cell(col_width - icon_size - 15, 10, self._process_text(str(value)), align="R")
 
-                # KPI Label (Smaller Font)
                 self.set_font("Amiri", "", 11)
                 self.set_text_color(93, 109, 126) # KPI_TEXT_COLOR
                 self.set_xy(x0 + 5, y0 + 15)
                 self.cell(col_width - icon_size - 15, 10, self._process_text(label), align="R")
                 
-            # 4. Move the cursor down based on the original y0
             self.set_y(y0 + card_height + gap)
 
 
@@ -248,43 +235,32 @@ class PDFReporter(FPDF):
         
         heroes_list = list(heroes.items())
         for i in range(0, len(heroes_list), num_cols):
-            # --- START OF FIX ---
-            # 1. Save the Y position at the START of the row
             y0 = self.get_y()
-            # --- END OF FIX ---
 
             row_items = heroes_list[i : i + num_cols]
             
             for j, (title, (name, value)) in enumerate(row_items):
-                # Calculate X for each card
                 x0 = self.l_margin + j * (col_width + gap)
 
-                # Card background and border
                 self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
                 self.set_draw_color(224, 224, 224) # LINE_COLOR
-                # 2. Use the saved y0 for card's vertical position
                 self.rect(x0, y0, col_width, card_height, 'DF')
                 
-                # 3. Use y0 for all positioning calculations
-                # Hero Title
                 self.set_font("Amiri", "", 12)
                 self.set_text_color(41, 128, 185) # ACCENT_COLOR
                 self.set_xy(x0 + 2, y0 + 3)
                 self.multi_cell(col_width - 4, 7, self._process_text(title), align="C")
 
-                # Hero Name
                 self.set_font("Amiri", "", 14)
                 self.set_text_color(44, 62, 80) # TITLE_COLOR
                 self.set_xy(x0 + 2, y0 + 15)
                 self.multi_cell(col_width - 4, 6, self._process_text(name), align="C")
 
-                # Hero Value
                 self.set_font("Amiri", "", 10)
                 self.set_text_color(93, 109, 126) # KPI_TEXT_COLOR
                 self.set_xy(x0 + 2, y0 + 26)
                 self.multi_cell(col_width - 4, 5, self._process_text(value), align="C")
                 
-            # 4. Move cursor down based on original y0
             self.set_y(y0 + card_height + gap)
 
     def add_dual_chart_pages(self, charts: dict):
@@ -295,16 +271,13 @@ class PDFReporter(FPDF):
         chart_list = [(title, fig) for title, fig in charts.items() if fig is not None]
         
         for i in range(0, len(chart_list), 2):
-            # A new page for every pair of charts
             self.add_page_with_background(use_background=False)
             
-            # --- First Chart (Top) ---
             title1, fig1 = chart_list[i]
             self.add_section_title(title1)
             self.add_plot(fig1)
-            self.ln(10) # Spacing
+            self.ln(10)
 
-            # --- Second Chart (Bottom), if it exists ---
             if i + 1 < len(chart_list):
                 title2, fig2 = chart_list[i+1]
                 self.add_section_title(title2)
@@ -316,9 +289,8 @@ class PDFReporter(FPDF):
             st.error("Font not loaded, cannot generate PDF report.")
             return
         
-        # --- PAGE 1: COVER PAGE ---
         self.add_page_with_background(use_background=True)
-        self.set_y(A4_HEIGHT / 2 - 40) # Start near the middle
+        self.set_y(A4_HEIGHT / 2 - 40)
         self.set_font("Amiri", "", 40)
         self.set_text_color(*TITLE_COLOR)
         self.cell(0, 25, self._process_text("تقرير ماراثون القراءة"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -331,42 +303,22 @@ class PDFReporter(FPDF):
         today_str = self._process_text(f"تاريخ الإصدار: {date.today().strftime('%Y-%m-%d')}")
         self.cell(0, 10, today_str, align="C")
 
-        # --- PAGE 2: SUMMARY (KPIs & Hall of Fame) ---
-        self.add_page_with_background(use_background=False) # Use a clean white page
+        self.add_page_with_background(use_background=False)
         
-        # KPIs Section
         self.add_section_title("📊 مؤشرات الأداء الرئيسية")
         self.add_kpi_grid(data.get('kpis', {}))
         
-        self.ln(15) # Add extra space between sections
+        self.ln(15)
 
-        # Hall of Fame Section
         self.add_section_title("🌟 لوحة شرف الأبطال")
         self.add_hall_of_fame_grid(data.get('heroes', {}))
 
-        # --- SUBSEQUENT PAGES: CHARTS (Two per page) ---
         self.add_dual_chart_pages(data.get('charts', {}))
 
-    # --- Other report functions remain unchanged ---
-    def add_challenge_report(self, data: dict):
-        if not self.font_loaded: return
-        try:
-            self.add_challenge_title_page(
-                title=data.get('title', ''), author=data.get('author', ''),
-                period=data.get('period', ''), duration=data.get('duration', 0)
-            )
-            self.add_participants_page(
-                all_participants=data.get('all_participants', []),
-                finishers=data.get('finishers', []), attendees=data.get('attendees', [])
-            )
-        except Exception as e:
-            st.error(f"Error generating challenge report: {e}")
-
     def add_challenge_title_page(self, title, author, period, duration):
-        # ... (This function remains as is)
         if not self.font_loaded: return
         try:
-            self.add_page_with_background()
+            self.add_page_with_background(use_background=True)
             drawable_width = self._get_drawable_width()
             content_height = (15 * 2) + 15 + (10 * 3)
             self.set_y((A4_HEIGHT - content_height) / 2)
@@ -382,18 +334,16 @@ class PDFReporter(FPDF):
         except Exception as e:
             st.warning(f"Challenge title page error: {e}")
 
-
     def add_participants_page(self, all_participants, finishers, attendees):
-        # ... (This function remains as is)
         if not self.font_loaded: return
         try:
-            self.add_page_with_background(use_background=False) # Use white background for better readability
+            self.add_page_with_background(use_background=False)
             self.add_section_title("المشاركون في التحدي")
             page_w = self._get_drawable_width()
             col_w = page_w / 3
             header_h, line_h = 10, 8
             self.set_font("Amiri", "", 14)
-            self.set_fill_color(*CARD_BACKGROUND_COLOR) # Use consistent color
+            self.set_fill_color(*CARD_BACKGROUND_COLOR)
             self.set_draw_color(*LINE_COLOR)
             self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border='B', align="C", fill=True)
             self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border='B', align="C", fill=True)
@@ -406,7 +356,6 @@ class PDFReporter(FPDF):
                 p_name = all_participants[i] if i < len(all_participants) else ""
                 f_name = finishers[i] if i < len(finishers) else ""
                 a_name = attendees[i] if i < len(attendees) else ""
-                # Add alternating row colors for readability
                 if i % 2 == 0:
                     self.set_fill_color(255, 255, 255) # White
                 else:
@@ -417,3 +366,49 @@ class PDFReporter(FPDF):
                 self.ln()
         except Exception as e:
             st.warning(f"Participants page error: {e}")
+
+    def add_challenge_report(self, data: dict):
+        """Generates a full report for a specific challenge."""
+        if not self.font_loaded:
+            st.error("Font not loaded, cannot generate PDF report.")
+            return
+
+        try:
+            # --- PAGE 1: COVER PAGE ---
+            self.add_challenge_title_page(
+                title=data.get('title', ''), author=data.get('author', ''),
+                period=data.get('period', ''), duration=data.get('duration', 0)
+            )
+
+            # --- PAGE 2: SUMMARY & PARTICIPANTS ---
+            self.add_page_with_background(use_background=False)
+            
+            # KPIs Section for the challenge
+            self.add_section_title("📊 مؤشرات أداء التحدي")
+            # Convert the simple dict to the format expected by add_kpi_grid
+            kpis_with_icons = {k: (v, "⭐") for k, v in data.get('kpis', {}).items()}
+            self.add_kpi_grid(kpis_with_icons)
+            
+            self.ln(10)
+
+            # Participants Section
+            self.add_participants_page(
+                all_participants=data.get('all_participants', []),
+                finishers=data.get('finishers', []), 
+                attendees=data.get('attendees', [])
+            )
+
+            # --- SUBSEQUENT PAGES: CHARTS ---
+            # Prepare a dictionary of charts for the challenge
+            challenge_charts = {
+                "نمو القراءة التراكمي للتحدي": data.get('fig_growth'),
+                "المتصدرون بالنقاط في التحدي": data.get('fig_points'),
+                "المتصدرون بالساعات في التحدي": data.get('fig_hours'),
+                "تركيز القراءة في التحدي": data.get('fig_donut'),
+                "نشاط القراءة الأسبوعي للتحدي": data.get('fig_weekly_activity'),
+                "إيقاع القراءة اليومي للتحدي": data.get('fig_rhythm'),
+            }
+            self.add_dual_chart_pages(challenge_charts)
+
+        except Exception as e:
+            st.error(f"Error generating challenge report: {e}")
