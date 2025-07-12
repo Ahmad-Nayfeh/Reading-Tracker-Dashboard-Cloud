@@ -499,7 +499,7 @@ st.markdown("---")
 st.subheader("📊 التحليلات الشاملة والمتصدرون")
 
 # --- Initialize Figure Variables ---
-fig_growth, fig_rhythm, fig_points_leaderboard, fig_donut, fig_hours_leaderboard = None, None, None, None, None
+fig_growth, fig_rhythm, fig_points_leaderboard, fig_donut, fig_hours_leaderboard, fig_weekly_activity = None, None, None, None, None, None
 
 # --- NEW LOGIC TO EXTEND DATES ---
 today_date_obj = pd.to_datetime(date.today())
@@ -523,6 +523,38 @@ if not logs_df.empty and not full_date_range_df.empty:
                          labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'})
     fig_growth = apply_chart_theme(fig_growth, 'area')
     fig_growth.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
+
+# Weekly Activity Chart Data
+if not logs_df.empty:
+    logs_df['weekday'] = logs_df['submission_date_dt'].dt.dayofweek
+    weekday_map_ar = {
+        0: 'الاثنين', 1: 'الثلاثاء', 2: 'الأربعاء', 3: 'الخميس', 
+        4: 'الجمعة', 5: 'السبت', 6: 'الأحد'
+    }
+    logs_df['weekday_ar'] = logs_df['weekday'].map(weekday_map_ar)
+    
+    weekly_activity = logs_df.groupby('weekday_ar')['total_minutes'].sum().reset_index()
+    total_minutes_all = weekly_activity['total_minutes'].sum()
+    
+    if total_minutes_all > 0:
+        weekly_activity['percentage'] = (weekly_activity['total_minutes'] / total_minutes_all) * 100
+        
+        weekday_order_ar = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة']
+        weekly_activity['weekday_ar'] = pd.Categorical(weekly_activity['weekday_ar'], categories=weekday_order_ar, ordered=True)
+        weekly_activity = weekly_activity.sort_values('weekday_ar')
+
+        fig_weekly_activity = px.bar(
+            weekly_activity,
+            x='weekday_ar',
+            y='percentage',
+            text=weekly_activity['percentage'].apply(lambda x: f'{x:.1f}%'),
+            labels={'weekday_ar': 'يوم الأسبوع', 'percentage': 'نسبة النشاط (%)'},
+            color_discrete_sequence=['#27AE60']
+        )
+        fig_weekly_activity = apply_chart_theme(fig_weekly_activity, 'bar')
+        fig_weekly_activity.update_traces(textposition='outside')
+        fig_weekly_activity.update_layout(yaxis_title="النسبة المئوية للنشاط")
+
 
 # Rhythm Chart Data
 if not logs_df.empty and not full_date_range_df.empty:
@@ -591,25 +623,35 @@ with row1_col2:
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
-st.markdown("<br>", unsafe_allow_html=True) # Adding a little vertical space
+st.markdown("<br>", unsafe_allow_html=True) 
 
-# --- Row 2: Leaderboards and Focus Chart ---
-row2_col1, row2_col2, row2_col3 = st.columns([2, 1, 2], gap="large")
-with row2_col1:
+# --- Row 2: NEW Weekly Activity Chart ---
+st.markdown("##### نشاط القراءة الأسبوعي")
+if fig_weekly_activity:
+    st.plotly_chart(fig_weekly_activity, use_container_width=True)
+else:
+    st.info("لا توجد بيانات كافية لعرض نشاط الأسبوع.")
+
+
+st.markdown("<br>", unsafe_allow_html=True) 
+
+# --- Row 3: Leaderboards and Focus Chart ---
+row3_col1, row3_col2, row3_col3 = st.columns([2, 1, 2], gap="large")
+with row3_col1:
     st.markdown("##### ⭐ المتصدرون بالنقاط")
     if fig_points_leaderboard:
         st.plotly_chart(fig_points_leaderboard, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with row2_col2:
+with row3_col2:
     st.markdown("##### 🎯 تركيز القراءة")
     if fig_donut:
         st.plotly_chart(fig_donut, use_container_width=True)
     else:
         st.info("لا توجد بيانات.")
 
-with row2_col3:
+with row3_col3:
     st.markdown("##### ⏳ المتصدرون بالساعات")
     if fig_hours_leaderboard:
         st.plotly_chart(fig_hours_leaderboard, use_container_width=True)
@@ -657,13 +699,15 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 "inactive": len(members_df) - (int(active_members_count_val) if active_members_count_val else 0),
             }
             
+            # Note: The new weekly activity chart is not added to the PDF report in this step.
+            # That would be a separate task.
             dashboard_data = {
                 "kpis_main": kpis_main_pdf,
                 "kpis_secondary": kpis_secondary_pdf,
                 "champions_data": champions_data,
                 "fig_growth": fig_growth, 
                 "fig_donut": fig_donut,
-                "fig_bar_days": None, # This chart was removed
+                "fig_bar_days": None, # This chart was removed in a previous version
                 "fig_points_leaderboard": fig_points_leaderboard,
                 "fig_hours_leaderboard": fig_hours_leaderboard,
                 "group_stats": group_stats_for_pdf,
