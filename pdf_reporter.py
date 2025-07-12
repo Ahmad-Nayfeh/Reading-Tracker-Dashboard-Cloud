@@ -179,12 +179,11 @@ class PDFReporter(FPDF):
         self.ln(8)
 
 
-    def add_kpi_grid(self, kpis: dict):
+    def add_kpi_grid(self, kpis: dict, num_cols=3):
         if not kpis:
             return
         
         drawable_width = self._get_drawable_width()
-        num_cols = 3
         gap = 5  # The space between cards
         col_width = (drawable_width - (num_cols - 1) * gap) / num_cols
         card_height = 30
@@ -412,3 +411,86 @@ class PDFReporter(FPDF):
 
         except Exception as e:
             st.error(f"Error generating challenge report: {e}")
+
+    def add_badges_list(self, badges: list):
+        if not badges:
+            self.set_font("Amiri", "", 12)
+            self.set_text_color(*KPI_TEXT_COLOR)
+            self.multi_cell(0, 10, self._process_text("لا توجد أوسمة بعد."), align="R")
+            return
+
+        for icon, text in badges:
+            # Save Y position
+            y1 = self.get_y()
+            # Badge Icon
+            self.set_font("Amiri", "", 16)
+            self.set_text_color(*ACCENT_COLOR)
+            self.cell(10, 10, self._process_text(icon))
+            # Set Y back to start of line for the text
+            self.set_y(y1)
+            # Badge Text
+            self.set_font("Amiri", "", 12)
+            self.set_text_color(*TITLE_COLOR)
+            self.multi_cell(0, 10, self._process_text(text), align="R")
+            self.ln(2)
+
+    def add_reader_report(self, data: dict):
+        """Generates a full performance report for a single reader."""
+        if not self.font_loaded:
+            st.error("Font not loaded, cannot generate PDF report.")
+            return
+
+        reader_name = data.get('reader_name', 'قارئ غير معروف')
+
+        # --- PAGE 1: COVER PAGE ---
+        self.add_page_with_background(use_background=True)
+        self.set_y(A4_HEIGHT / 2 - 40)
+        self.set_font("Amiri", "", 40)
+        self.set_text_color(*TITLE_COLOR)
+        self.cell(0, 25, self._process_text("تقرير أداء القارئ"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.set_font("Amiri", "", 28)
+        self.set_text_color(*ACCENT_COLOR)
+        self.cell(0, 15, self._process_text(reader_name), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
+        self.ln(10)
+        self.set_font("Amiri", "", 14)
+        self.set_text_color(*KPI_TEXT_COLOR)
+        today_str = self._process_text(f"تاريخ الإصدار: {date.today().strftime('%Y-%m-%d')}")
+        self.cell(0, 10, today_str, align="C")
+
+        # --- PAGE 2: SUMMARY PAGE ---
+        self.add_page_with_background(use_background=False)
+        self.add_section_title("📊 المؤشرات الإجمالية")
+        self.add_kpi_grid(data.get('kpis', {}), num_cols=3)
+        self.ln(10)
+
+        # Split page for Badges and Points Source
+        y_start_split = self.get_y()
+        
+        # Left side: Points Source Chart
+        self.set_y(y_start_split)
+        self.set_x(self.l_margin)
+        with self.unbreakable_block(w=self._get_drawable_width() / 2 - 5):
+            self.add_section_title("مصادر النقاط")
+            self.add_plot(data.get('fig_points_source'), width_percent=100)
+
+        # Right side: Badges
+        self.set_y(y_start_split)
+        self.set_x(self.l_margin + self._get_drawable_width() / 2 + 5)
+        with self.unbreakable_block(w=self._get_drawable_width() / 2 - 5):
+            self.add_section_title("🏅 الأوسمة والشارات")
+            self.add_badges_list(data.get('badges', []))
+        
+        # --- SUBSEQUENT PAGES: CHARTS ---
+        reader_charts = {
+            "نمو القراءة التراكمي": data.get('fig_growth_reader'),
+            "نشاط القراءة الأسبوعي": data.get('fig_weekly_activity_reader'),
+            "إيقاع القراءة اليومي": data.get('fig_rhythm_reader'),
+        }
+        self.add_dual_chart_pages(reader_charts)
+
+        # --- LAST PAGE: HEATMAP ---
+        if data.get('fig_heatmap'):
+            self.add_page_with_background(use_background=False)
+            self.add_section_title(f"خريطة التزام: {reader_name}")
+            self.add_plot(data.get('fig_heatmap'))
+
