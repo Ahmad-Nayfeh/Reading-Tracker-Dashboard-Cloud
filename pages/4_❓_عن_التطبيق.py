@@ -12,96 +12,111 @@ st.set_page_config(
     layout="wide"
 )
 
-# This CSS snippet styles the page and the expander components.
-# The content inside the expanders will now be handled by Streamlit's native functions.
+# --- ADVANCED STYLING (CSS) ---
+# This new style block addresses font hierarchy and adds modern aesthetics.
 st.markdown("""
     <style>
-        /* --- Base RTL and Font Fixes --- */
-        .stApp { direction: rtl; }
-        [data-testid="stSidebar"] { direction: rtl; }
-        h1, h2, h3, h4, h5, h6, p, li, .st-write { text-align: right !important; }
-
-        /* --- Custom Expander Styles (Enhanced Design) --- */
-        div[data-testid="stExpander"] {
-            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
-            border: 1px solid #e3e6ea;
-            border-radius: 16px;
-            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
-            margin: 12px 0;
-            transition: all 0.3s ease;
-            overflow: hidden;
-            position: relative;
+        /* --- Base & Background --- */
+        .stApp {
+            direction: rtl;
+            background-color: #f0f2f6; /* Light gray background to lift elements */
+        }
+        [data-testid="stSidebar"] {
+            direction: rtl;
         }
 
-        div[data-testid="stExpander"]:hover {
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
-            transform: translateY(-2px);
+        /* --- Typography Hierarchy --- */
+        h1, h2, h3, h4, h5, h6, p, li, .st-write, div[data-testid="stMarkdownContainer"] {
+            text-align: right !important;
+            font-family: 'system-ui', '-apple-system', 'BlinkMacSystemFont', 'Segoe UI', 'Roboto', 'Helvetica Neue', Arial, sans-serif;
         }
 
-        /* Elegant gradient accent line */
-        div[data-testid="stExpander"]::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            right: 0;
-            left: 0;
-            height: 4px;
-            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
-            border-radius: 16px 16px 0 0;
-        }
-
-        /* Style for the expander header */
-        div[data-testid="stExpander"] summary {
-            font-size: 1.4em !important;
+        /* --- Main Title (Gradient Text) --- */
+        .main-title {
+            text-align: center;
             font-weight: 700;
-            color: #2c3e50;
-            padding: 20px 25px;
-            background: rgba(255, 255, 255, 0.8);
-            border-radius: 0 0 12px 12px;
-            margin-bottom: 5px;
-            position: relative;
+            margin-bottom: 25px;
+            font-size: 3em; /* Larger main title */
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+            background-clip: text;
+            text-fill-color: transparent;
         }
         
-        /* Style for the expander content area */
-        div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-            padding: 5px 30px 25px 30px;
-            background: rgba(255, 255, 255, 0.95);
-        }
-
-        /* Style subheaders inside expanders */
-        .st-expander .st-subheader {
-             color: #1a5276;
-             font-weight: 600;
-             margin-top: 15px;
-        }
-
-        /* Enhanced intro text */
+        /* --- Intro Text --- */
         .intro-text {
             font-size: 1.15em;
             color: #5D6D7E;
             text-align: center;
             padding: 20px;
-            background: rgba(255, 255, 255, 0.8);
+            background-color: #ffffff;
             border-radius: 12px;
-            margin: 20px 0;
+            margin: 20px auto;
             box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
+            max-width: 80%;
         }
 
-        /* Custom divider */
-        .custom-divider {
-            height: 2px;
-            background: linear-gradient(90deg, transparent, #667eea, transparent);
-            margin: 30px 0;
-            border-radius: 2px;
+        /* --- Modern Expander (Card) Design --- */
+        div[data-testid="stExpander"] {
+            border: none;
+            border-radius: 12px;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
+            margin: 20px 0 !important;
+            overflow: hidden;
+            background-color: #ffffff;
+            transition: box-shadow 0.3s ease-in-out;
+        }
+        div[data-testid="stExpander"]:hover {
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1), 0 4px 6px -2px rgba(0, 0, 0, 0.05);
+            transform: translateY(-2px);
         }
 
-        /* Enhanced title styling */
-        .main-title {
-            text-align: center;
-            color: #2c3e50;
-            font-weight: 700;
-            margin-bottom: 10px;
-            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+        /* --- Expander Header (Card Title) --- */
+        div[data-testid="stExpander"] summary {
+            font-size: 1.5em !important;  /* Bigger & Bolder Card Title */
+            font-weight: 600;
+            color: #2D3748;
+            padding: 20px 25px;
+            background-color: #fcfcfc;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* --- Expander Content Area --- */
+        div[data-testid="stExpanderDetails"] {
+            padding: 15px 25px 25px 25px;
+        }
+        
+        /* --- Content: Subheaders (h3 from st.subheader) --- */
+        div[data-testid="stExpanderDetails"] h3 {
+            font-size: 1.25em; /* Clearly a sub-heading */
+            font-weight: 600;
+            color: #764ba2; /* Accent color */
+            border-bottom: 2px solid #e3e6ea;
+            padding-bottom: 8px;
+            margin-top: 15px;
+            margin-bottom: 15px;
+        }
+        
+        /* --- Content: Paragraphs (p from st.write) --- */
+        div[data-testid="stExpanderDetails"] p {
+            font-size: 1.05em !important; /* Readable content size */
+            line-height: 1.8 !important;
+            color: #4A5568; /* Softer than pure black */
+        }
+
+        /* --- Content: Lists (from st.markdown) --- */
+        div[data-testid="stExpanderDetails"] ul {
+             padding-right: 20px;
+        }
+        div[data-testid="stExpanderDetails"] li {
+            margin-bottom: 12px;
+            line-height: 1.7;
+            font-size: 1.05em;
+            color: #4A5568;
+        }
+        div[data-testid="stExpanderDetails"] li strong {
+            color: #667eea; /* Accent color for bolded text in lists */
         }
     </style>
 """, unsafe_allow_html=True)
@@ -120,7 +135,6 @@ if not creds or not user_id:
 # --- Page Title ---
 st.markdown('<h1 class="main-title">❓ عن تطبيق ماراثون القراءة</h1>', unsafe_allow_html=True)
 st.markdown('<div class="intro-text">أهلاً بك في الدليل الشامل لتطبيق "ماراثون القراءة"! هذه المنصة صُممت لتكون أداتك المركزية لإدارة سباقات القراءة الجماعية، وتحويلها من مجرد هواية إلى تجربة تفاعلية، محفزة، وذات أثر عميق.</div>', unsafe_allow_html=True)
-st.markdown('<div class="custom-divider"></div>', unsafe_allow_html=True)
 
 
 # --- Section 1: الفكرة والجمهور المستهدف ---
