@@ -2,14 +2,12 @@ import streamlit as st
 import pandas as pd
 from datetime import date, timedelta, datetime
 import db_manager as db
-import plotly.express as px
-import plotly.graph_objects as go
+import chart_generator as charts # <-- استيراد الوحدة الجديدة
 from pdf_reporter import PDFReporter
 import auth_manager
-from utils import apply_chart_theme # <-- استيراد الدالة الجديدة
-import style_manager  # <-- السطر الأول
+import style_manager
 
-style_manager.apply_sidebar_styles()  # <-- السطر الثاني
+style_manager.apply_sidebar_styles()
 
 st.set_page_config(
     page_title="لوحة التحكم العامة",
@@ -20,6 +18,7 @@ st.set_page_config(
 # This CSS snippet enforces RTL layout and adds custom styles
 st.markdown("""
     <style>
+        /* CSS styles remain the same */
         /* Main app container */
         .stApp {
             direction: rtl;
@@ -149,10 +148,8 @@ st.markdown("""
             color: #7f8c8d;
             font-style: italic;
         }
-
     </style>
 """, unsafe_allow_html=True)
-
 
 # --- 1. UNIFIED AUTHENTICATION BLOCK ---
 creds = auth_manager.authenticate()
@@ -493,126 +490,32 @@ st.markdown("---")
 
 
 # --- ############################################# ---
-# --- ###      MODIFIED CHARTS SECTION START      ### ---
+# --- ###      CHARTS SECTION START             ### ---
 # --- ############################################# ---
 
 st.subheader("📊 التحليلات الشاملة والمتصدرون")
 
-# --- Initialize Figure Variables ---
-fig_growth, fig_rhythm, fig_points_leaderboard, fig_donut, fig_hours_leaderboard, fig_weekly_activity = None, None, None, None, None, None
-
-# --- NEW LOGIC TO EXTEND DATES ---
+# --- Data Preparation for Charts ---
 today_date_obj = pd.to_datetime(date.today())
 full_date_range_df = pd.DataFrame()
-
 if not logs_df.empty:
     min_date = logs_df['submission_date_dt'].min()
     if pd.notna(min_date):
-        # Create a full date range from the first log entry to today
         all_days = pd.date_range(start=min_date, end=today_date_obj, freq='D')
         full_date_range_df = pd.DataFrame(all_days, columns=['submission_date_dt'])
 
-# --- Calculate data for all charts first ---
-
-# Growth Chart Data
-if not logs_df.empty and not full_date_range_df.empty:
-    daily_minutes_growth = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index(name='minutes')
-    merged_growth = pd.merge(full_date_range_df, daily_minutes_growth, on='submission_date_dt', how='left').fillna(0)
-    merged_growth['cumulative_hours'] = merged_growth['minutes'].cumsum() / 60
-    fig_growth = px.area(merged_growth, x='submission_date_dt', y='cumulative_hours', 
-                         labels={'submission_date_dt': 'التاريخ', 'cumulative_hours': 'مجموع الساعات التراكمي'})
-    fig_growth = apply_chart_theme(fig_growth, 'area')
-    fig_growth.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
-
-# Weekly Activity Chart Data
-if not logs_df.empty:
-    logs_df['weekday'] = logs_df['submission_date_dt'].dt.dayofweek
-    weekday_map_ar = {
-        0: 'الاثنين', 1: 'الثلاثاء', 2: 'الأربعاء', 3: 'الخميس', 
-        4: 'الجمعة', 5: 'السبت', 6: 'الأحد'
-    }
-    logs_df['weekday_ar'] = logs_df['weekday'].map(weekday_map_ar)
-    
-    weekly_activity = logs_df.groupby('weekday_ar')['total_minutes'].sum().reset_index()
-    total_minutes_all = weekly_activity['total_minutes'].sum()
-    
-    if total_minutes_all > 0:
-        weekly_activity['percentage'] = (weekly_activity['total_minutes'] / total_minutes_all) * 100
-        
-        weekday_order_ar = ['السبت', 'الأحد', 'الاثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة']
-        weekly_activity['weekday_ar'] = pd.Categorical(weekly_activity['weekday_ar'], categories=weekday_order_ar, ordered=True)
-        weekly_activity = weekly_activity.sort_values('weekday_ar')
-
-        fig_weekly_activity = px.bar(
-            weekly_activity,
-            x='weekday_ar',
-            y='percentage',
-            text=weekly_activity['percentage'].apply(lambda x: f'{x:.1f}%'),
-            labels={'weekday_ar': 'يوم الأسبوع', 'percentage': 'نسبة النشاط (%)'},
-            color_discrete_sequence=['#27AE60']
-        )
-        fig_weekly_activity = apply_chart_theme(fig_weekly_activity, 'bar')
-        fig_weekly_activity.update_traces(textposition='outside')
-        # CORRECTED: Added yaxis={'side': 'right'}
-        fig_weekly_activity.update_layout(
-            yaxis_title="النسبة المئوية للنشاط",
-            yaxis={'side': 'right'}
-        )
-
-
-# Rhythm Chart Data
-if not logs_df.empty and not full_date_range_df.empty:
-    daily_team_minutes = logs_df.groupby(logs_df['submission_date_dt'])['total_minutes'].sum().reset_index()
-    merged_team_minutes = pd.merge(full_date_range_df, daily_team_minutes, on='submission_date_dt', how='left').fillna(0)
-    merged_team_minutes.rename(columns={'submission_date_dt': 'التاريخ', 'total_minutes': 'مجموع الدقائق'}, inplace=True)
-    merged_team_minutes['مجموع الساعات'] = merged_team_minutes['مجموع الدقائق'] / 60
-    fig_rhythm = px.line(merged_team_minutes, x='التاريخ', y='مجموع الساعات',
-                         labels={'التاريخ': 'التاريخ', 'مجموع الساعات': 'مجموع الساعات المقروءة'},
-                         markers=True)
-    fig_rhythm = apply_chart_theme(fig_rhythm, 'line')
-    fig_rhythm.update_layout(yaxis={'side': 'right'}, xaxis_autorange='reversed')
-
-# Points Leaderboard Data
-if not member_stats_df.empty and 'name' in member_stats_df.columns:
-    points_leaderboard_df = member_stats_df.sort_values('total_points', ascending=False).head(10)[['name', 'total_points']].rename(columns={'name': 'الاسم', 'total_points': 'النقاط'})
-    fig_points_leaderboard = px.bar(points_leaderboard_df, x='النقاط', y='الاسم', orientation='h', 
-                                    text='النقاط', color_discrete_sequence=['#8E44AD'])
-    fig_points_leaderboard = apply_chart_theme(fig_points_leaderboard, 'bar')
-    fig_points_leaderboard.update_traces(textposition='outside')
-    fig_points_leaderboard.update_layout(yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed')
-
-# Donut Chart Data
-if not member_stats_df.empty:
-    total_common_minutes = member_stats_df['total_reading_minutes_common'].sum()
-    total_other_minutes = member_stats_df['total_reading_minutes_other'].sum()
-    if total_common_minutes > 0 or total_other_minutes > 0:
-        donut_labels = ['الكتاب المشترك', 'الكتب الأخرى']
-        donut_values = [total_common_minutes, total_other_minutes]
-        fig_donut = go.Figure(data=[go.Pie(labels=donut_labels, values=donut_values, hole=.6)])
-        fig_donut = apply_chart_theme(fig_donut, 'pie')
-        fig_donut.update_layout(
-            showlegend=True, 
-            legend=dict(x=0.5, y=-0.1, xanchor='center', yanchor='bottom', orientation='h'), 
-            margin=dict(t=20, b=20, l=20, r=20), 
-            annotations=[dict(text='التوزيع', x=0.5, y=0.5, font_size=16, showarrow=False)]
-        )
-
-# Hours Leaderboard Data
-if not member_stats_df.empty and 'name' in member_stats_df.columns:
-    member_stats_df['total_hours'] = (member_stats_df['total_reading_minutes_common'] + member_stats_df['total_reading_minutes_other']) / 60
-    hours_leaderboard_df = member_stats_df.sort_values('total_hours', ascending=False).head(10)[['name', 'total_hours']].rename(columns={'name': 'الاسم', 'total_hours': 'الساعات'})
-    hours_leaderboard_df['الساعات'] = hours_leaderboard_df['الساعات'].round(1)
-    fig_hours_leaderboard = px.bar(hours_leaderboard_df, x='الساعات', y='الاسم', orientation='h', 
-                                   text='الساعات', color_discrete_sequence=['#F39C12'])
-    fig_hours_leaderboard = apply_chart_theme(fig_hours_leaderboard, 'bar')
-    fig_hours_leaderboard.update_traces(texttemplate='%{text:.1f}', textposition='outside')
-    fig_hours_leaderboard.update_layout(yaxis={'side': 'right', 'autorange': 'reversed'}, xaxis_autorange='reversed')
+# --- Generate all charts using the new module ---
+fig_growth = charts.create_growth_chart(logs_df, full_date_range_df)
+fig_weekly_activity = charts.create_weekly_activity_chart(logs_df)
+fig_rhythm = charts.create_rhythm_chart(logs_df, full_date_range_df)
+fig_points_leaderboard = charts.create_points_leaderboard(member_stats_df)
+fig_hours_leaderboard = charts.create_hours_leaderboard(member_stats_df)
+fig_donut = charts.create_focus_donut(member_stats_df)
 
 
 # --- Display all charts in a structured layout ---
 
 # --- Row 1: Main Analytical Charts ---
-# CORRECTED: Changed to 3 columns
 row1_col1, row1_col2, row1_col3 = st.columns(3, gap="large") 
 with row1_col1:
     st.markdown("##### نمو القراءة التراكمي")
@@ -621,7 +524,6 @@ with row1_col1:
     else:
         st.info("لا توجد بيانات لعرض المخطط.")
 
-# CORRECTED: Added the new chart to the middle column
 with row1_col2:
     st.markdown("##### نشاط القراءة الأسبوعي")
     if fig_weekly_activity:
@@ -629,7 +531,6 @@ with row1_col2:
     else:
         st.info("لا توجد بيانات كافية لعرض نشاط الأسبوع.")
 
-# CORRECTED: Moved the rhythm chart to the third column
 with row1_col3:
     st.markdown("##### إيقاع القراءة اليومي للفريق")
     if fig_rhythm:
@@ -664,7 +565,7 @@ with row2_col3:
         st.info("لا توجد بيانات.")
 
 # --- ########################################### ---
-# --- ###      MODIFIED CHARTS SECTION END      ### ---
+# --- ###      CHARTS SECTION END               ### ---
 # --- ########################################### ---
 
 
@@ -679,10 +580,14 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
             
             champions_data = {}
             if not member_stats_df.empty and 'name' in member_stats_df.columns:
-                king_of_reading = member_stats_df.loc[member_stats_df['total_reading_minutes'].idxmax()]
-                king_of_points = member_stats_df.loc[member_stats_df['total_points'].idxmax()]
-                king_of_books = member_stats_df.loc[member_stats_df['total_books_read'].idxmax()]
-                king_of_quotes = member_stats_df.loc[member_stats_df['total_quotes_submitted'].idxmax()]
+                member_stats_df_for_pdf = member_stats_df.copy()
+                member_stats_df_for_pdf['total_reading_minutes'] = member_stats_df_for_pdf['total_reading_minutes_common'] + member_stats_df_for_pdf['total_reading_minutes_other']
+                member_stats_df_for_pdf['total_books_read'] = member_stats_df_for_pdf['total_common_books_read'] + member_stats_df_for_pdf['total_other_books_read']
+                
+                king_of_reading = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_reading_minutes'].idxmax()]
+                king_of_points = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_points'].idxmax()]
+                king_of_books = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_books_read'].idxmax()]
+                king_of_quotes = member_stats_df_for_pdf.loc[member_stats_df_for_pdf['total_quotes_submitted'].idxmax()]
                 champions_data["👑 ملك القراءة"] = king_of_reading.get('name', 'N/A')
                 champions_data["⭐ ملك النقاط"] = king_of_points.get('name', 'N/A')
                 champions_data["📚 ملك الكتب"] = king_of_books.get('name', 'N/A')
@@ -690,7 +595,7 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
 
             kpis_main_pdf = {
                 "⏳ إجمالي ساعات القراءة": total_hours_val,
-                "� إجمالي الكتب المنهَاة": total_books_finished_val,
+                "📚 إجمالي الكتب المنهَاة": total_books_finished_val,
                 "✍️ إجمالي الاقتباسات": total_quotes_val
             }
             kpis_secondary_pdf = {
@@ -704,15 +609,13 @@ with st.expander("🖨️ تصدير تقرير الأداء (PDF)"):
                 "inactive": len(members_df) - (int(active_members_count_val) if active_members_count_val else 0),
             }
             
-            # Note: The new weekly activity chart is not added to the PDF report in this step.
-            # That would be a separate task.
             dashboard_data = {
                 "kpis_main": kpis_main_pdf,
                 "kpis_secondary": kpis_secondary_pdf,
                 "champions_data": champions_data,
                 "fig_growth": fig_growth, 
                 "fig_donut": fig_donut,
-                "fig_bar_days": fig_weekly_activity, # Pass the new chart here if you want it in the PDF
+                "fig_bar_days": fig_weekly_activity,
                 "fig_points_leaderboard": fig_points_leaderboard,
                 "fig_hours_leaderboard": fig_hours_leaderboard,
                 "group_stats": group_stats_for_pdf,
