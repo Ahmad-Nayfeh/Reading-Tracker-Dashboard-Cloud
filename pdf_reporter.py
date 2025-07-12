@@ -92,8 +92,6 @@ class PDFReporter(FPDF):
     def set_font(self, family, style="", size=0):
         # Simplified font setting for custom fonts
         if self.font_loaded and isinstance(family, str) and family.lower() == "amiri":
-            # The 'B' style for custom fonts often requires a separate bold font file.
-            # Sticking to '' (regular) prevents errors if a bold version isn't added.
             super().set_font(family, '', size)
         else:
             super().set_font(family, style, size)
@@ -118,7 +116,6 @@ class PDFReporter(FPDF):
         return self.w - self.l_margin - self.r_margin
 
     def _style_figure_for_arabic(self, fig: go.Figure):
-        # This function remains largely the same, it's already well-styled.
         if not self.font_loaded: return fig
         try:
             fig.update_layout(
@@ -142,7 +139,7 @@ class PDFReporter(FPDF):
             try:
                 pio.kaleido.scope.chromium_args = ["--no-sandbox", "--disable-dev-shm-usage"]
             except Exception:
-                pass # Ignore if Kaleido scope is not configurable
+                pass
             
             img_bytes = styled_fig.to_image(format="png", scale=2, width=800, height=450)
             img_file = io.BytesIO(img_bytes)
@@ -153,7 +150,6 @@ class PDFReporter(FPDF):
             img_width_mm = page_width * (width_percent / 100)
             img_height_mm = img_width_mm * aspect_ratio
             
-            # Auto page break if plot doesn't fit
             if self.get_y() + img_height_mm > (self.h - self.b_margin):
                 self.add_page_with_background(use_background=False)
                 
@@ -165,7 +161,6 @@ class PDFReporter(FPDF):
             st.error(f"Error adding plot: {e}")
 
     def add_section_title(self, title):
-        # Auto page break for section titles
         if self.get_y() > (self.h - self.b_margin - 30):
             self.add_page_with_background(use_background=False)
             
@@ -173,152 +168,110 @@ class PDFReporter(FPDF):
         self.set_font("Amiri", "", 22)
         self.set_text_color(*TITLE_COLOR)
         self.cell(0, 12, self._process_text(title), align="R", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
-        # Decorative line below the title
         self.set_draw_color(*ACCENT_COLOR)
         self.line(self.w - self.r_margin - 60, self.get_y(), self.w - self.r_margin, self.get_y())
         self.ln(8)
 
-
     def add_kpi_grid(self, kpis: dict):
-        if not kpis:
-            return
+        if not kpis: return
         
         drawable_width = self._get_drawable_width()
         num_cols = 3
-        gap = 5  # The space between cards
+        gap = 5
         col_width = (drawable_width - (num_cols - 1) * gap) / num_cols
         card_height = 30
         icon_size = 18
         
         kpi_list = list(kpis.items())
         for i in range(0, len(kpi_list), num_cols):
-            # --- START OF FIX ---
-            # 1. Save the Y position at the START of the row
             y0 = self.get_y()
-            # Reset X position to the left margin for the row
             self.set_x(self.l_margin)
-            # --- END OF FIX ---
-
             row_items = kpi_list[i : i + num_cols]
             
             for j, (label, (value, icon)) in enumerate(row_items):
-                # Calculate the X position for each card manually
                 x0 = self.l_margin + j * (col_width + gap)
-                
-                # Draw the card background
-                self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
-                # 2. Use the saved y0 for the card's vertical position
+                self.set_fill_color(*CARD_BACKGROUND_COLOR)
                 self.rect(x0, y0, col_width, card_height, 'F')
-                
-                # Draw the accent line on the right
-                self.set_draw_color(41, 128, 185) # ACCENT_COLOR
+                self.set_draw_color(*ACCENT_COLOR)
                 self.line(x0 + col_width, y0, x0 + col_width, y0 + card_height)
 
-                # Icon
                 self.set_font("Amiri", "", icon_size)
-                self.set_text_color(41, 128, 185) # ACCENT_COLOR
-                # 3. Use y0 for all positioning calculations
+                self.set_text_color(*ACCENT_COLOR)
                 self.set_xy(x0 + col_width - icon_size - 5, y0 + (card_height - icon_size) / 2)
                 self.cell(icon_size, icon_size, self._process_text(icon))
 
-                # KPI Value (Large Font)
                 self.set_font("Amiri", "", 16)
-                self.set_text_color(44, 62, 80) # TITLE_COLOR
+                self.set_text_color(*TITLE_COLOR)
                 self.set_xy(x0 + 5, y0 + 5)
                 self.cell(col_width - icon_size - 15, 10, self._process_text(str(value)), align="R")
 
-                # KPI Label (Smaller Font)
                 self.set_font("Amiri", "", 11)
-                self.set_text_color(93, 109, 126) # KPI_TEXT_COLOR
+                self.set_text_color(*KPI_TEXT_COLOR)
                 self.set_xy(x0 + 5, y0 + 15)
                 self.cell(col_width - icon_size - 15, 10, self._process_text(label), align="R")
                 
-            # 4. Move the cursor down based on the original y0
             self.set_y(y0 + card_height + gap)
-
 
     def add_hall_of_fame_grid(self, heroes: dict):
         if not heroes: return
-
         drawable_width = self._get_drawable_width()
         num_cols = 4
-        gap = 4 # The space between cards
+        gap = 4
         col_width = (drawable_width - (num_cols - 1) * gap) / num_cols
         card_height = 35
         
         heroes_list = list(heroes.items())
         for i in range(0, len(heroes_list), num_cols):
-            # --- START OF FIX ---
-            # 1. Save the Y position at the START of the row
             y0 = self.get_y()
-            # --- END OF FIX ---
-
             row_items = heroes_list[i : i + num_cols]
             
             for j, (title, (name, value)) in enumerate(row_items):
-                # Calculate X for each card
                 x0 = self.l_margin + j * (col_width + gap)
-
-                # Card background and border
-                self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
-                self.set_draw_color(224, 224, 224) # LINE_COLOR
-                # 2. Use the saved y0 for card's vertical position
+                self.set_fill_color(*CARD_BACKGROUND_COLOR)
+                self.set_draw_color(*LINE_COLOR)
                 self.rect(x0, y0, col_width, card_height, 'DF')
                 
-                # 3. Use y0 for all positioning calculations
-                # Hero Title
                 self.set_font("Amiri", "", 12)
-                self.set_text_color(41, 128, 185) # ACCENT_COLOR
+                self.set_text_color(*ACCENT_COLOR)
                 self.set_xy(x0 + 2, y0 + 3)
                 self.multi_cell(col_width - 4, 7, self._process_text(title), align="C")
 
-                # Hero Name
                 self.set_font("Amiri", "", 14)
-                self.set_text_color(44, 62, 80) # TITLE_COLOR
+                self.set_text_color(*TITLE_COLOR)
                 self.set_xy(x0 + 2, y0 + 15)
                 self.multi_cell(col_width - 4, 6, self._process_text(name), align="C")
 
-                # Hero Value
                 self.set_font("Amiri", "", 10)
-                self.set_text_color(93, 109, 126) # KPI_TEXT_COLOR
+                self.set_text_color(*KPI_TEXT_COLOR)
                 self.set_xy(x0 + 2, y0 + 26)
                 self.multi_cell(col_width - 4, 5, self._process_text(value), align="C")
                 
-            # 4. Move cursor down based on original y0
             self.set_y(y0 + card_height + gap)
 
     def add_dual_chart_pages(self, charts: dict):
-        """Adds pages with two charts each, ensuring a structured layout."""
-        if not charts:
-            return
-
+        if not charts: return
         chart_list = [(title, fig) for title, fig in charts.items() if fig is not None]
         
         for i in range(0, len(chart_list), 2):
-            # A new page for every pair of charts
             self.add_page_with_background(use_background=False)
             
-            # --- First Chart (Top) ---
             title1, fig1 = chart_list[i]
             self.add_section_title(title1)
             self.add_plot(fig1)
-            self.ln(10) # Spacing
+            self.ln(10)
 
-            # --- Second Chart (Bottom), if it exists ---
             if i + 1 < len(chart_list):
                 title2, fig2 = chart_list[i+1]
                 self.add_section_title(title2)
                 self.add_plot(fig2)
 
     def add_dashboard_report(self, data: dict):
-        """Generates a full dashboard report with the new structured and professional layout."""
         if not self.font_loaded:
             st.error("Font not loaded, cannot generate PDF report.")
             return
         
-        # --- PAGE 1: COVER PAGE ---
         self.add_page_with_background(use_background=True)
-        self.set_y(A4_HEIGHT / 2 - 40) # Start near the middle
+        self.set_y(A4_HEIGHT / 2 - 40)
         self.set_font("Amiri", "", 40)
         self.set_text_color(*TITLE_COLOR)
         self.cell(0, 25, self._process_text("تقرير ماراثون القراءة"), align="C", new_x=XPos.LMARGIN, new_y=YPos.NEXT)
@@ -331,92 +284,98 @@ class PDFReporter(FPDF):
         today_str = self._process_text(f"تاريخ الإصدار: {date.today().strftime('%Y-%m-%d')}")
         self.cell(0, 10, today_str, align="C")
 
-        # --- PAGE 2: SUMMARY (KPIs & Hall of Fame) ---
-        self.add_page_with_background(use_background=False) # Use a clean white page
-        
-        # KPIs Section
+        self.add_page_with_background(use_background=False)
         self.add_section_title("📊 مؤشرات الأداء الرئيسية")
         self.add_kpi_grid(data.get('kpis', {}))
-        
-        self.ln(15) # Add extra space between sections
-
-        # Hall of Fame Section
+        self.ln(15)
         self.add_section_title("🌟 لوحة شرف الأبطال")
         self.add_hall_of_fame_grid(data.get('heroes', {}))
 
-        # --- SUBSEQUENT PAGES: CHARTS (Two per page) ---
         self.add_dual_chart_pages(data.get('charts', {}))
 
-    # --- Other report functions remain unchanged ---
-    def add_challenge_report(self, data: dict):
-        if not self.font_loaded: return
-        try:
-            self.add_challenge_title_page(
-                title=data.get('title', ''), author=data.get('author', ''),
-                period=data.get('period', ''), duration=data.get('duration', 0)
-            )
-            self.add_participants_page(
-                all_participants=data.get('all_participants', []),
-                finishers=data.get('finishers', []), attendees=data.get('attendees', [])
-            )
-        except Exception as e:
-            st.error(f"Error generating challenge report: {e}")
+    # --- ############################################# ---
+    # --- ###      CHALLENGE REPORT SECTION         ### ---
+    # --- ############################################# ---
 
     def add_challenge_title_page(self, title, author, period, duration):
-        # ... (This function remains as is)
-        if not self.font_loaded: return
-        try:
-            self.add_page_with_background()
-            drawable_width = self._get_drawable_width()
-            content_height = (15 * 2) + 15 + (10 * 3)
-            self.set_y((A4_HEIGHT - content_height) / 2)
-            self.set_font("Amiri", "", 28)
-            self.set_text_color(*ACCENT_COLOR)
-            self.multi_cell(drawable_width, 15, self._process_text(f"تقرير تحدي:\n{title}"), align="C")
-            self.ln(15)
-            self.set_font("Amiri", "", 16)
-            self.set_text_color(80, 80, 80)
-            self.multi_cell(drawable_width, 10, self._process_text(f"تأليف: {author}"), align="C")
-            self.multi_cell(drawable_width, 10, self._process_text(f"الفترة: {period}"), align="C")
-            self.multi_cell(drawable_width, 10, self._process_text(f"مدة التحدي: {duration} يوم"), align="C")
-        except Exception as e:
-            st.warning(f"Challenge title page error: {e}")
-
+        self.add_page_with_background(use_background=True)
+        self.set_y(A4_HEIGHT / 3)
+        self.set_font("Amiri", "", 28)
+        self.set_text_color(*ACCENT_COLOR)
+        self.multi_cell(0, 15, self._process_text(f"تقرير تحدي:\n{title}"), align="C")
+        self.ln(15)
+        self.set_font("Amiri", "", 16)
+        self.set_text_color(*TITLE_COLOR)
+        self.multi_cell(0, 10, self._process_text(f"تأليف: {author}"), align="C")
+        self.multi_cell(0, 10, self._process_text(f"الفترة: {period}"), align="C")
+        self.multi_cell(0, 10, self._process_text(f"مدة التحدي: {duration} يوم"), align="C")
 
     def add_participants_page(self, all_participants, finishers, attendees):
-        # ... (This function remains as is)
-        if not self.font_loaded: return
-        try:
-            self.add_page_with_background(use_background=False) # Use white background for better readability
-            self.add_section_title("المشاركون في التحدي")
-            page_w = self._get_drawable_width()
-            col_w = page_w / 3
-            header_h, line_h = 10, 8
-            self.set_font("Amiri", "", 14)
-            self.set_fill_color(*CARD_BACKGROUND_COLOR) # Use consistent color
-            self.set_draw_color(*LINE_COLOR)
-            self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border='B', align="C", fill=True)
-            self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border='B', align="C", fill=True)
-            self.cell(col_w, header_h, self._process_text("جميع المشاركين"), border='B', align="C", fill=True)
-            self.ln(header_h)
-            self.set_font("Amiri", "", 11)
-            self.set_text_color(50,50,50)
-            max_len = max(len(all_participants), len(finishers), len(attendees))
-            for i in range(max_len):
-                p_name = all_participants[i] if i < len(all_participants) else ""
-                f_name = finishers[i] if i < len(finishers) else ""
-                a_name = attendees[i] if i < len(attendees) else ""
-                # Add alternating row colors for readability
-                if i % 2 == 0:
-                    self.set_fill_color(255, 255, 255) # White
-                else:
-                    self.set_fill_color(*CARD_BACKGROUND_COLOR) # Light Gray
-                self.cell(col_w, line_h, self._process_text(a_name), align="C", fill=True)
-                self.cell(col_w, line_h, self._process_text(f_name), align="C", fill=True)
-                self.cell(col_w, line_h, self._process_text(p_name), align="C", fill=True)
-                self.ln()
-        except Exception as e:
-            st.warning(f"Participants page error: {e}")
+        self.add_section_title("المشاركون في التحدي")
+        page_w = self._get_drawable_width()
+        col_w = page_w / 3
+        header_h, line_h = 10, 8
+        
+        self.set_font("Amiri", "", 14)
+        self.set_fill_color(*CARD_BACKGROUND_COLOR)
+        self.set_draw_color(*LINE_COLOR)
+        self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border='B', align="C", fill=True)
+        self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border='B', align="C", fill=True)
+        self.cell(col_w, header_h, self._process_text("جميع المشاركين"), border='B', align="C", fill=True)
+        self.ln(header_h)
 
+        self.set_font("Amiri", "", 11)
+        self.set_text_color(50,50,50)
+        max_len = max(len(all_participants), len(finishers), len(attendees))
+        for i in range(max_len):
+            p_name = all_participants[i] if i < len(all_participants) else ""
+            f_name = finishers[i] if i < len(finishers) else ""
+            a_name = attendees[i] if i < len(attendees) else ""
+            
+            # Auto page break before drawing a new row if space is tight
+            if self.get_y() + line_h > (self.h - self.b_margin):
+                self.add_page_with_background(use_background=False)
+                # Redraw header on new page
+                self.set_font("Amiri", "", 14)
+                self.set_fill_color(*CARD_BACKGROUND_COLOR)
+                self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border='B', align="C", fill=True)
+                self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border='B', align="C", fill=True)
+                self.cell(col_w, header_h, self._process_text("جميع المشاركين"), border='B', align="C", fill=True)
+                self.ln(header_h)
+                self.set_font("Amiri", "", 11)
 
-    
+            if i % 2 == 0: self.set_fill_color(255, 255, 255) # White
+            else: self.set_fill_color(*CARD_BACKGROUND_COLOR) # Light Gray
+                
+            self.cell(col_w, line_h, self._process_text(a_name), align="C", fill=True)
+            self.cell(col_w, line_h, self._process_text(f_name), align="C", fill=True)
+            self.cell(col_w, line_h, self._process_text(p_name), align="C", fill=True)
+            self.ln(line_h)
+
+    def add_challenge_report(self, data: dict):
+        """
+        Generates a full, multi-page report for a specific challenge.
+        """
+        if not self.font_loaded:
+            st.error("Font not loaded, cannot generate PDF report.")
+            return
+
+        # Page 1: Cover Page for the Challenge
+        self.add_challenge_title_page(
+            title=data.get('title', ''), author=data.get('author', ''),
+            period=data.get('period', ''), duration=data.get('duration', 0)
+        )
+
+        # Page 2: KPIs and Participants Summary
+        self.add_page_with_background(use_background=False)
+        self.add_section_title("📊 مؤشرات أداء التحدي")
+        self.add_kpi_grid(data.get('kpis', {}))
+        self.ln(10)
+        self.add_participants_page(
+            all_participants=data.get('all_participants', []),
+            finishers=data.get('finishers', []), 
+            attendees=data.get('attendees', [])
+        )
+
+        # Subsequent pages for all challenge-specific charts
+        self.add_dual_chart_pages(data.get('charts', {}))
