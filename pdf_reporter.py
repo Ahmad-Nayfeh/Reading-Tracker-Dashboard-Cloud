@@ -75,13 +75,17 @@ class PDFReporter(FPDF):
         return get_display(reshaped_text)
 
     def set_font(self, family, style="", size=0):
-        if self.font_loaded and family.lower() == "amiri":
+        # --- FIX: Check if 'family' is a string before calling .lower() ---
+        is_amiri = isinstance(family, str) and family.lower() == "amiri"
+        
+        if self.font_loaded and is_amiri:
             # Prevent using bold style if only regular font is loaded
             if style.upper() == 'B':
                 style = ''
             super().set_font(family, style, size)
         else:
-            super().set_font("helvetica", style, size)
+            # Let FPDF handle its internal objects (like TextEmphasis) or other fonts
+            super().set_font(family, style, size)
 
     def footer(self):
         if not self.font_loaded: return
@@ -133,6 +137,9 @@ class PDFReporter(FPDF):
 
     def add_section_title(self, title):
         """Adds a styled title for a new section."""
+        if self.get_y() > 200: # Add a new page if the title is too low
+            self.add_page_with_background()
+            
         self.ln(10)
         self.set_font("Amiri", "", 22)
         self.set_text_color(*TITLE_COLOR)
@@ -202,7 +209,6 @@ class PDFReporter(FPDF):
                     self.set_xy(x + 2, y + 4)
                     self.multi_cell(col_width - 8, 8, self._process_text(title), align="C")
 
-                    # --- FIX: Changed from "B" (Bold) to "" (Regular) ---
                     self.set_font("Amiri", "", 14) 
                     self.set_text_color(*TITLE_COLOR)
                     self.set_xy(x + 2, y + 15)
