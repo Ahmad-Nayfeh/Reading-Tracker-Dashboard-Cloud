@@ -73,7 +73,7 @@ st.markdown("""
             padding: 15px;
             background: rgba(255, 255, 255, 0.3);
             border-radius: 15px;
-            height: 150px;
+            height: 160px;
             display: flex;
             flex-direction: column;
             justify-content: center;
