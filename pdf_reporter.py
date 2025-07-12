@@ -208,7 +208,9 @@ class PDFReporter(FPDF):
                 # Draw the card background
                 self.set_fill_color(248, 249, 250) # CARD_BACKGROUND_COLOR
                 # 2. Use the saved y0 for the card's vertical position
-                self.rect(x0, y0, col_width, card_height, 'F')
+                # self.rect(x0, y0, col_width, card_height, 'F')
+                self.set_draw_color(224, 224, 224) # LINE_COLOR
+                self.rect(x0, y0, col_width, card_height, 'DF')
                 
                 # Draw the accent line on the right
                 self.set_draw_color(41, 128, 185) # ACCENT_COLOR
@@ -384,36 +386,67 @@ class PDFReporter(FPDF):
 
 
     def add_participants_page(self, all_participants, finishers, attendees):
-        # ... (This function remains as is)
-        if not self.font_loaded: return
+        if not self.font_loaded:
+            return
         try:
-            self.add_page_with_background(use_background=False) # Use white background for better readability
+            self.add_page_with_background(use_background=False)
             self.add_section_title("المشاركون في التحدي")
             page_w = self._get_drawable_width()
             col_w = page_w / 3
             header_h, line_h = 10, 8
+
+            # Table Header
             self.set_font("Amiri", "", 14)
-            self.set_fill_color(*CARD_BACKGROUND_COLOR) # Use consistent color
-            self.set_draw_color(*LINE_COLOR)
-            self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border='B', align="C", fill=True)
-            self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border='B', align="C", fill=True)
-            self.cell(col_w, header_h, self._process_text("جميع المشاركين"), border='B', align="C", fill=True)
+            self.set_fill_color(68, 84, 106) # لون رأس أغمق
+            self.set_text_color(255, 255, 255) # نص أبيض
+            self.cell(col_w, header_h, self._process_text("من حضروا النقاش"), border=0, align="C", fill=True)
+            self.cell(col_w, header_h, self._process_text("من أنهوا الكتاب"), border=0, align="C", fill=True)
+            self.cell(col_w, header_h, self._process_text("جميع المشاركين"), border=0, align="C", fill=True)
             self.ln(header_h)
+
+            # Table Body
             self.set_font("Amiri", "", 11)
             self.set_text_color(50,50,50)
             max_len = max(len(all_participants), len(finishers), len(attendees))
+            
             for i in range(max_len):
+                # --- START OF AESTHETIC CHANGE ---
+                # Alternating row colors for better readability
+                if i % 2 == 0:
+                    self.set_fill_color(248, 249, 250) # Light Gray
+                else:
+                    self.set_fill_color(255, 255, 255) # White
+                # --- END OF AESTHETIC CHANGE ---
+
                 p_name = all_participants[i] if i < len(all_participants) else ""
                 f_name = finishers[i] if i < len(finishers) else ""
                 a_name = attendees[i] if i < len(attendees) else ""
-                # Add alternating row colors for readability
-                if i % 2 == 0:
-                    self.set_fill_color(255, 255, 255) # White
-                else:
-                    self.set_fill_color(*CARD_BACKGROUND_COLOR) # Light Gray
-                self.cell(col_w, line_h, self._process_text(a_name), align="C", fill=True)
-                self.cell(col_w, line_h, self._process_text(f_name), align="C", fill=True)
-                self.cell(col_w, line_h, self._process_text(p_name), align="C", fill=True)
-                self.ln()
+                
+                # Draw cells for the row, ensuring fill is True
+                self.cell(col_w, line_h, self._process_text(a_name), align="C", fill=True, border='LR')
+                self.cell(col_w, line_h, self._process_text(f_name), align="C", fill=True, border='LR')
+                self.cell(col_w, line_h, self._process_text(p_name), align="C", fill=True, border='LR')
+                self.ln(line_h)
+                
+            # Add a bottom line to close the table
+            self.line(self.l_margin, self.get_y(), self.w - self.r_margin, self.get_y())
+
         except Exception as e:
             st.warning(f"Participants page error: {e}")
+
+
+    def header(self):
+        # لا تقم بإضافة رأس لصفحة الغلاف (صفحة رقم 1)
+        if self.page_no() == 1:
+            return
+        
+        # إضافة شعار إذا كان موجودًا (اختياري)
+        # if os.path.exists("logo.png"):
+        #     self.image("logo.png", x=10, y=8, w=30)
+            
+        # إضافة خط فاصل أنيق في الأعلى
+        self.set_draw_color(224, 224, 224) # LINE_COLOR
+        self.line(self.l_margin, 20, self.w - self.r_margin, 20)
+        
+        # اترك مسافة كافية بعد الرأس قبل بدء المحتوى
+        self.set_y(25)
