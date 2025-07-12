@@ -6,6 +6,8 @@ import chart_generator as charts # <-- استيراد الوحدة الجديد�
 from pdf_reporter import PDFReporter
 import auth_manager
 import style_manager
+import plotly.graph_objects as go
+
 
 style_manager.apply_sidebar_styles()
 
