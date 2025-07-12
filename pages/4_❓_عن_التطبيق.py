@@ -12,279 +12,84 @@ st.set_page_config(
     layout="wide"
 )
 
-# Enhanced CSS with modern design and animations
+# This CSS snippet enforces RTL and adds custom styles for the expander component
 st.markdown("""
     <style>
-        /* --- Import Google Fonts --- */
-        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@300;400;500;600;700;800;900&display=swap');
-        
         /* --- Base RTL and Font Fixes --- */
-        .stApp { 
-            direction: rtl; 
-            font-family: 'Tajawal', sans-serif;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            min-height: 100vh;
-        }
+        .stApp { direction: rtl; }
         [data-testid="stSidebar"] { direction: rtl; }
         h1, h2, h3, h4, h5, h6, p, li { text-align: right !important; }
 
-        /* --- Animated Background Particles --- */
-        .stApp::before {
-            content: '';
-            position: fixed;
-            top: 0;
-            left: 0;
-            width: 100%;
-            height: 100%;
-            background: 
-                radial-gradient(circle at 20% 80%, rgba(120, 119, 198, 0.3) 0%, transparent 50%),
-                radial-gradient(circle at 80% 20%, rgba(255, 255, 255, 0.1) 0%, transparent 50%),
-                radial-gradient(circle at 40% 40%, rgba(120, 119, 198, 0.2) 0%, transparent 50%);
-            animation: float 20s ease-in-out infinite;
-            pointer-events: none;
-            z-index: -1;
-        }
-
-        @keyframes float {
-            0%, 100% { transform: translateY(0px) rotate(0deg); }
-            33% { transform: translateY(-20px) rotate(1deg); }
-            66% { transform: translateY(-10px) rotate(-1deg); }
-        }
-
-        /* --- Main Container --- */
-        .main .block-container {
-            background: rgba(255, 255, 255, 0.95);
-            backdrop-filter: blur(20px);
-            border-radius: 25px;
-            padding: 40px;
-            margin-top: 20px;
-            box-shadow: 
-                0 25px 50px rgba(0, 0, 0, 0.1),
-                0 0 0 1px rgba(255, 255, 255, 0.2);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-        }
-
-        /* --- Enhanced Title with Gradient and Animation --- */
-        .main-title {
-            text-align: center;
-            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            font-weight: 900;
-            font-size: 3.5em;
-            margin-bottom: 20px;
-            position: relative;
-            animation: titleGlow 3s ease-in-out infinite alternate;
-        }
-
-        @keyframes titleGlow {
-            0% { filter: drop-shadow(0 0 20px rgba(102, 126, 234, 0.3)); }
-            100% { filter: drop-shadow(0 0 30px rgba(102, 126, 234, 0.6)); }
-        }
-
-        .main-title::after {
-            content: '';
-            position: absolute;
-            bottom: -10px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: 120px;
-            height: 4px;
-            background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
-            border-radius: 2px;
-            animation: shimmer 2s linear infinite;
-        }
-
-        @keyframes shimmer {
-            0% { opacity: 0.5; transform: translateX(-50%) scaleX(0.8); }
-            50% { opacity: 1; transform: translateX(-50%) scaleX(1.2); }
-            100% { opacity: 0.5; transform: translateX(-50%) scaleX(0.8); }
-        }
-
-        /* --- Enhanced Intro Text with Glassmorphism --- */
-        .intro-text {
-            font-size: 1.3em;
-            color: #2c3e50;
-            text-align: center;
-            padding: 30px;
-            background: rgba(255, 255, 255, 0.7);
-            backdrop-filter: blur(15px);
-            border-radius: 20px;
-            margin: 30px 0;
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            box-shadow: 
-                0 15px 35px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
-            position: relative;
-            overflow: hidden;
-            animation: fadeInUp 0.8s ease-out;
-        }
-
-        .intro-text::before {
-            content: '';
-            position: absolute;
-            top: -50%;
-            left: -50%;
-            width: 200%;
-            height: 200%;
-            background: linear-gradient(45deg, transparent, rgba(255, 255, 255, 0.1), transparent);
-            animation: shine 3s linear infinite;
-        }
-
-        @keyframes fadeInUp {
-            from { opacity: 0; transform: translateY(30px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        @keyframes shine {
-            0% { transform: translateX(-100%) translateY(-100%) rotate(45deg); }
-            100% { transform: translateX(100%) translateY(100%) rotate(45deg); }
-        }
-
-        /* --- Revolutionary Expander Design --- */
+        /* --- Custom Expander Styles (Enhanced Design) --- */
         div[data-testid="stExpander"] {
-            background: linear-gradient(135deg, rgba(255, 255, 255, 0.9) 0%, rgba(255, 255, 255, 0.7) 100%);
-            backdrop-filter: blur(20px);
-            border: 1px solid rgba(255, 255, 255, 0.3);
-            border-radius: 25px;
-            box-shadow: 
-                0 20px 40px rgba(0, 0, 0, 0.1),
-                inset 0 1px 0 rgba(255, 255, 255, 0.6);
-            margin: 20px 0;
-            transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border: 1px solid #e3e6ea;
+            border-radius: 16px;
+            box-shadow: 0 8px 25px rgba(0, 0, 0, 0.06);
+            margin: 12px 0;
+            transition: all 0.3s ease;
             overflow: hidden;
             position: relative;
-            animation: slideInRight 0.6s ease-out;
-        }
-
-        div[data-testid="stExpander"]:nth-child(odd) {
-            animation: slideInLeft 0.6s ease-out;
-        }
-
-        @keyframes slideInRight {
-            from { opacity: 0; transform: translateX(50px); }
-            to { opacity: 1; transform: translateX(0); }
-        }
-
-        @keyframes slideInLeft {
-            from { opacity: 0; transform: translateX(-50px); }
-            to { opacity: 1; transform: translateX(0); }
         }
 
         div[data-testid="stExpander"]:hover {
-            transform: translateY(-8px) scale(1.02);
-            box-shadow: 
-                0 30px 60px rgba(0, 0, 0, 0.15),
-                inset 0 1px 0 rgba(255, 255, 255, 0.8);
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.1);
+            transform: translateY(-2px);
         }
 
-        /* --- Animated Gradient Border --- */
+        /* Elegant gradient accent line */
         div[data-testid="stExpander"]::before {
             content: '';
             position: absolute;
-            top: -2px;
-            right: -2px;
-            left: -2px;
-            bottom: -2px;
-            background: linear-gradient(45deg, #667eea, #764ba2, #667eea);
-            border-radius: 27px;
-            z-index: -1;
-            animation: rotateBorder 3s linear infinite;
+            top: 0;
+            right: 0;
+            left: 0;
+            height: 4px;
+            background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
+            border-radius: 16px 16px 0 0;
         }
 
-        @keyframes rotateBorder {
-            0% { background: linear-gradient(45deg, #667eea, #764ba2, #667eea); }
-            33% { background: linear-gradient(45deg, #764ba2, #667eea, #764ba2); }
-            66% { background: linear-gradient(45deg, #667eea, #764ba2, #667eea); }
-            100% { background: linear-gradient(45deg, #764ba2, #667eea, #764ba2); }
-        }
-
-        /* --- Enhanced Expander Header --- */
+        /* Style for the expander header */
         div[data-testid="stExpander"] summary {
-            font-size: 1.6em !important;
-            font-weight: 800;
-            background: linear-gradient(135deg, #2c3e50 0%, #4a6741 100%);
-            -webkit-background-clip: text;
-            -webkit-text-fill-color: transparent;
-            background-clip: text;
-            padding: 25px 30px;
-            margin: 0;
+            font-size: 1.4em !important;
+            font-weight: 700;
+            color: #2c3e50;
+            padding: 20px 25px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 0 0 12px 12px;
+            margin-bottom: 5px;
             position: relative;
-            cursor: pointer;
-            transition: all 0.3s ease;
         }
 
-        div[data-testid="stExpander"] summary:hover {
-            transform: translateX(-5px);
-        }
-
-        /* --- Floating Icon Animation --- */
+        /* Subtle icon enhancement */
         div[data-testid="stExpander"] summary::before {
             content: '';
             position: absolute;
-            right: 30px;
+            right: 25px;
             top: 50%;
             transform: translateY(-50%);
-            width: 12px;
-            height: 12px;
-            background: radial-gradient(circle, #667eea 0%, #764ba2 100%);
+            width: 6px;
+            height: 6px;
+            background: #667eea;
             border-radius: 50%;
-            box-shadow: 
-                0 0 0 0 rgba(102, 126, 234, 0.7),
-                0 0 20px rgba(102, 126, 234, 0.3);
-            animation: pulse 2s infinite;
+            box-shadow: 0 0 0 8px rgba(102, 126, 234, 0.1);
         }
-
-        @keyframes pulse {
-            0% {
-                transform: translateY(-50%) scale(0.95);
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0.7);
-            }
-            70% {
-                transform: translateY(-50%) scale(1);
-                box-shadow: 0 0 0 10px rgba(102, 126, 234, 0);
-            }
-            100% {
-                transform: translateY(-50%) scale(0.95);
-                box-shadow: 0 0 0 0 rgba(102, 126, 234, 0);
-            }
-        }
-
-        /* --- Enhanced Content Area --- */
+        
+        /* Style for the expander content area */
         div[data-testid="stExpander"] [data-testid="stExpanderDetails"] {
-            padding: 30px;
-            background: rgba(255, 255, 255, 0.6);
-            backdrop-filter: blur(10px);
-            border-radius: 0 0 25px 25px;
-            position: relative;
+            padding: 5px 30px 25px 30px;
+            background: rgba(255, 255, 255, 0.95);
         }
 
-        div[data-testid="stExpander"] [data-testid="stExpanderDetails"]::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: 30px;
-            right: 30px;
-            height: 1px;
-            background: linear-gradient(90deg, transparent, rgba(102, 126, 234, 0.3), transparent);
-        }
-
-        /* --- Enhanced Section Headers --- */
+        /* --- Enhanced Content Styles --- */
         .section-content h4 {
             color: #1a5276;
-            font-size: 1.4em;
-            font-weight: 700;
-            margin-top: 30px;
-            margin-bottom: 15px;
+            font-size: 1.2em;
+            font-weight: 600;
+            margin-top: 25px;
+            margin-bottom: 12px;
             position: relative;
-            padding-right: 20px;
-            transition: all 0.3s ease;
-        }
-
-        .section-content h4:hover {
-            color: #667eea;
-            transform: translateX(-5px);
+            padding-right: 15px;
         }
 
         .section-content h4::before {
@@ -293,181 +98,96 @@ st.markdown("""
             right: 0;
             top: 50%;
             transform: translateY(-50%);
-            width: 6px;
-            height: 25px;
+            width: 4px;
+            height: 20px;
             background: linear-gradient(135deg, #667eea, #764ba2);
-            border-radius: 3px;
-            box-shadow: 0 0 15px rgba(102, 126, 234, 0.4);
+            border-radius: 2px;
         }
-
-        /* --- Enhanced Text Styling --- */
+        
         .section-content p, .section-content li {
-            font-size: 1.1em !important;
-            line-height: 1.9 !important;
-            color: #2c3e50;
+            font-size: 1.05em !important;
+            line-height: 1.8 !important;
+            color: #34495e;
             font-weight: 400;
-            transition: all 0.3s ease;
         }
-
-        .section-content p:hover, .section-content li:hover {
-            color: #1a5276;
-            transform: translateX(-3px);
-        }
-
-        /* --- Enhanced List Styling --- */
+        
         .section-content ul {
             list-style: none;
             padding-right: 0;
-            margin-bottom: 25px;
+            margin-bottom: 20px;
+        }
+        
+        .section-content li {
+            margin-bottom: 12px;
+            padding-right: 25px;
+            position: relative;
+            transition: all 0.2s ease;
         }
 
-        .section-content li {
-            margin-bottom: 15px;
-            padding-right: 30px;
-            position: relative;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        .section-content li:hover {
+            color: #2c3e50;
+            transform: translateX(-3px);
         }
 
         .section-content li::before {
             content: '';
             position: absolute;
             right: 0;
-            top: 15px;
-            width: 10px;
-            height: 10px;
+            top: 12px;
+            width: 8px;
+            height: 8px;
             background: linear-gradient(135deg, #667eea, #764ba2);
             border-radius: 50%;
-            box-shadow: 
-                0 0 0 0 rgba(102, 126, 234, 0.7),
-                0 4px 8px rgba(102, 126, 234, 0.3);
-            animation: listPulse 3s infinite;
+            box-shadow: 0 2px 4px rgba(102, 126, 234, 0.3);
         }
-
-        @keyframes listPulse {
-            0%, 100% { transform: scale(1); }
-            50% { transform: scale(1.2); box-shadow: 0 0 0 5px rgba(102, 126, 234, 0); }
-        }
-
-        /* --- Enhanced Strong Text --- */
+        
         .section-content b, .section-content strong {
-            color: #667eea;
-            font-weight: 700;
-            text-shadow: 0 1px 2px rgba(102, 126, 234, 0.2);
+            color: #1a5276;
+            font-weight: 600;
         }
-
-        /* --- Enhanced Contact Links --- */
+        
         .contact-links a {
             text-decoration: none;
             color: #667eea;
-            font-weight: 600;
-            transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-            padding: 8px 15px;
-            border-radius: 20px;
-            background: linear-gradient(135deg, rgba(102, 126, 234, 0.1), rgba(118, 75, 162, 0.1));
-            border: 1px solid rgba(102, 126, 234, 0.2);
-            display: inline-block;
-            margin: 2px;
-            position: relative;
-            overflow: hidden;
+            font-weight: 500;
+            transition: all 0.3s ease;
+            padding: 2px 8px;
+            border-radius: 6px;
         }
-
-        .contact-links a::before {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 100%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.4), transparent);
-            transition: left 0.5s ease;
-        }
-
         .contact-links a:hover {
-            transform: translateY(-2px) scale(1.05);
-            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.3);
-            border-color: #667eea;
+            background: rgba(102, 126, 234, 0.1);
+            color: #4c63d2;
+            transform: translateX(-2px);
         }
 
-        .contact-links a:hover::before {
-            left: 100%;
+        /* Enhanced intro text */
+        .intro-text {
+            font-size: 1.15em;
+            color: #5D6D7E;
+            text-align: center;
+            padding: 20px;
+            background: rgba(255, 255, 255, 0.8);
+            border-radius: 12px;
+            margin: 20px 0;
+            box-shadow: 0 4px 12px rgba(0, 0, 0, 0.05);
         }
 
-        /* --- Enhanced Custom Divider --- */
+        /* Custom divider */
         .custom-divider {
-            height: 3px;
-            background: linear-gradient(90deg, transparent, #667eea, #764ba2, transparent);
-            margin: 40px 0;
+            height: 2px;
+            background: linear-gradient(90deg, transparent, #667eea, transparent);
+            margin: 30px 0;
             border-radius: 2px;
-            position: relative;
-            overflow: hidden;
         }
 
-        .custom-divider::after {
-            content: '';
-            position: absolute;
-            top: 0;
-            left: -100%;
-            width: 50%;
-            height: 100%;
-            background: linear-gradient(90deg, transparent, rgba(255, 255, 255, 0.8), transparent);
-            animation: dividerShine 2s linear infinite;
+        /* Enhanced title styling */
+        .main-title {
+            text-align: center;
+            color: #2c3e50;
+            font-weight: 700;
+            margin-bottom: 10px;
+            text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
-
-        @keyframes dividerShine {
-            0% { left: -100%; }
-            100% { left: 100%; }
-        }
-
-        /* --- Responsive Design --- */
-        @media (max-width: 768px) {
-            .main-title {
-                font-size: 2.5em;
-            }
-            
-            .intro-text {
-                font-size: 1.1em;
-                padding: 20px;
-            }
-            
-            .main .block-container {
-                padding: 20px;
-                margin-top: 10px;
-            }
-            
-            div[data-testid="stExpander"] {
-                margin: 15px 0;
-            }
-            
-            div[data-testid="stExpander"] summary {
-                font-size: 1.3em !important;
-                padding: 20px;
-            }
-        }
-
-        /* --- Loading Animation --- */
-        @keyframes fadeIn {
-            from { opacity: 0; }
-            to { opacity: 1; }
-        }
-
-        .stApp {
-            animation: fadeIn 0.8s ease-out;
-        }
-
-        /* --- Scroll Animations --- */
-        div[data-testid="stExpander"] {
-            animation-delay: calc(var(--animation-order, 0) * 0.1s);
-        }
-
-        div[data-testid="stExpander"]:nth-child(1) { --animation-order: 1; }
-        div[data-testid="stExpander"]:nth-child(2) { --animation-order: 2; }
-        div[data-testid="stExpander"]:nth-child(3) { --animation-order: 3; }
-        div[data-testid="stExpander"]:nth-child(4) { --animation-order: 4; }
-        div[data-testid="stExpander"]:nth-child(5) { --animation-order: 5; }
-        div[data-testid="stExpander"]:nth-child(6) { --animation-order: 6; }
-        div[data-testid="stExpander"]:nth-child(7) { --animation-order: 7; }
-        div[data-testid="stExpander"]:nth-child(8) { --animation-order: 8; }
-        div[data-testid="stExpander"]:nth-child(9) { --animation-order: 9; }
     </style>
 """, unsafe_allow_html=True)
 
