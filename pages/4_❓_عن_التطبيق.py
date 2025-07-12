@@ -3,6 +3,7 @@ import db_manager as db
 import auth_manager
 
 import style_manager  # <-- السطر الأول
+import textwrap
 
 style_manager.apply_sidebar_styles()  # <-- السطر الثاني
 
@@ -13,7 +14,7 @@ st.set_page_config(
 )
 
 # This CSS snippet enforces RTL and adds custom styles for the expander component
-st.markdown("""
+st.markdown(textwrap.dedent("""
     <style>
         /* --- Base RTL and Font Fixes --- */
         .stApp { direction: rtl; }
@@ -189,7 +190,7 @@ st.markdown("""
             text-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
         }
     </style>
-""", unsafe_allow_html=True)
+"""), unsafe_allow_html=True)
 
 
 # --- UNIFIED AUTHENTICATION BLOCK ---
