@@ -75,12 +75,13 @@ class PDFReporter(FPDF):
         return get_display(reshaped_text)
 
     def set_font(self, family, style="", size=0):
-        # --- FIX: Check if 'family' is a string before calling .lower() ---
+        # --- FINAL FIX: Check if 'family' and 'style' are strings before calling methods on them ---
         is_amiri = isinstance(family, str) and family.lower() == "amiri"
-        
+        is_bold_style = isinstance(style, str) and style.upper() == 'B'
+
         if self.font_loaded and is_amiri:
             # Prevent using bold style if only regular font is loaded
-            if style.upper() == 'B':
+            if is_bold_style:
                 style = ''
             super().set_font(family, style, size)
         else:
