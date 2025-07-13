@@ -239,6 +239,12 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
     if members_df.empty or 'members_id' not in members_df.columns:
         return ["لا يمكن عرض الأخبار، بيانات الأعضاء غير متوفرة."]
 
+
+    if period_achievements_df.empty:
+        news_list.append(f"🏃‍♂️ <b>السباق محتدم:</b> لا يزال الجميع يتنافس لإنهاء كتاب '{book_title}'. من سيكون أول المنجزين؟")
+        return news_list
+    
+    
     finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
     
     if not finishers_df.empty:
