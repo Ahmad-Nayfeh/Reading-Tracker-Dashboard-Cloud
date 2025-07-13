@@ -264,9 +264,10 @@ with st.expander("💡 أسئلة شائعة وملاحظات هامة"):
 with st.expander("🧑‍💻 عن المطور"):
     st.write("**الاسم:** احمد نايفه")
     st.write("**الهدف من المشروع:** توفير أداة عصرية ومحفزة للمجموعات القرائية في الوطن العربي، لتعزيز ثقافة القراءة وجعلها تجربة تفاعلية وممتعة.")
-    st.subheader("للتواصل والدعم الفني")
+    st.subheader("للتواصل والمساهمة")
     st.markdown("""
     - **البريد الإلكتروني:** [ahmadnayfeh2000@gmail.com](mailto:ahmadnayfeh2000@gmail.com)
-    - **Portfolio:** [ahmadnayfeh.vercel.app](https://ahmadnayfeh.vercel.app/)
-    - **LinkedIn:** [in/ahmad-nayfeh2000](https://www.linkedin.com/in/ahmad-nayfeh2000/)
+    - **المعرض الشخصي (Portfolio):** [ahmadnayfeh.vercel.app](https://ahmadnayfeh.vercel.app/)
+    - **حساب لينكدإن:** [in/ahmad-nayfeh2000](https://www.linkedin.com/in/ahmad-nayfeh2000/)
+    - **مستودع المشروع (GitHub):** [Reading-Tracker-Dashboard-Cloud](https://github.com/Ahmad-Nayfeh/Reading-Tracker-Dashboard-Cloud)
     """)
