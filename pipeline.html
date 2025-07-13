@@ -1,0 +1,192 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>الهيكل المعماري لنظام ماراثون القراءة</title>
+    <!-- Tailwind CSS for rapid styling -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Google Fonts for a nice Arabic font -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap" rel="stylesheet">
+    
+    <style>
+        /* Custom styles to complement Tailwind */
+        body {
+            font-family: 'Tajawal', sans-serif;
+        }
+
+        /* Styling for the connecting arrows */
+        .step-connector {
+            position: relative;
+            height: 60px; /* Space for the arrow */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        .step-connector::after {
+            content: '▼'; /* Using a character for the arrow */
+            font-size: 2.5rem;
+            color: #cbd5e1; /* A light gray color */
+            animation: bounce 2s infinite;
+        }
+
+        /* Keyframe animation for the bouncing arrow */
+        @keyframes bounce {
+            0%, 20%, 50%, 80%, 100% {
+                transform: translateY(0);
+            }
+            40% {
+                transform: translateY(-20px);
+            }
+            60% {
+                transform: translateY(-10px);
+            }
+        }
+
+        /* Custom gradient for the background */
+        .gradient-bg {
+            background-color: #8EC5FC;
+            background-image: linear-gradient(62deg, #8EC5FC 0%, #E0C3FC 100%);
+        }
+    </style>
+</head>
+<body class="gradient-bg p-4 md:p-8">
+
+    <div class="max-w-7xl mx-auto bg-white/90 backdrop-blur-sm rounded-2xl shadow-2xl p-6 md:p-10">
+        
+        <header class="text-center mb-12">
+            <h1 class="text-3xl md:text-5xl font-bold text-gray-800">
+                🏃‍♂️ الهيكل المعماري لنظام ماراثون القراءة
+            </h1>
+            <p class="text-lg text-gray-600 mt-4">رحلة البيانات من الإدخال إلى الرؤية التحليلية</p>
+        </header>
+
+        <div class="flex flex-col items-center">
+
+            <!-- Step 1: User Input -->
+            <div id="step-1" class="w-full bg-blue-500 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 1: نقطة البداية (الإدخال)</h2>
+                    <span class="bg-white/30 text-blue-900 font-bold py-1 px-3 rounded-full">المستخدم النهائي</span>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">📱 القارئ</h3>
+                        <p class="mt-2 opacity-90">يقوم العضو بملء النموذج يومياً من أي جهاز.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">📝 نموذج جوجل (Google Form)</h3>
+                        <p class="mt-2 opacity-90">واجهة سهلة ومألوفة لجمع البيانات الأولية.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-connector"></div>
+
+            <!-- Step 2: Raw Data Staging -->
+            <div id="step-2" class="w-full bg-teal-500 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 2: التخزين المؤقت للبيانات الخام</h2>
+                    <span class="bg-white/30 text-teal-900 font-bold py-1 px-3 rounded-full">مستودع البيانات</span>
+                </div>
+                <div class="grid md:grid-cols-1 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">📊 جدول بيانات جوجل (Google Sheets)</h3>
+                        <p class="mt-2 opacity-90">تعمل كمستودع للبيانات الخام (Raw Data) كما تم إدخالها.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-connector"></div>
+
+            <!-- Step 3: Admin & Authentication -->
+            <div id="step-3" class="w-full bg-indigo-500 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 3: بوابة التحكم والمصادقة</h2>
+                    <span class="bg-white/30 text-indigo-900 font-bold py-1 px-3 rounded-full">الواجهة الإدارية</span>
+                </div>
+                <div class="grid md:grid-cols-2 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">👤 المشرف</h3>
+                        <p class="mt-2 opacity-90">يبدأ عملية المزامنة ويتحكم في النظام.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">🔐 Google OAuth 2.0</h3>
+                        <p class="mt-2 opacity-90">نظام مصادقة آمن للتحقق من هوية المشرف.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-connector"></div>
+
+            <!-- Step 4: ETL Pipeline -->
+            <div id="step-4" class="w-full bg-purple-600 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 4: المحرك الرئيسي (ETL Pipeline)</h2>
+                    <span class="bg-white/30 text-purple-900 font-bold py-1 px-3 rounded-full">معالجة البيانات</span>
+                </div>
+                <div class="grid md:grid-cols-3 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">⚙️ الاستخلاص (Extract)</h3>
+                        <p class="mt-2 opacity-90">سحب البيانات الخام من Google Sheets.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">🔄 التحويل (Transform)</h3>
+                        <p class="mt-2 opacity-90">تنظيف ومعالجة البيانات باستخدام Pandas.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">💾 التحميل (Load)</h3>
+                        <p class="mt-2 opacity-90">تحميل البيانات النظيفة إلى Firestore.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-connector"></div>
+            
+            <!-- Step 5: Persistent Storage -->
+            <div id="step-5" class="w-full bg-amber-500 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 5: التخزين الدائم والمنظم</h2>
+                    <span class="bg-white/30 text-amber-900 font-bold py-1 px-3 rounded-full">قاعدة البيانات</span>
+                </div>
+                <div class="grid md:grid-cols-1 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">🔥 Google Firestore</h3>
+                        <p class="mt-2 opacity-90">قاعدة بيانات NoSQL سريعة وآمنة لتخزين البيانات التحليلية والمجمعة.</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="step-connector"></div>
+
+            <!-- Step 6: Presentation Layer -->
+            <div id="step-6" class="w-full bg-pink-500 text-white rounded-xl shadow-lg p-6 transform hover:scale-105 transition-transform duration-300">
+                <div class="flex justify-between items-center mb-4">
+                    <h2 class="text-2xl font-bold">الخطوة 6: طبقة العرض والتحليل</h2>
+                    <span class="bg-white/30 text-pink-900 font-bold py-1 px-3 rounded-full">الرؤى والنتائج</span>
+                </div>
+                <div class="grid md:grid-cols-3 gap-4 text-center">
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">🌟 Streamlit App</h3>
+                        <p class="mt-2 opacity-90">قراءة البيانات من Firestore وعرضها.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">📊 Plotly Dashboards</h3>
+                        <p class="mt-2 opacity-90">رسوم بيانية تفاعلية لعرض الرؤى.</p>
+                    </div>
+                    <div class="bg-white/20 p-4 rounded-lg">
+                        <h3 class="text-xl font-semibold">📄 PDF Reports</h3>
+                        <p class="mt-2 opacity-90">تصدير تقارير احترافية قابلة للمشاركة.</p>
+                    </div>
+                </div>
+            </div>
+
+        </div>
+
+    </div>
+
+</body>
+</html>
