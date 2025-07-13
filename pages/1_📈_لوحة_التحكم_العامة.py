@@ -169,7 +169,12 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
 
     # Filter data up to the target date
     logs_past = logs_df[logs_df['submission_date_dt'].dt.date <= target_date]
-    achievements_past = achievements_df[achievements_df['achievement_date_dt'].dt.date <= target_date]
+    
+    if not achievements_df.empty:
+        achievements_past = achievements_df[achievements_df['achievement_date_dt'].dt.date <= target_date]
+    else:
+        # Create an empty DataFrame if there are no achievements
+        achievements_past = pd.DataFrame()
 
     if logs_past.empty:
         return {}
