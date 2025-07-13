@@ -447,7 +447,7 @@ def get_winners(df, column, name_col='name'):
         return "لا يوجد", 0
         
     winners_df = df[df[column] == max_value]
-    winner_names = winners_df[name_col].tolist()
+    winner_names = winners_df[name_col].unique().tolist()
     
     return ", ".join(winner_names), max_value
 
