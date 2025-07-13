@@ -481,7 +481,8 @@ if not member_stats_df.empty and not logs_df.empty and 'name' in member_stats_df
     heroes_data_for_pdf["الديدان القارئ"] = (winner_name, value_str)
 
     # 4. Pearl Hunter (Total Quotes)
-    winner_name, max_val = get_winners(member_stats_df, 'total_quotes_submitted')
+    quotes_sum = logs_with_names.groupby('name')['total_quotes_submitted'].sum().reset_index()
+    winner_name, max_val = get_winners(quotes_sum, 'total_quotes_submitted')
     value_str = f"{int(max_val)} اقتباساً"
     display_hero(heroes_col4, "💎 صائد الدرر", winner_name, value_str)
     heroes_data_for_pdf["صائد الدرر"] = (winner_name, value_str)
