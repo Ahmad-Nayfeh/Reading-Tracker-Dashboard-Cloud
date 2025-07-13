@@ -35,7 +35,7 @@ st.markdown("""
         .main-title {
             text-align: center;
             font-weight: 700;
-            margin-bottom: 5px;
+            margin-bottom: 25px;
             font-size: 3em; /* Larger main title */
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
@@ -62,7 +62,7 @@ st.markdown("""
             border: none;
             border-radius: 12px;
             box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.1), 0 2px 4px -1px rgba(0, 0, 0, 0.06);
-            margin: 20px 0 !important;
+            margin: 5px 0 !important;
             overflow: hidden;
             background-color: #ffffff;
             transition: box-shadow 0.3s ease-in-out;
