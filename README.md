@@ -1,38 +1,3 @@
-
-
-
-          
-سأقوم بتحليل الملفات الثلاثة لإنشاء ملف README نهائي شامل وجذاب. سأبدأ بقراءة محتوى الملفات لفهم المشروع بشكل كامل.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: d:\Coding\GitHub\Reading-Tracker-Dashboard-Cloud\readme2.md
-d:\Coding\GitHub\Reading-Tracker-Dashboard-Cloud\README.md
-d:\Coding\GitHub\Reading-Tracker-Dashboard-Cloud\pages\4_❓_عن_التطبيق.py
-          
-سأقوم بقراءة المزيد من محتوى ملف عن التطبيق لفهم كامل المعلومات المتاحة قبل إنشاء ملف README النهائي.
-        
-            
-toolName: view_files
-            
-status: success
-          
-            
-filePath: d:\Coding\GitHub\Reading-Tracker-Dashboard-Cloud\pages\4_❓_عن_التطبيق.py
-          
-سأقوم بفحص محتويات مجلد الصور للتأكد من وجود الصور التي سأستخدمها في ملف README النهائي.
-        
-            
-toolName: view_folder
-            
-status: success
-          
-d:\Coding\GitHub\Reading-Tracker-Dashboard-Cloud\images
-          
 # 🏃‍♂️ ماراثون القراءة - النسخة السحابية
 
 <div align="center">
