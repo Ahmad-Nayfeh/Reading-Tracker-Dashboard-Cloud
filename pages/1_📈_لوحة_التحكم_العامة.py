@@ -167,13 +167,15 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
     if logs_df.empty or members_df.empty:
         return {}
 
+    # --- FIX: Merge logs with member names at the beginning ---
+    logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], on='member_id', how='left')
+
     # Filter data up to the target date
-    logs_past = logs_df[logs_df['submission_date_dt'].dt.date <= target_date]
+    logs_past = logs_with_names[logs_with_names['submission_date_dt'].dt.date <= target_date]
     
-    if not achievements_df.empty:
+    if not achievements_df.empty and 'achievement_date_dt' in achievements_df.columns:
         achievements_past = achievements_df[achievements_df['achievement_date_dt'].dt.date <= target_date]
     else:
-        # Create an empty DataFrame if there are no achievements
         achievements_past = pd.DataFrame()
 
     if logs_past.empty:
