@@ -230,20 +230,16 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
     news_list = []
     today = date.today()
 
-    # Case 1: Challenge hasn't started yet
     if today < start_date_obj:
         news_list.append(f"⏳ <b>الاستعدادات جارية:</b> سينطلق تحدي '{book_title}' في تاريخ {start_date_obj.strftime('%Y-%m-%d')}.")
         return news_list
 
-    # Ensure members_df is not empty and has the required column
     if members_df.empty or 'members_id' not in members_df.columns:
         return ["لا يمكن عرض الأخبار، بيانات الأعضاء غير متوفرة."]
-
 
     if period_achievements_df.empty:
         news_list.append(f"🏃‍♂️ <b>السباق محتدم:</b> لا يزال الجميع يتنافس لإنهاء كتاب '{book_title}'. من سيكون أول المنجزين؟")
         return news_list
-    
     
     finishers_df = period_achievements_df[period_achievements_df['achievement_type'] == 'FINISHED_COMMON_BOOK'].copy()
     
@@ -253,17 +249,14 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
     
     total_finishers = len(finishers_df)
 
-    # Case 2: Challenge is active or finished, but no one has finished the book yet
     if finishers_df.empty:
         news_list.append(f"🏃‍♂️ <b>السباق محتدم:</b> لا يزال الجميع يتنافس لإنهاء كتاب '{book_title}'. من سيكون أول المنجزين؟")
     else:
-        # Find the latest achievement day
         latest_achievement_date = finishers_df['achievement_date_dt'].max().date()
         finishers_on_latest_day = finishers_df[finishers_df['achievement_date_dt'].dt.date == latest_achievement_date]
         
         names_on_latest_day = [f"<b>{name}</b>" for name in finishers_on_latest_day['name']]
         
-        # Craft the news for the latest achievement
         if len(names_on_latest_day) > 1:
             news_list.append(f"🎉 <b>إنجاز جماعي:</b> { ' و '.join(names_on_latest_day)} أنهوا الكتاب معًا في يوم {latest_achievement_date.strftime('%Y-%m-%d')}.")
         else:
@@ -273,13 +266,11 @@ def generate_challenge_news(period_achievements_df, members_df, start_date_obj, 
             else:
                 news_list.append(f"👍 <b>ويستمر السباق:</b> {names_on_latest_day[0]} ينضم إلى قائمة المنجزين.")
 
-        # Add a summary news item
         if total_finishers == 1:
             news_list.append("بطل واحد فقط وصل إلى خط النهاية حتى الآن.")
         else:
             news_list.append(f"<b>ملخص:</b> {total_finishers} أبطال أتموا قراءة الكتاب بنجاح حتى الآن.")
 
-    # Case 3: Challenge has finished, check for discussion attendees
     if today > end_date_obj:
         attendees_df = period_achievements_df[period_achievements_df['achievement_type'] == 'ATTENDED_DISCUSSION'].copy()
         if not attendees_df.empty:
@@ -300,7 +291,6 @@ def load_all_data(user_id):
     periods_df = pd.DataFrame(all_data.get('periods', []))
     logs_df = pd.DataFrame(all_data.get('logs', []))
     achievements_df = pd.DataFrame(all_data.get('achievements', []))
-    # NEW: Load the overall member stats
     member_stats_df = db.get_subcollection_as_df(user_id, 'member_stats')
     if not member_stats_df.empty and not members_df.empty:
         member_stats_df.rename(columns={'member_stats_id': 'members_id'}, inplace=True, errors='ignore')
@@ -326,7 +316,6 @@ if periods_df.empty:
     st.stop()
 
 today = date.today()
-# --- FIX: Convert period Series to dict to prevent ValueError ---
 challenge_options_map = {period['periods_id']: period.to_dict() for index, period in periods_df.iterrows()}
 active_challenges, past_challenges, future_challenges = [], [], []
 
@@ -713,7 +702,6 @@ if selected_period_id:
                     with col2:
                         st.markdown('<div class="card-subheader">📊 مصادر النقاط</div>', unsafe_allow_html=True)
                         
-                        # --- FIX: Calculate detailed points ---
                         points_source_data = calculate_detailed_points_sources(
                             member_id, 
                             member_logs_all_time, 
@@ -747,15 +735,15 @@ if selected_period_id:
                         r_col1, r_col2, r_col3 = st.columns(3, gap="large")
                         with r_col1:
                             st.markdown("<h6>نمو القراءة التراكمي</h6>", unsafe_allow_html=True)
-                            if fig_growth_reader: st.plotly_chart(fig_growth_reader, use_container_width=True)
+                            if fig_growth_reader: st.plotly_chart(fig_growth_reader, use_container_width=True, key="reader_growth_chart")
                             else: st.info("لا توجد بيانات.")
                         with r_col2:
                             st.markdown("<h6>نشاط القراءة الأسبوعي</h6>", unsafe_allow_html=True)
-                            if fig_weekly_activity_reader: st.plotly_chart(fig_weekly_activity_reader, use_container_width=True)
+                            if fig_weekly_activity_reader: st.plotly_chart(fig_weekly_activity_reader, use_container_width=True, key="reader_weekly_chart")
                             else: st.info("لا توجد بيانات.")
                         with r_col3:
                             st.markdown("<h6>إيقاع القراءة اليومي</h6>", unsafe_allow_html=True)
-                            if fig_rhythm_reader: st.plotly_chart(fig_rhythm_reader, use_container_width=True)
+                            if fig_rhythm_reader: st.plotly_chart(fig_rhythm_reader, use_container_width=True, key="reader_rhythm_chart")
                             else: st.info("لا توجد بيانات.")
                     else:
                         st.info("لا توجد سجلات قراءة لهذا العضو لعرض التحليلات البيانية.")
@@ -780,12 +768,11 @@ if selected_period_id:
                                 pdf = PDFReporter()
                                 
                                 reader_kpis_pdf = {
-                                    "إجمالي النقاط": (int(member_info['total_points']), "النقاط"),
-                                    "إجمالي الساعات": (f"{total_hours:.1f}", "الساعات"),
-                                    "إجمالي الاقتباسات": (int(member_info['total_quotes_submitted']), "الاقتباسات")
+                                    "إجمالي النقاط": f"{int(member_info['total_points'])}",
+                                    "إجمالي الساعات": f"{total_hours:.1f}",
+                                    "إجمالي الاقتباسات": f"{int(member_info['total_quotes_submitted'])}"
                                 }
                                 
-                                # Convert badges with emojis to text-only for PDF
                                 badges_for_pdf = [text for icon, text in badges_unlocked]
 
                                 reader_data_for_pdf = {
@@ -803,7 +790,7 @@ if selected_period_id:
                                 
                                 pdf_output = bytes(pdf.output())
                                 st.session_state.pdf_file_reader = pdf_output
-                                st.toast("تم إنشاء ملف PDF الخاص بالقارئ بنجاح!", icon="📄")
+                                st.toast("تم إنشاء ملف PDF الخاص بالقارئ بنجاح!", icon="�")
                                 st.rerun()
 
                         if 'pdf_file_reader' in st.session_state:
