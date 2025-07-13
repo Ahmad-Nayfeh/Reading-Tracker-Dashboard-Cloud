@@ -790,7 +790,7 @@ if selected_period_id:
                                 
                                 pdf_output = bytes(pdf.output())
                                 st.session_state.pdf_file_reader = pdf_output
-                                st.toast("تم إنشاء ملف PDF الخاص بالقارئ بنجاح!", icon="�")
+                                st.toast("تم إنشاء ملف PDF الخاص بالقارئ بنجاح!", icon="✅")
                                 st.rerun()
 
                         if 'pdf_file_reader' in st.session_state:
