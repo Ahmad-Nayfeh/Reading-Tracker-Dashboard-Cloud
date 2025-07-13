@@ -2,7 +2,7 @@
 
 <div align="center">
 
-![Reading Marathon Logo](images/image0.png)
+![Reading Marathon Logo](images/cover_image.png)
 
 [![Live Demo](https://img.shields.io/badge/🚀_Live_Demo-Visit_App-brightgreen?style=for-the-badge)](https://reading-marathon.streamlit.app)
 [![Python](https://img.shields.io/badge/Python-3.9+-blue?style=for-the-badge&logo=python)](https://www.python.org/)
