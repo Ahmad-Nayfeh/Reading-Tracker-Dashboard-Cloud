@@ -35,7 +35,7 @@ st.markdown("""
         .main-title {
             text-align: center;
             font-weight: 700;
-            margin-bottom: 25px;
+            margin-bottom: 5px;
             font-size: 3em; /* Larger main title */
             background: linear-gradient(90deg, #667eea 0%, #764ba2 100%);
             -webkit-background-clip: text;
