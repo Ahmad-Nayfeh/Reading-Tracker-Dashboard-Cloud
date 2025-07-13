@@ -168,7 +168,13 @@ def get_heroes_at_date(target_date, logs_df, achievements_df, members_df):
         return {}
 
     # --- FIX: Merge logs with member names at the beginning ---
-    logs_with_names = pd.merge(logs_df, members_df[['members_id', 'name']], on='member_id', how='left')
+    logs_with_names = pd.merge(
+        logs_df, 
+        members_df[['members_id', 'name']], 
+        left_on='member_id',      # Use 'member_id' from the left table (logs)
+        right_on='members_id',    # Use 'members_id' from the right table (members)
+        how='left'
+    )
 
     # Filter data up to the target date
     logs_past = logs_with_names[logs_with_names['submission_date_dt'].dt.date <= target_date]
