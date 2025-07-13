@@ -223,7 +223,7 @@
 
 <div align="center">
 
-[![Open App](https://img.shields.io/badge/🔗_افتح_التطبيق-الآن-success?style=for-the-badge)](https://your-app-url.streamlit.app)
+[![Open App](https://img.shields.io/badge/🔗_افتح_التطبيق-الآن-success?style=for-the-badge)](https://reading-marathon.streamlit.app)
 
 </div>
 
