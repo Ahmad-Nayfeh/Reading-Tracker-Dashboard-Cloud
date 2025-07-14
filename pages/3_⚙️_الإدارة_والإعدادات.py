@@ -2,15 +2,17 @@ import streamlit as st
 import pandas as pd
 from datetime import date, timedelta, datetime
 import db_manager as db
-import auth_manager # <-- استيراد مدير المصادقة
+import auth_manager 
 from main import run_data_update
 from googleapiclient.discovery import build
 from googleapiclient.errors import HttpError
 import gspread
 import time
-import style_manager  # <-- السطر الأول
+import style_manager
+# ملاحظة: تأكد من إضافة مكتبة requests إلى ملف requirements.txt
+import requests 
 
-style_manager.apply_sidebar_styles()  # <-- السطر الثاني
+style_manager.apply_sidebar_styles()
 
 st.set_page_config(
     page_title="الإدارة والإعدادات",
@@ -489,6 +491,16 @@ with st.container(border=True):
                     except Exception as e:
                         st.error(f"حدث خطأ فادح أثناء عملية الحفظ: {e}")
 
+# --- NEW SECTION: Delete Account ---
+st.divider()
+st.subheader("🗑️ منطقة الخطر: حذف الحساب")
+with st.expander("اضغط هنا لعرض خيارات حذف الحساب"):
+    st.warning("**تحذير:** هذا الإجراء لا يمكن التراجع عنه. سيقوم بحذف جميع بياناتك من التطبيق، بما في ذلك الأعضاء، التحديات، والسجلات. كما سيقوم بحذف ملف Google Sheet ونموذج Google Form المرتبطين بحسابك من Google Drive الخاص بك.")
+    
+    if st.button("بدء عملية حذف الحساب", type="primary"):
+        st.session_state.show_delete_account_dialog = True
+
+
 # --- Dialogs and Button Logic (Placed at the end for clarity) ---
 
 # --- Member Management Logic ---
@@ -505,7 +517,7 @@ if 'show_add_member_dialog' in st.session_state and st.session_state.show_add_me
                         active_member_names = updated_members_df[updated_members_df['is_active'] == True]['name'].tolist()
                         form_id, q_id = user_settings.get('form_id'), user_settings.get('member_question_id')
                         update_form_members(forms_service, form_id, q_id, active_member_names)
-                        st.toast(f"✅ تمت إضافة '{new_member_name}' وتحديث النموذج.", icon="👍")
+                        st.toast(f"✅ تمت إضافة '{new_member_name}' وتحديث النموذج.", icon="�")
                         st.cache_data.clear()
                         st.session_state.show_add_member_dialog = False
                         st.rerun()
@@ -632,9 +644,61 @@ if 'show_custom_rules_form' in st.session_state and st.session_state.show_custom
             rules['attend_discussion_points'] = st.number_input("نقاط حضور جلسة النقاش:", value=default_settings['attend_discussion_points'], min_value=0)
             if st.form_submit_button("حفظ التحدي بالقوانين المخصصة", type="primary"):
                 success, message = db.add_book_and_challenge(user_id, st.session_state.new_challenge_data['book_info'], st.session_state.new_challenge_data['challenge_info'], rules)
-                if success: st.toast(f"✅ {message}", icon="�")
+                if success: st.toast(f"✅ {message}", icon="🎉")
                 else: st.error(f"❌ {message}")
                 del st.session_state.show_custom_rules_form, st.session_state.new_challenge_data
                 st.cache_data.clear()
                 st.rerun()
     show_custom_rules_dialog()
+
+# --- NEW: Delete Account Dialog Logic ---
+if 'show_delete_account_dialog' in st.session_state and st.session_state.show_delete_account_dialog:
+    @st.dialog("🚫 تأكيد الحذف النهائي للحساب")
+    def delete_account_dialog():
+        st.error("أنت على وشك حذف حسابك بالكامل. هل أنت متأكد؟")
+        user_email = st.session_state.get('user_email', 'بريدك الإلكتروني')
+        
+        confirmation_text = st.text_input(f"للتأكيد، يرجى كتابة بريدك الإلكتروني هنا: {user_email}")
+
+        if st.button("❌ نعم، أحذف حسابي وكل بياناتي نهائياً", disabled=(confirmation_text != user_email)):
+            with st.spinner("جاري حذف جميع بياناتك... هذه العملية قد تستغرق لحظات."):
+                # 1. استرجاع المعلومات اللازمة قبل الحذف
+                user_settings = db.get_user_settings(user_id)
+                refresh_token = user_settings.get('refresh_token')
+                spreadsheet_url = user_settings.get("spreadsheet_url")
+
+                # 2. حذف ملفات جوجل
+                try:
+                    if spreadsheet_url:
+                        spreadsheet = gc.open_by_url(spreadsheet_url)
+                        gc.del_spreadsheet(spreadsheet.id)
+                        st.write("✅ تم حذف Google Sheet بنجاح.")
+                    
+                    form_id = user_settings.get('form_id')
+                    if form_id:
+                        drive_service = build('drive', 'v3', credentials=creds)
+                        drive_service.files().delete(fileId=form_id).execute()
+                        st.write("✅ تم حذف Google Form بنجاح.")
+
+                except Exception as e:
+                    st.write(f"⚠️ لم نتمكن من حذف ملفات جوجل (ربما تم حذفها يدوياً): {e}")
+
+                # 3. حذف بيانات Firestore
+                db.delete_user_workspace(user_id)
+                st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق.")
+
+                # 4. إلغاء صلاحيات الوصول
+                if refresh_token:
+                    success, status = auth_manager.revoke_google_token(refresh_token)
+                    if success:
+                        st.write("✅ تم إلغاء صلاحيات وصول التطبيق لحسابك في جوجل.")
+                    else:
+                        st.write(f"⚠️ لم نتمكن من إلغاء صلاحيات الوصول (الرمز: {status}). يمكنك فعل ذلك يدوياً من إعدادات حسابك.")
+                
+                st.success("اكتمل الحذف. سيتم الآن تسجيل خروجك.")
+                time.sleep(3)
+                
+                # 5. تسجيل الخروج
+                auth_manager.logout()
+
+    delete_account_dialog()
