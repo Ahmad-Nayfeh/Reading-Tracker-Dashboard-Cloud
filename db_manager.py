@@ -4,38 +4,20 @@ from firebase_config import db # استيراد عميل قاعدة البيان
 # --- بنية قاعدة البيانات في Firestore ---
 # users (collection)
 #  └── {user_id} (document) - يمثل مساحة عمل كل مشرف
-#      ├── settings (document) - يحتوي على إعدادات المشرف مثل رابط الشيت و refresh_token
-#      ├── global_rules (document) - يحتوي على نظام النقاط الافتراضي للمشرف
-#      │
+#      ├── settings (document)
+#      ├── global_rules (document)
 #      ├── members (subcollection)
-#      │    └── {member_id} (document)
-#      │
 #      ├── books (subcollection)
-#      │    └── {book_id} (document)
-#      │
 #      ├── periods (subcollection)
-#      │    └── {period_id} (document)
-#      │
 #      ├── logs (subcollection)
-#      │    └── {log_id} (document)
-#      │
 #      ├── achievements (subcollection)
-#      │    └── {achievement_id} (document)
-#      │
 #      └── member_stats (subcollection)
-#           └── {member_id} (document)
 # -------------------------------------------------
 
 
 def check_user_exists(user_id: str):
     """
     يتحقق مما إذا كان للمستخدم مساحة عمل موجودة في Firestore.
-    
-    Args:
-        user_id (str): المعرف الفريد للمستخدم من جوجل.
-
-    Returns:
-        bool: True إذا كان المستخدم موجودًا، وإلا False.
     """
     user_doc_ref = db.collection('users').document(user_id)
     return user_doc_ref.get().exists
@@ -43,29 +25,22 @@ def check_user_exists(user_id: str):
 def create_new_user_workspace(user_id: str, user_email: str):
     """
     ينشئ مساحة عمل جديدة لمشرف جديد عند تسجيل الدخول لأول مرة.
-    
-    Args:
-        user_id (str): المعرف الفريد للمستخدم.
-        user_email (str): البريد الإلكتروني للمستخدم.
     """
     user_doc_ref = db.collection('users').document(user_id)
     
-    # إنشاء المستند الرئيسي للمستخدم مع بعض المعلومات الأساسية
     user_doc_ref.set({
         'email': user_email,
         'created_at': pd.Timestamp.now()
     })
     
-    # إنشاء مستند الإعدادات الافتراضية
     user_doc_ref.collection('settings').document('config').set({
         'spreadsheet_url': '',
         'form_url': '',
         'form_id': '',
         'member_question_id': '',
-        'refresh_token': None # حقل جديد لحفظ التوكن
+        'refresh_token': None
     })
     
-    # إنشاء مستند نظام النقاط الافتراضي
     user_doc_ref.collection('global_rules').document('rules').set({
         'minutes_per_point_common': 10,
         'minutes_per_point_other': 5,
@@ -120,7 +95,7 @@ def get_subcollection_as_df(user_id: str, collection_name: str):
     data = []
     for doc in docs:
         doc_data = doc.to_dict()
-        doc_data[f'{collection_name}_id'] = doc.id # إضافة معرّف المستند
+        doc_data[f'{collection_name}_id'] = doc.id
         data.append(doc_data)
     return pd.DataFrame(data)
 
@@ -134,9 +109,7 @@ def get_all_data_for_stats(user_id: str):
     periods_df = get_subcollection_as_df(user_id, 'periods')
     books_df = get_subcollection_as_df(user_id, 'books')
 
-    # دمج بيانات الكتب مع التحديات
     if not periods_df.empty and not books_df.empty:
-        # إعادة تسمية الأعمدة لتجنب التضارب
         books_df.rename(columns={'title': 'book_title', 'author': 'book_author', 'publication_year': 'book_year'}, inplace=True)
         periods_df = pd.merge(periods_df, books_df, left_on='common_book_id', right_on='books_id', how='left')
     
@@ -155,7 +128,7 @@ def has_achievement(user_id: str, member_id: str, achievement_type: str, period_
     query = achievements_ref.where('member_id', '==', member_id)\
                             .where('achievement_type', '==', achievement_type)\
                             .where('period_id', '==', period_id)
-    return len(query.get()) > 0
+    return len(list(query.stream())) > 0
 
 # --- دوال الكتابة والتحديث (Write/Update Functions) ---
 
@@ -180,21 +153,18 @@ def add_book_and_challenge(user_id: str, book_info: dict, challenge_info: dict, 
     يضيف كتابًا جديدًا وتحديًا جديدًا بقواعده الخاصة لمستخدم معين.
     """
     try:
-        # التحقق مما إذا كان الكتاب موجودًا بالفعل لهذا المستخدم
         books_ref = db.collection('users').document(user_id).collection('books')
-        existing_books = books_ref.where('title', '==', book_info['title']).limit(1).get()
-        if len(existing_books) > 0:
+        existing_books_query = books_ref.where('title', '==', book_info['title']).limit(1)
+        if len(list(existing_books_query.stream())) > 0:
             return False, f"خطأ: كتاب بعنوان '{book_info['title']}' موجود بالفعل في قاعدة البيانات."
 
-        # إضافة الكتاب
         book_ref = books_ref.add({
             'title': book_info['title'],
             'author': book_info['author'],
             'publication_year': book_info['year']
         })
-        book_id = book_ref[1].id # الحصول على معرف المستند الجديد
+        book_id = book_ref[1].id
 
-        # إضافة التحدي مع ربطه بمعرف الكتاب
         challenge_data = {**challenge_info, **rules_info, 'common_book_id': book_id}
         db.collection('users').document(user_id).collection('periods').add(challenge_data)
         
@@ -209,14 +179,11 @@ def add_log_and_achievements(user_id: str, log_data: dict, achievements_to_add: 
     logs_ref = db.collection('users').document(user_id).collection('logs')
     achievements_ref = db.collection('users').document(user_id).collection('achievements')
     
-    # استخدام batch لضمان تنفيذ جميع العمليات معًا أو فشلها معًا
     batch = db.batch()
     
-    # إضافة سجل القراءة
     new_log_ref = logs_ref.document()
     batch.set(new_log_ref, log_data)
     
-    # إضافة الإنجازات
     for ach_data in achievements_to_add:
         new_ach_ref = achievements_ref.document()
         batch.set(new_ach_ref, ach_data)
@@ -228,7 +195,7 @@ def clear_subcollection(user_id: str, collection_name: str):
     يمسح جميع المستندات من مجموعة فرعية معينة لمستخدم.
     """
     coll_ref = db.collection('users').document(user_id).collection(collection_name)
-    docs = coll_ref.stream()
+    docs = list(coll_ref.stream())
     for doc in docs:
         doc.reference.delete()
     return True
@@ -237,13 +204,10 @@ def rebuild_stats_tables(user_id: str, member_stats_data: list):
     """
     يعيد بناء جدول إحصائيات الأعضاء.
     """
-    # أولاً، مسح الإحصائيات القديمة
     clear_subcollection(user_id, 'member_stats')
     
-    # ثانياً، إضافة الإحصائيات الجديدة
     stats_ref = db.collection('users').document(user_id).collection('member_stats')
     for stats in member_stats_data:
-        # استخدام member_id كمعرف للمستند لسهولة الوصول
         member_id = stats.pop('member_id') 
         stats_ref.document(member_id).set(stats)
 
@@ -259,26 +223,19 @@ def delete_challenge(user_id: str, period_id: str):
 
     book_id = period_doc.to_dict().get('common_book_id')
 
-    # حذف الإنجازات المرتبطة بهذا التحدي
     ach_ref = db.collection('users').document(user_id).collection('achievements')
     ach_to_delete = ach_ref.where('period_id', '==', period_id).stream()
     for doc in ach_to_delete:
         doc.reference.delete()
     
-    # حذف التحدي نفسه
     period_ref.delete()
     
-    # التحقق مما إذا كان الكتاب مرتبطًا بتحديات أخرى قبل حذفه
     if book_id:
-        other_periods = db.collection('users').document(user_id).collection('periods')\
-                          .where('common_book_id', '==', book_id).limit(1).get()
-        if len(other_periods) == 0:
-            # إذا لم يكن مرتبطًا، احذف الكتاب
+        other_periods_query = db.collection('users').document(user_id).collection('periods').where('common_book_id', '==', book_id).limit(1)
+        if len(list(other_periods_query.stream())) == 0:
             db.collection('users').document(user_id).collection('books').document(book_id).delete()
             
     return True
-
-# --- NEW FUNCTIONS FOR PERSISTENT AUTHENTICATION ---
 
 def save_refresh_token(user_id: str, refresh_token: str):
     """
@@ -289,7 +246,6 @@ def save_refresh_token(user_id: str, refresh_token: str):
         settings_ref.update({'refresh_token': refresh_token})
         return True
     except Exception as e:
-        # In a real app, you'd log this error
         print(f"Error saving refresh token for user {user_id}: {e}")
         return False
 
@@ -307,7 +263,7 @@ def get_refresh_token(user_id: str):
         print(f"Error getting refresh token for user {user_id}: {e}")
         return None
 
-
+# --- NEW ROBUST DELETE FUNCTION ---
 def delete_user_workspace(user_id: str):
     """
     Deletes a user's entire workspace from Firestore, including all subcollections.
@@ -315,13 +271,24 @@ def delete_user_workspace(user_id: str):
     """
     user_doc_ref = db.collection('users').document(user_id)
 
-    # It's important to delete subcollections recursively first
-    collections = user_doc_ref.collections()
-    for collection in collections:
-        docs = collection.stream()
-        for doc in docs:
-            doc.reference.delete()
+    # Recursively delete all documents in all subcollections
+    subcollections = user_doc_ref.collections()
+    for subcollection in subcollections:
+        # Delete documents in batches for efficiency
+        docs = subcollection.limit(100).stream()
+        deleted = 0
+        while True:
+            batch = db.batch()
+            doc_count = 0
+            for doc in docs:
+                batch.delete(doc.reference)
+                doc_count += 1
+            if doc_count == 0:
+                break
+            batch.commit()
+            deleted += doc_count
+            docs = subcollection.limit(100).stream()
 
-    # Finally, delete the main user document
+    # Finally, delete the main user document itself
     user_doc_ref.delete()
     return True
