@@ -13,3 +13,4 @@ arabic-reshaper
 python-bidi
 firebase-admin
 google-cloud-firestore
+requests
