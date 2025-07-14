@@ -9,7 +9,8 @@ from googleapiclient.errors import HttpError
 import gspread
 import time
 import style_manager
-import requests
+# ملاحظة: تأكد من إضافة مكتبة requests إلى ملف requirements.txt
+import requests 
 
 style_manager.apply_sidebar_styles()
 
@@ -490,13 +491,13 @@ with st.container(border=True):
                     except Exception as e:
                         st.error(f"حدث خطأ فادح أثناء عملية الحفظ: {e}")
 
-# --- NEW: Delete Account Section ---
+# --- NEW SECTION: Delete Account ---
 st.divider()
 st.subheader("🗑️ منطقة الخطر: حذف الحساب")
 with st.expander("اضغط هنا لعرض خيارات حذف الحساب"):
     st.warning("**تحذير:** هذا الإجراء لا يمكن التراجع عنه. سيقوم بحذف جميع بياناتك من التطبيق، بما في ذلك الأعضاء، التحديات، والسجلات. كما سيقوم بحذف ملف Google Sheet ونموذج Google Form المرتبطين بحسابك من Google Drive الخاص بك.")
     
-    if st.button("بدء عملية حذف الحساب", type="primary", key="initiate_delete"):
+    if st.button("بدء عملية حذف الحساب", type="primary"):
         st.session_state.show_delete_account_dialog = True
 
 
@@ -682,9 +683,9 @@ if 'show_delete_account_dialog' in st.session_state and st.session_state.show_de
                 except Exception as e:
                     st.write(f"⚠️ لم نتمكن من حذف ملفات جوجل (ربما تم حذفها يدوياً): {e}")
 
-                # 3. حذف بيانات Firestore (الأهم)
+                # 3. حذف بيانات Firestore
                 db.delete_user_workspace(user_id)
-                st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق بنجاح.")
+                st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق.")
 
                 # 4. إلغاء صلاحيات الوصول
                 if refresh_token:
@@ -697,8 +698,7 @@ if 'show_delete_account_dialog' in st.session_state and st.session_state.show_de
                 st.success("اكتمل الحذف. سيتم الآن تسجيل خروجك.")
                 time.sleep(3)
                 
-                # 5. تسجيل الخروج وإعادة التشغيل
+                # 5. تسجيل الخروج
                 auth_manager.logout()
-                st.rerun()
 
     delete_account_dialog()
