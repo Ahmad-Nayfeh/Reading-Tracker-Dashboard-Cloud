@@ -59,7 +59,7 @@ if not creds or not user_id:
     st.stop()
 
 # Initialize Google clients once and cache them
-gc = auth_manager.get_gspread_client(user_id, creds)
+gc = auth_manager.get_gspread_client(creds)
 forms_service = build('forms', 'v1', credentials=creds)
 
 # --- Sidebar ---
