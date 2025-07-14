@@ -163,7 +163,7 @@ def update_form_members(forms_service, form_id, question_id, active_member_names
 
 
 # Initialize Google clients once and cache them
-gc = auth_manager.get_gspread_client(user_id, creds)
+gc = auth_manager.get_gspread_client(creds)
 forms_service = build('forms', 'v1', credentials=creds)
 
 # --- Data Loading ---
