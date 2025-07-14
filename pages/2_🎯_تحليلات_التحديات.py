@@ -458,7 +458,7 @@ if selected_period_id:
                 
                 with c1:
                     total_days = (end_date_obj - start_date_obj).days if end_date_obj > start_date_obj else 1
-                    days_passed = (today - start_date_obj).days if today >= start_date_obj else 0
+                    days_passed = (today - start_date_obj).days + 1 if today >= start_date_obj else 0
                     progress = min(1.0, days_passed / total_days if total_days > 0 else 0) * 100
                     
                     fig_gauge = go.Figure(go.Indicator(
