@@ -9,8 +9,7 @@ from googleapiclient.errors import HttpError
 import gspread
 import time
 import style_manager
-# ملاحظة: تأكد من إضافة مكتبة requests إلى ملف requirements.txt
-import requests 
+import requests
 
 style_manager.apply_sidebar_styles()
 
@@ -491,13 +490,13 @@ with st.container(border=True):
                     except Exception as e:
                         st.error(f"حدث خطأ فادح أثناء عملية الحفظ: {e}")
 
-# --- NEW SECTION: Delete Account ---
+# --- NEW: Delete Account Section ---
 st.divider()
 st.subheader("🗑️ منطقة الخطر: حذف الحساب")
 with st.expander("اضغط هنا لعرض خيارات حذف الحساب"):
     st.warning("**تحذير:** هذا الإجراء لا يمكن التراجع عنه. سيقوم بحذف جميع بياناتك من التطبيق، بما في ذلك الأعضاء، التحديات، والسجلات. كما سيقوم بحذف ملف Google Sheet ونموذج Google Form المرتبطين بحسابك من Google Drive الخاص بك.")
     
-    if st.button("بدء عملية حذف الحساب", type="primary"):
+    if st.button("بدء عملية حذف الحساب", type="primary", key="initiate_delete"):
         st.session_state.show_delete_account_dialog = True
 
 
@@ -517,7 +516,7 @@ if 'show_add_member_dialog' in st.session_state and st.session_state.show_add_me
                         active_member_names = updated_members_df[updated_members_df['is_active'] == True]['name'].tolist()
                         form_id, q_id = user_settings.get('form_id'), user_settings.get('member_question_id')
                         update_form_members(forms_service, form_id, q_id, active_member_names)
-                        st.toast(f"✅ تمت إضافة '{new_member_name}' وتحديث النموذج.", icon="�")
+                        st.toast(f"✅ تمت إضافة '{new_member_name}' وتحديث النموذج.", icon="👍")
                         st.cache_data.clear()
                         st.session_state.show_add_member_dialog = False
                         st.rerun()
@@ -683,9 +682,9 @@ if 'show_delete_account_dialog' in st.session_state and st.session_state.show_de
                 except Exception as e:
                     st.write(f"⚠️ لم نتمكن من حذف ملفات جوجل (ربما تم حذفها يدوياً): {e}")
 
-                # 3. حذف بيانات Firestore
+                # 3. حذف بيانات Firestore (الأهم)
                 db.delete_user_workspace(user_id)
-                st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق.")
+                st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق بنجاح.")
 
                 # 4. إلغاء صلاحيات الوصول
                 if refresh_token:
@@ -698,7 +697,8 @@ if 'show_delete_account_dialog' in st.session_state and st.session_state.show_de
                 st.success("اكتمل الحذف. سيتم الآن تسجيل خروجك.")
                 time.sleep(3)
                 
-                # 5. تسجيل الخروج
+                # 5. تسجيل الخروج وإعادة التشغيل
                 auth_manager.logout()
+                st.rerun()
 
     delete_account_dialog()
