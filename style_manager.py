@@ -2,8 +2,7 @@ import streamlit as st
 
 def apply_sidebar_styles():
     """
-    Applies robust styles for the sidebar that work with modern Streamlit versions
-    and correctly adapt to the dark theme using the [data-theme="dark"] selector.
+    Applies robust styles for the sidebar with larger fonts.
     """
     st.markdown("""
         <style>
@@ -18,11 +17,12 @@ def apply_sidebar_styles():
                 padding-right: 10px;  
             }
             
+            /* --- Sidebar Link Font Size Increase --- */
             [data-testid="stSidebarNav"] a {
                 font-family: 'Inter', sans-serif;
-                font-size: 1.2em !important;
-                padding: 12px 15px !important;
-                margin-bottom: 7px;
+                font-size: 1.5em !important; /* زيادة كبيرة في حجم خط الشريط الجانبي */
+                padding: 14px 18px !important; /* تعديل الحشو ليتناسب مع الخط الكبير */
+                margin-bottom: 8px;
                 border-radius: 10px;
                 transition: background-color 0.2s ease, color 0.2s ease, transform 0.2s ease;
             }
@@ -50,17 +50,17 @@ def apply_sidebar_styles():
 
             /* --- Dark Theme Styles --- */
             body[data-theme="dark"] [data-testid="stSidebar"] {
-                background-color: #0e1117; /* Matches Streamlit's default dark background */
+                background-color: #0e1117; 
             }
             body[data-theme="dark"] [data-testid="stSidebarNav"] a {
-                color: #fafafa; /* Clean white text */
+                color: #fafafa;
             }
             body[data-theme="dark"] [data-testid="stSidebarNav"] a:hover {
-                background-color: rgba(255, 255, 255, 0.1); /* Subtle white overlay on hover */
+                background-color: rgba(255, 255, 255, 0.1);
                 color: #ffffff;
             }
             body[data-theme="dark"] [data-testid="stSidebarNav"] a[aria-current="page"] {
-                background-color: #3b82f6; /* A vibrant blue for the active page */
+                background-color: #3b82f6;
                 color: white !important;
                 font-weight: bold;
             }
