@@ -83,27 +83,22 @@ def authenticate():
     if authorization_code:
         flow = _get_flow()
         try:
-            # --- المحاولة الأولى لجلب التوكن ---
             flow.fetch_token(code=authorization_code)
             creds = flow.credentials
-
         except Exception as e:
-            # --- التعامل الذكي مع خطأ "المنحة غير صالحة" ---
             if 'invalid_grant' in str(e):
                 st.error("⚠️ يبدو أنك قمت بإلغاء صلاحيات التطبيق مؤخراً.")
                 st.info("لا تقلق، سنحاول إعادة طلب الموافقة من جديد. يرجى الضغط على الزر أدناه للمتابعة.")
-
-                # نعيد بناء رابط المصادقة مع معلمات تجبر على إعادة الموافقة
+                
                 auth_url, _ = flow.authorization_url(
                     access_type='offline', 
                     prompt='consent', 
                     include_granted_scopes='true'
                 )
-
+                
                 st.link_button("🔗 إعادة الربط بحساب جوجل (مهم)", auth_url, use_container_width=True, type="primary")
-                st.stop() # نوقف التنفيذ وننتظر من المستخدم الضغط على الرابط الجديد
+                st.stop()
             else:
-                # لأي أخطاء أخرى، نعرض الخطأ كما هو
                 st.error(f"حدث خطأ غير متوقع أثناء المصادقة: {e}")
                 st.stop()
 
@@ -113,7 +108,7 @@ def authenticate():
             st.info("لإصلاح ذلك، يرجى إلغاء وصول التطبيق من إعدادات حسابك في جوجل ثم المحاولة مرة أخرى.")
             st.markdown("[رابط صفحة أذونات حساب جوجل](https://myaccount.google.com/permissions)")
             st.stop()
-
+        
         userinfo_service = build('oauth2', 'v2', credentials=creds)
         user_info = userinfo_service.userinfo().get().execute()
         user_id = user_info.get('id')
@@ -121,13 +116,13 @@ def authenticate():
 
         if not db.check_user_exists(user_id):
             db.create_new_user_workspace(user_id, user_email)
-
+        
         db.save_refresh_token(user_id, creds.refresh_token)
 
         st.session_state.user_id = user_id
         st.session_state.user_email = user_email
         st.session_state[SESSION_STATE_KEY] = creds.to_json()
-
+        
         st.query_params.clear()
         st.query_params['user_id'] = user_id
         st.rerun()
@@ -161,23 +156,17 @@ def get_gspread_client(user_id: str, _creds: Credentials):
 
 def logout():
     """
-    Clears all session information, logs the user out, and clears URL params.
+    Clears all session information and URL parameters to ensure a completely
+    fresh start for the user.
     """
     keys_to_delete = [SESSION_STATE_KEY, 'user_id', 'user_email']
     for key in keys_to_delete:
         if key in st.session_state:
             del st.session_state[key]
     
-    # Use a loop to clear all query params, especially user_id
-    query_params = st.query_params.to_dict()
-    if query_params:
+    # This is a critical step to prevent re-authentication from URL
+    if 'code' in st.query_params:
         st.query_params.clear()
-
-    st.success("تم تسجيل الخروج بنجاح. جارٍ إعادة التوجيه...")
-    time.sleep(2)
-    st.rerun()
-
-
 
 def revoke_google_token(refresh_token: str):
     """
@@ -189,7 +178,7 @@ def revoke_google_token(refresh_token: str):
         response = requests.post('https://oauth2.googleapis.com/revoke',
             params={'token': refresh_token},
             headers={'content-type': 'application/x-www-form-urlencoded'})
-
+        
         return response.status_code == 200, response.status_code
     except Exception as e:
         return False, str(e)
