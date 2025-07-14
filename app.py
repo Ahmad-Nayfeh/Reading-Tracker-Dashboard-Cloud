@@ -242,104 +242,54 @@ if not setup_complete:
 
 else:
     # --- صفحة الترحيب المحسنة والجذابة ---
-    st.markdown("""
-        <style>
-            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
-            
-            .welcome-container {
-                padding: 2rem;
-                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-                border-radius: 15px;
-                text-align: center;
-                margin-bottom: 2rem;
-            }
-            .welcome-title {
-                font-family: 'Tajawal', sans-serif;
-                font-size: 3rem;
-                font-weight: 700;
-                color: #2c3e50;
-                margin-bottom: 0.5rem;
-                text-align: center;
-            }
-            .welcome-subtitle {
-                font-family: 'Tajawal', sans-serif;
-                font-size: 1.25rem;
-                color: #34495e;
-                margin-bottom: 2rem;
-                text-align: center;
-            }
-            .features-grid {
-                display: grid;
-                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
-                gap: 1.5rem;
-                direction: rtl;
-                margin-top: 2rem;
-            }
-            .feature-card {
-                background-color: rgba(255, 255, 255, 0.9);
-                backdrop-filter: blur(10px);
-                border-radius: 15px;
-                padding: 2rem;
-                text-align: right;
-                border: 1px solid rgba(255, 255, 255, 0.2);
-                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
-                transition: transform 0.3s ease, box-shadow 0.3s ease;
-            }
-            .feature-card:hover {
-                transform: translateY(-10px);
-                box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
-            }
-            .feature-icon {
-                font-size: 3rem;
-                line-height: 1;
-                margin-bottom: 1rem;
-                text-align: center;
-            }
-            .feature-title {
-                font-family: 'Tajawal', sans-serif;
-                font-size: 1.5rem;
-                font-weight: 700;
-                color: #2980b9;
-                margin-bottom: 0.5rem;
-                text-align: right;
-            }
-            .feature-description {
-                font-family: 'Tajawal', sans-serif;
-                font-size: 1rem;
-                color: #6c757d;
-                line-height: 1.6;
-                text-align: right;
-            }
-        </style>
-        
-        <div class="welcome-container">
-            <h1 class="welcome-title">📚 أهلاً بك في منصة ماراثون القراءة</h1>
-            <p class="welcome-subtitle">🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق.</p>
-            
-            <div class="features-grid">
-                <div class="feature-card">
-                    <div class="feature-icon">📈</div>
-                    <h3 class="feature-title">لوحة التحكم العامة</h3>
-                    <p class="feature-description">احصل على نظرة بانورامية شاملة على أداء جميع المشاركين في كل التحديات.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">🎯</div>
-                    <h3 class="feature-title">تحليلات التحديات</h3>
-                    <p class="feature-description">اغُص في تفاصيل تحدي معين وقارن أداء المشاركين فيه بدقة.</p>
-                </div>
-                
-                <div class="feature-card">
-                    <div class="feature-icon">⚙️</div>
-                    <h3 class="feature-title">الإدارة والإعدادات</h3>
-                    <p class="feature-description">أضف أعضاء جدد، خطط لتحديات مستقبلية، أو عدّل نظام النقاط بسهولة.</p>
-                </div>
+    st.markdown("# 📚 أهلاً بك في منصة ماراثون القراءة")
+    st.markdown("### 🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق.")
 
-                <div class="feature-card">
-                    <div class="feature-icon">❓</div>
-                    <h3 class="feature-title">عن التطبيق</h3>
-                    <p class="feature-description">تعرّف على المزيد حول فلسفة المشروع وكيفية عمل نظام النقاط والتحفيز.</p>
-                </div>
-            </div>
+    # إنشاء 2x2 grid
+    col1, col2 = st.columns(2)
+
+    with col1:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
+                    padding: 2rem; border-radius: 15px; text-align: center; 
+                    margin-bottom: 1rem; direction: rtl;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">📈</div>
+            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">لوحة التحكم العامة</h3>
+            <p style="color: #6c757d; line-height: 1.6;">احصل على نظرة بانورامية شاملة على أداء جميع المشاركين في كل التحديات.</p>
         </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
+
+    with col2:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); 
+                    padding: 2rem; border-radius: 15px; text-align: center; 
+                    margin-bottom: 1rem; direction: rtl;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
+            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">تحليلات التحديات</h3>
+            <p style="color: #6c757d; line-height: 1.6;">اغُص في تفاصيل تحدي معين وقارن أداء المشاركين فيه بدقة.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    col3, col4 = st.columns(2)
+
+    with col3:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); 
+                    padding: 2rem; border-radius: 15px; text-align: center; 
+                    margin-bottom: 1rem; direction: rtl;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
+            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">الإدارة والإعدادات</h3>
+            <p style="color: #6c757d; line-height: 1.6;">أضف أعضاء جدد، خطط لتحديات مستقبلية، أو عدّل نظام النقاط بسهولة.</p>
+        </div>
+        """, unsafe_allow_html=True)
+
+    with col4:
+        st.markdown("""
+        <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%); 
+                    padding: 2rem; border-radius: 15px; text-align: center; 
+                    margin-bottom: 1rem; direction: rtl;">
+            <div style="font-size: 3rem; margin-bottom: 1rem;">❓</div>
+            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">عن التطبيق</h3>
+            <p style="color: #6c757d; line-height: 1.6;">تعرّف على المزيد حول فلسفة المشروع وكيفية عمل نظام النقاط والتحفيز.</p>
+        </div>
+        """, unsafe_allow_html=True)
