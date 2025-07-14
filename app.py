@@ -9,9 +9,9 @@ from googleapiclient.errors import HttpError
 import gspread
 import time
 import os
-import style_manager  # <-- السطر الأول
+import style_manager 
 
-style_manager.apply_sidebar_styles()  # <-- السطر الثاني
+style_manager.apply_sidebar_styles()
 
 # --- Page Configuration and RTL CSS Injection ---
 st.set_page_config(
@@ -134,17 +134,13 @@ if not setup_complete:
         st.session_state.sheet_title = st.text_input("اختر اسماً لأدواتك (سيتم تطبيقه على الشيت والفورم):", value=st.session_state.sheet_title)
 
         if st.button("📝 إنشاء الشيت والفورم الآن", type="primary", use_container_width=True):
-            with st.spinner("جاري إنشاء جدول البيانات..."):
-                try:
+            try:
+                with st.spinner("جاري إنشاء جدول البيانات..."):
                     spreadsheet = gc.create(st.session_state.sheet_title)
                     db.set_user_setting(user_id, "spreadsheet_url", spreadsheet.url)
                     st.success("✅ تم إنشاء جدول البيانات بنجاح!")
-                except Exception as e:
-                    st.error(f"🌐 خطأ في إنشاء الشيت: {e}")
-                    st.stop()
 
-            with st.spinner("جاري إنشاء نموذج التسجيل..."):
-                try:
+                with st.spinner("جاري إنشاء نموذج التسجيل..."):
                     member_names = members_df['name'].tolist()
                     new_form_info = {"info": {"title": st.session_state.sheet_title, "documentTitle": st.session_state.sheet_title}}
                     form_result = forms_service.forms().create(body=new_form_info).execute()
@@ -166,42 +162,54 @@ if not setup_complete:
                     db.set_user_setting(user_id, "form_id", form_id)
                     db.set_user_setting(user_id, "member_question_id", member_question_id)
                     db.set_user_setting(user_id, "form_url", form_result['responderUri'])
-
                     st.success("✅ تم إنشاء النموذج وحفظ إعداداته بنجاح!")
-                except Exception as e:
-                    st.error(f"🌐 خطأ في إنشاء الفورم: {e}")
-                    st.stop()
 
-            st.header("🔗 الخطوة الأخيرة: الربط والتحقق")
-            st.warning("هذه الخطوات ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
-            editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
+                # --- هذا الجزء لم يتغير، ولكنه الآن داخل الـ try block ---
+                st.header("🔗 الخطوة الأخيرة: الربط والتحقق")
+                st.warning("هذه الخطوات ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
+                editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
 
-            st.write("1. **افتح النموذج للتعديل** من الرابط أدناه:")
-            st.code(editor_url)
-            st.write("2. انتقل إلى تبويب **\"الردود\" (Responses)**.")
-            st.write("3. اضغط على أيقونة **'Link to Sheets'** (أيقونة جدول البيانات الخضراء).")
-            st.write("4. اختر **'Select existing spreadsheet'** وقم باختيار جدول البيانات الذي أنشأته للتو بنفس الاسم.")
-            st.write("5. **(خطوة هامة جداً)** سيتم إنشاء ورقة عمل جديدة. اضغط عليها وقم **بإعادة تسميتها** إلى `Form Responses 1` بالضبط.")
-            st.write("6. **(للتواريخ)** افتح جدول البيانات، ومن القائمة العلوية اذهب إلى **File > Settings**، ثم غيّر الـ **Locale** إلى **United Kingdom** واضغط **Save settings**.")
+                st.write("1. **افتح النموذج للتعديل** من الرابط أدناه:")
+                st.code(editor_url)
+                st.write("2. انتقل إلى تبويب **\"الردود\" (Responses)**.")
+                st.write("3. اضغط على أيقونة **'Link to Sheets'** (أيقونة جدول البيانات الخضراء).")
+                st.write("4. اختر **'Select existing spreadsheet'** وقم باختيار جدول البيانات الذي أنشأته للتو بنفس الاسم.")
+                st.write("5. **(خطوة هامة جداً)** سيتم إنشاء ورقة عمل جديدة. اضغط عليها وقم **بإعادة تسميتها** إلى `Form Responses 1` بالضبط.")
+                st.write("6. **(للتواريخ)** افتح جدول البيانات، ومن القائمة العلوية اذهب إلى **File > Settings**، ثم غيّر الـ **Locale** إلى **United Kingdom** واضغط **Save settings**.")
 
-            if st.button("تحقق من الإعدادات وتابع", type="primary", use_container_width=True):
-                with st.spinner("جاري التحقق من الإعدادات..."):
-                    try:
-                        spreadsheet = gc.open_by_url(user_settings.get("spreadsheet_url"))
-                        worksheet = spreadsheet.worksheet("Form Responses 1")
-                        st.success("✅ تم التحقق بنجاح! تم العثور على ورقة 'Form Responses 1'.")
+                if st.button("تحقق من الإعدادات وتابع", type="primary", use_container_width=True):
+                    with st.spinner("جاري التحقق من الإعدادات..."):
                         try:
-                            default_sheet = spreadsheet.worksheet('Sheet1')
-                            spreadsheet.del_worksheet(default_sheet)
-                            st.info("ℹ️ تم حذف ورقة 'Sheet1' الفارغة بنجاح.")
+                            spreadsheet = gc.open_by_url(user_settings.get("spreadsheet_url"))
+                            worksheet = spreadsheet.worksheet("Form Responses 1")
+                            st.success("✅ تم التحقق بنجاح! تم العثور على ورقة 'Form Responses 1'.")
+                            try:
+                                default_sheet = spreadsheet.worksheet('Sheet1')
+                                spreadsheet.del_worksheet(default_sheet)
+                                st.info("ℹ️ تم حذف ورقة 'Sheet1' الفارغة بنجاح.")
+                            except gspread.exceptions.WorksheetNotFound:
+                                pass
+                            time.sleep(2)
+                            st.rerun()
                         except gspread.exceptions.WorksheetNotFound:
-                            pass
-                        time.sleep(2)
-                        st.rerun()
-                    except gspread.exceptions.WorksheetNotFound:
-                        st.error("❌ فشل التحقق. لم نتمكن من العثور على ورقة باسم 'Form Responses 1'. يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط.")
-                    except Exception as e:
-                        st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
+                            st.error("❌ فشل التحقق. لم نتمكن من العثور على ورقة باسم 'Form Responses 1'. يرجى التأكد من أنك قمت بإعادة تسمية ورقة الردود إلى هذا الاسم بالضبط.")
+                        except Exception as e:
+                            st.error(f"حدث خطأ أثناء محاولة الوصول لجدول البيانات: {e}")
+
+            except Exception as e:
+                # --- هذا هو المنطق الجديد والمحسّن للتعامل مع الخطأ ---
+                if 'invalid_grant' in str(e) or 'revoked' in str(e):
+                    st.error("⚠️ خطأ في الصلاحيات: يبدو أنك قمت بإلغاء وصول التطبيق مؤخراً.")
+                    st.info("لا تقلق، هذا إجراء أمني من جوجل. لإعادة تفعيل حسابك، يجب عليك إعادة منح الموافقة بشكل كامل. اذهب إلى الرابط أدناه، أزل التطبيق من حسابك، ثم عد إلى هنا وحدّث الصفحة للمتابعة.")
+                    
+                    st.markdown("[🔗 **اضغط هنا للذهاب لصفحة أذونات جوجل وإزالة التطبيق يدوياً**](https://myaccount.google.com/permissions)", unsafe_allow_html=True)
+                    st.warning("بعد إزالة التطبيق من صفحة الأذونات، يرجى تحديث هذه الصفحة للمتابعة.")
+
+                else:
+                    st.error(f"🌐 خطأ غير متوقع في إنشاء الشيت أو الفورم: {e}")
+                
+                st.stop()
+
 
     # Step 3: Create First Challenge
     elif periods_df.empty:
@@ -246,4 +254,3 @@ else:
     - **⚙️ الإدارة والإعدادات:** لإضافة أعضاء جدد، إنشاء تحديات مستقبلية، أو تعديل نظام النقاط.
     - **❓ عن التطبيق:** لمعرفة المزيد عن المشروع وكيفية عمل نظام النقاط.
     """)
-
