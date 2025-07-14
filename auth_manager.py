@@ -7,6 +7,7 @@ import db_manager as db
 from googleapiclient.discovery import build
 import json
 import time
+import requests
 
 # --- Configuration ---
 SCOPES = [
@@ -152,3 +153,20 @@ def logout():
     st.success("تم تسجيل الخروج بنجاح. جارٍ إعادة التوجيه...")
     time.sleep(2)
     st.rerun()
+
+
+
+def revoke_google_token(refresh_token: str):
+    """
+    Revokes a Google refresh token, effectively logging the user out of the app's access.
+    """
+    if not refresh_token:
+        return False, "No refresh token provided."
+    try:
+        response = requests.post('https://oauth2.googleapis.com/revoke',
+            params={'token': refresh_token},
+            headers={'content-type': 'application/x-www-form-urlencoded'})
+
+        return response.status_code == 200, response.status_code
+    except Exception as e:
+        return False, str(e)
