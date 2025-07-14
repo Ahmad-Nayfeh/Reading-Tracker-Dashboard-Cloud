@@ -20,7 +20,7 @@ def apply_sidebar_styles():
             /* --- Sidebar Link Font Size Increase --- */
             [data-testid="stSidebarNav"] a {
                 font-family: 'Inter', sans-serif;
-                font-size: 1.5em !important; /* زيادة كبيرة في حجم خط الشريط الجانبي */
+                font-size: 2.5em !important; /* زيادة كبيرة في حجم خط الشريط الجانبي */
                 padding: 14px 18px !important; /* تعديل الحشو ليتناسب مع الخط الكبير */
                 margin-bottom: 8px;
                 border-radius: 10px;
