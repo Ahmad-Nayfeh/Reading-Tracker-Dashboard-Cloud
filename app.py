@@ -9,7 +9,7 @@ from googleapiclient.errors import HttpError
 import gspread
 import time
 import os
-import style_manager 
+import style_manager
 
 style_manager.apply_sidebar_styles()
 
@@ -164,7 +164,6 @@ if not setup_complete:
                     db.set_user_setting(user_id, "form_url", form_result['responderUri'])
                     st.success("✅ تم إنشاء النموذج وحفظ إعداداته بنجاح!")
 
-                # --- هذا الجزء لم يتغير، ولكنه الآن داخل الـ try block ---
                 st.header("🔗 الخطوة الأخيرة: الربط والتحقق")
                 st.warning("هذه الخطوات ضرورية جداً ويجب القيام بها مرة واحدة فقط.")
                 editor_url = f"https://docs.google.com/forms/d/{form_id}/edit"
@@ -199,24 +198,13 @@ if not setup_complete:
             except Exception as e:
                 # --- هذا هو المنطق النهائي والمحسّن للتعامل مع الخطأ ---
                 if 'invalid_grant' in str(e) or 'revoked' in str(e):
-                    # أولاً: نعرض للمستخدم شرحاً واضحاً وحلاً عملياً
-                    st.error("⚠️ خطأ في الصلاحيات: يبدو أنك قمت بإلغاء وصول التطبيق مؤخراً.")
-                    st.info("لا تقلق، هذا إجراء أمني من جوجل. لإعادة تفعيل حسابك، يجب عليك إعادة منح الموافقة بشكل كامل.")
+                    st.error("⚠️ خطأ في الصلاحيات: حدث خطأ أمني بعد حذف الحساب.")
+                    st.info("لا تقلق، هذا سلوك طبيعي. لإعادة ضبط حسابك، يجب تسجيل الخروج بالكامل ثم إعادة الربط من جديد.")
                     
-                    st.markdown("#### **يرجى اتباع الخطوات التالية بدقة:**")
-                    st.markdown("1. **اذهب إلى صفحة أذونات جوجل من الرابط أدناه.**")
-                    st.markdown("[🔗 **اضغط هنا للذهاب لصفحة أذونات جوجل**](https://myaccount.google.com/permissions)", unsafe_allow_html=True)
-                    st.markdown("2. **ابحث عن تطبيق 'ماراثون القراءة' وقم بإزالة دخوله (Remove Access).**")
-                    st.markdown("3. **بعد إزالة التطبيق، عد إلى هنا وقم بتحديث هذه الصفحة (اضغط F5).**")
-
-                    # ثانياً: نقوم بتنظيف بيانات الاعتماد الفاسدة من الجلسة الحالية
-                    # هذا يضمن أن المستخدم سيضطر لتسجيل الدخول من جديد بعد تحديث الصفحة
-                    if 'google_credentials' in st.session_state:
-                        del st.session_state['google_credentials']
-                    if 'user_id' in st.session_state:
-                        del st.session_state['user_id']
-                    if 'user_email' in st.session_state:
-                        del st.session_state['user_email']
+                    st.markdown("#### **الرجاء الضغط على الزر أدناه للمتابعة:**")
+                    if st.button("🚪 تسجيل الخروج وإعادة الضبط الآن", use_container_width=True, type="primary"):
+                        # استدعاء دالة الخروج لمسح الجلسة وإعادة تشغيل التطبيق
+                        auth_manager.logout()
                     
                 else:
                     # في حالة وجود أي خطأ آخر غير متوقع
@@ -256,16 +244,98 @@ if not setup_complete:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
 else:
-    # --- MAIN WELCOME PAGE (if setup is complete) ---
-    st.title("📚 أهلاً بك في لوحة تحكم ماراثون القراءة")
-    st.markdown("---")
-    st.info("🎉 اكتمل إعداد حسابك بنجاح!")
-    st.markdown("يمكنك الآن التنقل بين صفحات التطبيق المختلفة باستخدام القائمة الموجودة في الشريط الجانبي.")
-
-    st.subheader("ماذا يمكنك أن تفعل الآن؟")
+    # --- NEW: Modern and Attractive Welcome Page ---
     st.markdown("""
-    - **📈 لوحة التحكم العامة:** للحصول على نظرة شاملة على أداء جميع المشاركين في كل التحديات.
-    - **🎯 تحليلات التحديات:** للغوص في تفاصيل تحدي معين ومقارنة أداء المشاركين فيه.
-    - **⚙️ الإدارة والإعدادات:** لإضافة أعضاء جدد، إنشاء تحديات مستقبلية، أو تعديل نظام النقاط.
-    - **❓ عن التطبيق:** لمعرفة المزيد عن المشروع وكيفية عمل نظام النقاط.
-    """)
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+            
+            .welcome-container {
+                padding: 2rem;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 15px;
+                text-align: center;
+            }
+            .welcome-title {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 3rem;
+                font-weight: 700;
+                color: #2c3e50;
+                margin-bottom: 0.5rem;
+            }
+            .welcome-subtitle {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1.25rem;
+                color: #34495e;
+                margin-bottom: 2rem;
+            }
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+                gap: 1.5rem;
+                direction: rtl; /* Ensures grid items are arranged right-to-left */
+            }
+            .feature-card {
+                background-color: rgba(255, 255, 255, 0.8);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                padding: 2rem;
+                text-align: right;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.1);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+            }
+            .feature-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+            }
+            .feature-icon {
+                font-size: 3rem;
+                line-height: 1;
+                margin-bottom: 1rem;
+            }
+            .feature-title {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1.5rem;
+                font-weight: 700;
+                color: #2980b9;
+                margin-bottom: 0.5rem;
+            }
+            .feature-description {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1rem;
+                color: #6c757d;
+                line-height: 1.6;
+            }
+        </style>
+        
+        <div class="welcome-container">
+            <h1 class="welcome-title">📚 أهلاً بك في منصة ماراثون القراءة</h1>
+            <p class="welcome-subtitle">🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق.</p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">📈</div>
+                    <h3 class="feature-title">لوحة التحكم العامة</h3>
+                    <p class="feature-description">احصل على نظرة بانورامية شاملة على أداء جميع المشاركين في كل التحديات.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">🎯</div>
+                    <h3 class="feature-title">تحليلات التحديات</h3>
+                    <p class="feature-description">اغُص في تفاصيل تحدي معين وقارن أداء المشاركين فيه بدقة.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <div class="feature-icon">⚙️</div>
+                    <h3 class="feature-title">الإدارة والإعدادات</h3>
+                    <p class="feature-description">أضف أعضاء جدد، خطط لتحديات مستقبلية، أو عدّل نظام النقاط بسهولة.</p>
+                </div>
+
+                <div class="feature-card">
+                    <div class="feature-icon">❓</div>
+                    <h3 class="feature-title">عن التطبيق</h3>
+                    <p class="feature-description">تعرّف على المزيد حول فلسفة المشروع وكيفية عمل نظام النقاط والتحفيز.</p>
+                </div>
+            </div>
+        </div>
+    """, unsafe_allow_html=True)
