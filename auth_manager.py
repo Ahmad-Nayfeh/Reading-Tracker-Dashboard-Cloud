@@ -82,15 +82,38 @@ def authenticate():
     authorization_code = st.query_params.get("code")
     if authorization_code:
         flow = _get_flow()
-        flow.fetch_token(code=authorization_code)
-        creds = flow.credentials
+        try:
+            # --- المحاولة الأولى لجلب التوكن ---
+            flow.fetch_token(code=authorization_code)
+            creds = flow.credentials
+
+        except Exception as e:
+            # --- التعامل الذكي مع خطأ "المنحة غير صالحة" ---
+            if 'invalid_grant' in str(e):
+                st.error("⚠️ يبدو أنك قمت بإلغاء صلاحيات التطبيق مؤخراً.")
+                st.info("لا تقلق، سنحاول إعادة طلب الموافقة من جديد. يرجى الضغط على الزر أدناه للمتابعة.")
+
+                # نعيد بناء رابط المصادقة مع معلمات تجبر على إعادة الموافقة
+                auth_url, _ = flow.authorization_url(
+                    access_type='offline', 
+                    prompt='consent', 
+                    include_granted_scopes='true'
+                )
+
+                st.link_button("🔗 إعادة الربط بحساب جوجل (مهم)", auth_url, use_container_width=True, type="primary")
+                st.stop() # نوقف التنفيذ وننتظر من المستخدم الضغط على الرابط الجديد
+            else:
+                # لأي أخطاء أخرى، نعرض الخطأ كما هو
+                st.error(f"حدث خطأ غير متوقع أثناء المصادقة: {e}")
+                st.stop()
+
 
         if not creds.refresh_token:
             st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة")
             st.info("لإصلاح ذلك، يرجى إلغاء وصول التطبيق من إعدادات حسابك في جوجل ثم المحاولة مرة أخرى.")
             st.markdown("[رابط صفحة أذونات حساب جوجل](https://myaccount.google.com/permissions)")
             st.stop()
-        
+
         userinfo_service = build('oauth2', 'v2', credentials=creds)
         user_info = userinfo_service.userinfo().get().execute()
         user_id = user_info.get('id')
@@ -98,13 +121,13 @@ def authenticate():
 
         if not db.check_user_exists(user_id):
             db.create_new_user_workspace(user_id, user_email)
-        
+
         db.save_refresh_token(user_id, creds.refresh_token)
 
         st.session_state.user_id = user_id
         st.session_state.user_email = user_email
         st.session_state[SESSION_STATE_KEY] = creds.to_json()
-        
+
         st.query_params.clear()
         st.query_params['user_id'] = user_id
         st.rerun()
