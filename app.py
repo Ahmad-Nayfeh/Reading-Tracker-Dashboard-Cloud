@@ -241,10 +241,10 @@ if not setup_complete:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
 else:
-    # --- NEW: Modern and Attractive Welcome Page ---
+    # --- صفحة الترحيب المحسنة والجذابة ---
     st.markdown("""
         <style>
-            @import url('[https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap](https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap)');
+            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
             
             .welcome-container {
                 padding: 2.5rem;
@@ -294,7 +294,8 @@ else:
                 font-size: 3.5rem;
                 line-height: 1;
                 margin-bottom: 1rem;
-                display: block; /* Ensures the icon is on its own line */
+                display: block;
+                text-align: center;
             }
             .feature-title {
                 font-family: 'Tajawal', sans-serif;
