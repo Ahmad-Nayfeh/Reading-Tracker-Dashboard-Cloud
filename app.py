@@ -34,7 +34,7 @@ st.markdown("""
         /* Ensure text alignment is right for various elements */
         h1, h2, h3, h4, h5, h6, p, li, .st-bk, .st-b8, .st-b9, .st-ae {
             text-align: right !important;
-            font-size: 1.5rem; /* زيادة حجم الخط العام */
+            
         }
         /* Fix for radio buttons label alignment */
         .st-b8 label {
