@@ -246,7 +246,51 @@ else:
     st.markdown("# 📚 أهلاً بك في منصة ماراثون القراءة")
     st.markdown("### 🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق في رحلة قرائية ممتعة ومحفزة.")
 
-
+    st.markdown("""
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+        
+        .js-clickable-card {
+            background-color: #ffffff;
+            border: 1px solid #e9ecef;
+            border-radius: 16px;
+            padding: 1.5rem; 
+            text-align: right;
+            margin-bottom: 1.5rem;
+            height: 100%;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            transition: all 0.3s ease-in-out;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            cursor: pointer; /* تغيير شكل المؤشر للإشارة إلى أن البطاقة قابلة للنقر */
+        }
+        .js-clickable-card:hover {
+            transform: translateY(-10px);
+            box-shadow: 0 12px 20px rgba(0,0,0,0.08);
+            border-color: #2980b9;
+        }
+        .js-clickable-card .icon {
+            font-size: 3.5rem;
+            line-height: 1;
+            margin-bottom: 1rem;
+            color: #2980b9;
+        }
+        .js-clickable-card h3 {
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1.7rem;
+            font-weight: 700;
+            color: #2c3e50;
+            margin-bottom: 1rem;
+        }
+        .js-clickable-card p {
+            font-family: 'Tajawal', sans-serif;
+            font-size: 1.1rem;
+            color: #5D6D7E;
+            line-height: 1.7;
+        }
+    </style>
+    """, unsafe_allow_html=True)
 
     col1, col2 = st.columns(2)
 
