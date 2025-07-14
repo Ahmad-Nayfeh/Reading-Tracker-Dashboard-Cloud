@@ -241,55 +241,106 @@ if not setup_complete:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
 else:
-    # --- صفحة الترحيب المحسنة والجذابة ---
-    st.markdown("# 📚 أهلاً بك في منصة ماراثون القراءة")
-    st.markdown("### 🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق.")
+    # --- NEW: Modern and Attractive Welcome Page ---
+    st.markdown("""
+        <style>
+            @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
+            
+            .welcome-container {
+                padding: 2.5rem;
+                background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+                border-radius: 15px;
+                text-align: center;
+                margin-bottom: 2rem;
+            }
+            .welcome-title {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 3rem;
+                font-weight: 700;
+                color: #2c3e50;
+                margin-bottom: 0.5rem;
+            }
+            .welcome-subtitle {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1.3rem;
+                color: #34495e;
+                margin-bottom: 2.5rem;
+                max-width: 800px;
+                margin-left: auto;
+                margin-right: auto;
+            }
+            .features-grid {
+                display: grid;
+                grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+                gap: 1.5rem;
+                direction: rtl; 
+            }
+            .feature-card {
+                background-color: rgba(255, 255, 255, 0.8);
+                backdrop-filter: blur(10px);
+                border-radius: 15px;
+                padding: 2rem;
+                text-align: right;
+                border: 1px solid rgba(255, 255, 255, 0.2);
+                box-shadow: 0 8px 32px 0 rgba(31, 38, 135, 0.08);
+                transition: transform 0.3s ease, box-shadow 0.3s ease;
+                height: 100%;
+            }
+            .feature-card:hover {
+                transform: translateY(-10px);
+                box-shadow: 0 12px 40px 0 rgba(31, 38, 135, 0.15);
+            }
+            .feature-icon {
+                font-size: 3.5rem;
+                line-height: 1;
+                margin-bottom: 1rem;
+                display: block; /* Ensures the icon is on its own line */
+            }
+            .feature-title {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1.6rem;
+                font-weight: 700;
+                color: #2980b9;
+                margin-bottom: 0.75rem;
+            }
+            .feature-description {
+                font-family: 'Tajawal', sans-serif;
+                font-size: 1.1rem;
+                color: #6c757d;
+                line-height: 1.7;
+            }
+        </style>
+        
+        <div class="welcome-container">
+            <h1 class="welcome-title">📚 مرحباً بك في منصة ماراثون القراءة</h1>
+            <p class="welcome-subtitle">
+                🎉 اكتمل إعداد حسابك بنجاح! أنت الآن تمتلك الأدوات اللازمة لتحويل مجموعتك القرائية إلى بيئة تفاعلية ومحفزة. استكشف الميزات أدناه لتبدأ رحلتك.
+            </p>
+            
+            <div class="features-grid">
+                <div class="feature-card">
+                    <span class="feature-icon">📈</span>
+                    <h3 class="feature-title">لوحة التحكم العامة</h3>
+                    <p class="feature-description">هنا تجد النظرة البانورامية الشاملة. تابع مؤشرات الأداء الرئيسية مثل إجمالي ساعات القراءة، وتعرّف على أبطال الماراثون في مختلف الفئات من "لوحة شرف الأبطال".</p>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">🎯</span>
+                    <h3 class="feature-title">تحليلات التحديات</h3>
+                    <p class="feature-description">اغُص في تفاصيل كل تحدٍ على حدة. حلّل أداء المشاركين، واكتشف الأنماط القرائية، وقيّم نجاح كل كتاب. استخدم "بطاقة القارئ" لعرض ملف شامل لكل عضو.</p>
+                </div>
+                
+                <div class="feature-card">
+                    <span class="feature-icon">⚙️</span>
+                    <h3 class="feature-title">الإدارة والإعدادات</h3>
+                    <p class="feature-description">هذا هو مركز عملياتك. أضف أعضاء جدد، خطط لتحديات مستقبلية، أو عدّل نظام النقاط الافتراضي بسهولة. يمكنك أيضاً تعديل السجلات وتصدير التقارير من هنا.</p>
+                </div>
 
-    # إنشاء 2x2 grid
-    col1, col2 = st.columns(2)
-
-    with col1:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #e3f2fd 0%, #bbdefb 100%); 
-                    padding: 2rem; border-radius: 15px; text-align: center; 
-                    margin-bottom: 1rem; direction: rtl;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">📈</div>
-            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">لوحة التحكم العامة</h3>
-            <p style="color: #6c757d; line-height: 1.6;">احصل على نظرة بانورامية شاملة على أداء جميع المشاركين في كل التحديات.</p>
+                <div class="feature-card">
+                    <span class="feature-icon">❓</span>
+                    <h3 class="feature-title">عن التطبيق</h3>
+                    <p class="feature-description">هل تريد فهم فلسفة التحفيز ونظام النقاط بعمق؟ هذا الدليل الشامل يشرح لك كل شيء بالتفصيل، من آلية العمل إلى شرح أدوات التحليل المتقدمة.</p>
+                </div>
+            </div>
         </div>
-        """, unsafe_allow_html=True)
-
-    with col2:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #f3e5f5 0%, #e1bee7 100%); 
-                    padding: 2rem; border-radius: 15px; text-align: center; 
-                    margin-bottom: 1rem; direction: rtl;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">🎯</div>
-            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">تحليلات التحديات</h3>
-            <p style="color: #6c757d; line-height: 1.6;">اغُص في تفاصيل تحدي معين وقارن أداء المشاركين فيه بدقة.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    col3, col4 = st.columns(2)
-
-    with col3:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #e8f5e8 0%, #c8e6c9 100%); 
-                    padding: 2rem; border-radius: 15px; text-align: center; 
-                    margin-bottom: 1rem; direction: rtl;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">⚙️</div>
-            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">الإدارة والإعدادات</h3>
-            <p style="color: #6c757d; line-height: 1.6;">أضف أعضاء جدد، خطط لتحديات مستقبلية، أو عدّل نظام النقاط بسهولة.</p>
-        </div>
-        """, unsafe_allow_html=True)
-
-    with col4:
-        st.markdown("""
-        <div style="background: linear-gradient(135deg, #fff3e0 0%, #ffcc80 100%); 
-                    padding: 2rem; border-radius: 15px; text-align: center; 
-                    margin-bottom: 1rem; direction: rtl;">
-            <div style="font-size: 3rem; margin-bottom: 1rem;">❓</div>
-            <h3 style="color: #2980b9; margin-bottom: 0.5rem;">عن التطبيق</h3>
-            <p style="color: #6c757d; line-height: 1.6;">تعرّف على المزيد حول فلسفة المشروع وكيفية عمل نظام النقاط والتحفيز.</p>
-        </div>
-        """, unsafe_allow_html=True)
+    """, unsafe_allow_html=True)
