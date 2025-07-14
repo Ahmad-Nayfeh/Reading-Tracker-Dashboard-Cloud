@@ -688,12 +688,12 @@ if 'show_delete_account_dialog' in st.session_state and st.session_state.show_de
                 st.write("✅ تم حذف بياناتك من قاعدة بيانات التطبيق.")
 
                 # 4. إلغاء صلاحيات الوصول
-                if refresh_token:
-                    success, status = auth_manager.revoke_google_token(refresh_token)
-                    if success:
-                        st.write("✅ تم إلغاء صلاحيات وصول التطبيق لحسابك في جوجل.")
-                    else:
-                        st.write(f"⚠️ لم نتمكن من إلغاء صلاحيات الوصول (الرمز: {status}). يمكنك فعل ذلك يدوياً من إعدادات حسابك.")
+                # if refresh_token:
+                #     success, status = auth_manager.revoke_google_token(refresh_token)
+                #     if success:
+                #         st.write("✅ تم إلغاء صلاحيات وصول التطبيق لحسابك في جوجل.")
+                #     else:
+                #         st.write(f"⚠️ لم نتمكن من إلغاء صلاحيات الوصول (الرمز: {status}). يمكنك فعل ذلك يدوياً من إعدادات حسابك.")
                 
                 st.success("اكتمل الحذف. سيتم الآن تسجيل خروجك.")
                 time.sleep(3)
