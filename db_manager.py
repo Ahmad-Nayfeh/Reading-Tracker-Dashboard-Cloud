@@ -306,3 +306,22 @@ def get_refresh_token(user_id: str):
     except Exception as e:
         print(f"Error getting refresh token for user {user_id}: {e}")
         return None
+
+
+def delete_user_workspace(user_id: str):
+    """
+    Deletes a user's entire workspace from Firestore, including all subcollections.
+    This is a destructive and irreversible action.
+    """
+    user_doc_ref = db.collection('users').document(user_id)
+
+    # It's important to delete subcollections recursively first
+    collections = user_doc_ref.collections()
+    for collection in collections:
+        docs = collection.stream()
+        for doc in docs:
+            doc.reference.delete()
+
+    # Finally, delete the main user document
+    user_doc_ref.delete()
+    return True
