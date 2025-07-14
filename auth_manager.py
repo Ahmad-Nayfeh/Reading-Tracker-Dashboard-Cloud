@@ -77,7 +77,11 @@ def authenticate():
                     st.query_params['user_id'] = st.session_state.get('user_id')
                 return creds
             except Exception:
+                # --- START OF THE FIX ---
+                # If refresh fails, the token is invalid. Delete it and rerun.
                 del st.session_state[SESSION_STATE_KEY]
+                st.rerun()
+                # --- END OF THE FIX ---
 
     # Priority 2: Handle the redirect from Google's login screen (has `code`).
     authorization_code = st.query_params.get("code")
@@ -131,7 +135,11 @@ def authenticate():
     st.stop()
 
 @st.cache_resource
-def get_gspread_client(user_id: str, _creds: Credentials):
+def get_gspread_client(_creds: Credentials):
+    """
+    Authorizes the gspread client using credentials.
+    The cache now depends only on the credentials object.
+    """
     if not _creds or not _creds.valid:
         st.error("🔒 **خطأ في المصادقة:** لم يتم تمرير بيانات اعتماد صالحة.")
         st.stop()
