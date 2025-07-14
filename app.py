@@ -241,7 +241,7 @@ if not setup_complete:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
 else:
-    # --- NEW: Modern and Attractive Welcome Page ---
+    # --- صفحة الترحيب المحسنة والجذابة ---
     st.markdown("""
         <style>
             @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
@@ -251,6 +251,7 @@ else:
                 background: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
                 border-radius: 15px;
                 text-align: center;
+                margin-bottom: 2rem;
             }
             .welcome-title {
                 font-family: 'Tajawal', sans-serif;
@@ -258,21 +259,24 @@ else:
                 font-weight: 700;
                 color: #2c3e50;
                 margin-bottom: 0.5rem;
+                text-align: center;
             }
             .welcome-subtitle {
                 font-family: 'Tajawal', sans-serif;
                 font-size: 1.25rem;
                 color: #34495e;
                 margin-bottom: 2rem;
+                text-align: center;
             }
             .features-grid {
                 display: grid;
                 grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
                 gap: 1.5rem;
-                direction: rtl; /* Ensures grid items are arranged right-to-left */
+                direction: rtl;
+                margin-top: 2rem;
             }
             .feature-card {
-                background-color: rgba(255, 255, 255, 0.8);
+                background-color: rgba(255, 255, 255, 0.9);
                 backdrop-filter: blur(10px);
                 border-radius: 15px;
                 padding: 2rem;
@@ -289,6 +293,7 @@ else:
                 font-size: 3rem;
                 line-height: 1;
                 margin-bottom: 1rem;
+                text-align: center;
             }
             .feature-title {
                 font-family: 'Tajawal', sans-serif;
@@ -296,12 +301,14 @@ else:
                 font-weight: 700;
                 color: #2980b9;
                 margin-bottom: 0.5rem;
+                text-align: right;
             }
             .feature-description {
                 font-family: 'Tajawal', sans-serif;
                 font-size: 1rem;
                 color: #6c757d;
                 line-height: 1.6;
+                text-align: right;
             }
         </style>
         
