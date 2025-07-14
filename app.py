@@ -77,6 +77,7 @@ if st.sidebar.button("🔄 تحديث وسحب البيانات", type="primary"
         update_log = run_data_update(gc, user_id)
         st.session_state['update_log'] = update_log
     st.toast("اكتملت عملية المزامنة بنجاح!", icon="✅")
+    st.cache_data.clear()
 
 
 if 'update_log' in st.session_state:
