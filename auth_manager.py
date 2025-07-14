@@ -9,6 +9,7 @@ import json
 import time
 import requests
 
+
 # --- Configuration ---
 SCOPES = [
     "https://www.googleapis.com/auth/spreadsheets",
@@ -82,26 +83,8 @@ def authenticate():
     authorization_code = st.query_params.get("code")
     if authorization_code:
         flow = _get_flow()
-        try:
-            flow.fetch_token(code=authorization_code)
-            creds = flow.credentials
-        except Exception as e:
-            if 'invalid_grant' in str(e):
-                st.error("⚠️ يبدو أنك قمت بإلغاء صلاحيات التطبيق مؤخراً.")
-                st.info("لا تقلق، سنحاول إعادة طلب الموافقة من جديد. يرجى الضغط على الزر أدناه للمتابعة.")
-                
-                auth_url, _ = flow.authorization_url(
-                    access_type='offline', 
-                    prompt='consent', 
-                    include_granted_scopes='true'
-                )
-                
-                st.link_button("🔗 إعادة الربط بحساب جوجل (مهم)", auth_url, use_container_width=True, type="primary")
-                st.stop()
-            else:
-                st.error(f"حدث خطأ غير متوقع أثناء المصادقة: {e}")
-                st.stop()
-
+        flow.fetch_token(code=authorization_code)
+        creds = flow.credentials
 
         if not creds.refresh_token:
             st.error("### 🔴 فشل المصادقة: لم يتم استلام مفتاح الجلسة الدائمة")
@@ -156,17 +139,22 @@ def get_gspread_client(user_id: str, _creds: Credentials):
 
 def logout():
     """
-    Clears all session information and URL parameters to ensure a completely
-    fresh start for the user.
+    Clears all session information, logs the user out, and clears URL params.
     """
     keys_to_delete = [SESSION_STATE_KEY, 'user_id', 'user_email']
     for key in keys_to_delete:
         if key in st.session_state:
             del st.session_state[key]
     
-    # This is a critical step to prevent re-authentication from URL
-    if 'code' in st.query_params:
+    # Use a loop to clear all query params, especially user_id
+    query_params = st.query_params.to_dict()
+    if query_params:
         st.query_params.clear()
+
+    st.success("تم تسجيل الخروج بنجاح. جارٍ إعادة التوجيه...")
+    time.sleep(2)
+    st.rerun()
+
 
 def revoke_google_token(refresh_token: str):
     """
@@ -178,7 +166,7 @@ def revoke_google_token(refresh_token: str):
         response = requests.post('https://oauth2.googleapis.com/revoke',
             params={'token': refresh_token},
             headers={'content-type': 'application/x-www-form-urlencoded'})
-        
+
         return response.status_code == 200, response.status_code
     except Exception as e:
         return False, str(e)
