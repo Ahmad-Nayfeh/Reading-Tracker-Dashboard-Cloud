@@ -241,16 +241,15 @@ if not setup_complete:
                     st.error("✏️ بيانات غير مكتملة: يرجى إدخال عنوان الكتاب واسم المؤلف.")
 
 else:
-    # --- صفحة الترحيب الاحترافية - الإصدار النهائي مع إصلاح الروابط ---
+    # --- صفحة الترحيب الاحترافية - الإصدار النهائي مع إصلاح الروابط بالجافاسكريبت ---
     st.markdown("# 📚 أهلاً بك في منصة ماراثون القراءة")
     st.markdown("### 🎉 اكتمل إعداد حسابك بنجاح! أنت الآن جاهز للانطلاق في رحلة قرائية ممتعة ومحفزة.")
 
-    # CSS لتحسين التصميم وإضافة تفاعلية
     st.markdown("""
     <style>
         @import url('https://fonts.googleapis.com/css2?family=Tajawal:wght@400;500;700&display=swap');
         
-        .welcome-card {
+        .js-clickable-card {
             background-color: #ffffff;
             border: 1px solid #e9ecef;
             border-radius: 16px;
@@ -260,44 +259,34 @@ else:
             height: 100%;
             display: flex;
             flex-direction: column;
+            justify-content: center;
             transition: all 0.3s ease-in-out;
             box-shadow: 0 4px 6px rgba(0,0,0,0.04);
+            cursor: pointer; /* تغيير شكل المؤشر للإشارة إلى أن البطاقة قابلة للنقر */
         }
-        .welcome-card:hover {
+        .js-clickable-card:hover {
             transform: translateY(-10px);
             box-shadow: 0 12px 20px rgba(0,0,0,0.08);
             border-color: #2980b9;
         }
-        .welcome-card .icon {
+        .js-clickable-card .icon {
             font-size: 3.5rem;
             line-height: 1;
             margin-bottom: 1rem;
             color: #2980b9;
         }
-        .welcome-card h3 {
+        .js-clickable-card h3 {
             font-family: 'Tajawal', sans-serif;
             font-size: 1.7rem;
             font-weight: 700;
             color: #2c3e50;
             margin-bottom: 1rem;
         }
-        .welcome-card p {
+        .js-clickable-card p {
             font-family: 'Tajawal', sans-serif;
             font-size: 1.1rem;
             color: #5D6D7E;
             line-height: 1.7;
-            flex-grow: 1; 
-        }
-        .card-link {
-            display: block;
-            margin-top: 1.5rem;
-            font-weight: 700;
-            color: #2980b9;
-            text-decoration: none;
-            transition: color 0.2s ease;
-        }
-        .card-link:hover {
-            color: #3498db;
         }
     </style>
     """, unsafe_allow_html=True)
@@ -306,21 +295,19 @@ else:
 
     with col1:
         st.markdown("""
-        <div class="welcome-card">
+        <div class="js-clickable-card" onclick="window.parent.location.href='/لوحة_التحكم_العامة'">
             <div class="icon">📈</div>
             <h3>لوحة التحكم العامة</h3>
             <p>هنا مركز القيادة الاستراتيجي للماراثون. شاهد الصورة الكبيرة لأداء فريقك، وتابع المقاييس الرئيسية بشكل مباشر، واحتفِ بالأبطال الذين يتصدرون المنافسة.</p>
-            <a href="/لوحة_التحكم_العامة" target="_self" class="card-link">اذهب للوحة التحكم ←</a>
         </div>
         """, unsafe_allow_html=True)
 
     with col2:
         st.markdown("""
-        <div class="welcome-card">
+        <div class="js-clickable-card" onclick="window.parent.location.href='/تحليلات_التحديات'">
             <div class="icon">🎯</div>
             <h3>تحليلات التحديات</h3>
             <p>استخدم عدستك المكبرة هنا. غُص في تفاصيل أي تحدٍ، وحلل مدى تفاعل القراء مع الكتب، واستكشف رحلة كل قارئ عبر "بطاقة القارئ" المفصلة.</p>
-            <a href="/تحليلات_التحديات" target="_self" class="card-link">استكشف التحليلات ←</a>
         </div>
         """, unsafe_allow_html=True)
 
@@ -328,20 +315,18 @@ else:
 
     with col3:
         st.markdown("""
-        <div class="welcome-card">
+        <div class="js-clickable-card" onclick="window.parent.location.href='/الإدارة_والإعدادات'">
             <div class="icon">⚙️</div>
             <h3>الإدارة والإعدادات</h3>
             <p>مركز عملياتك لإدارة كل شيء. أضف أعضاء جدد، خطط لتحديات مستقبلية، وخصص نظام النقاط ليتناسب مع روح فريقك، وتأكد من دقة البيانات.</p>
-            <a href="/الإدارة_والإعدادات" target="_self" class="card-link">تحكم في الإعدادات ←</a>
         </div>
         """, unsafe_allow_html=True)
 
     with col4:
         st.markdown("""
-        <div class="welcome-card">
+        <div class="js-clickable-card" onclick="window.parent.location.href='/عن_التطبيق'">
             <div class="icon">❓</div>
             <h3>عن التطبيق</h3>
             <p>دليلك لفهم "لماذا" وراء "ماذا". اكتشف فلسفة التحفيز الذكي، وكيف يعمل نظام النقاط والأوسمة، وكل ما يجعل هذه التجربة فريدة.</p>
-            <a href="/عن_التطبيق" target="_self" class="card-link">اقرأ المزيد ←</a>
         </div>
         """, unsafe_allow_html=True)
