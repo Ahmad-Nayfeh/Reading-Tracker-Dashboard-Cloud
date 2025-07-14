@@ -134,7 +134,6 @@ def authenticate():
     st.link_button("🔗 **الربط بحساب جوجل والبدء**", auth_url, use_container_width=True, type="primary")
     st.stop()
 
-@st.cache_resource
 def get_gspread_client(_creds: Credentials):
     """
     Authorizes the gspread client using credentials.
